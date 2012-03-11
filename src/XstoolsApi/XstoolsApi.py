@@ -28,6 +28,7 @@ import types
 import sys
 import os
 from ctypes import *
+from xsdutio import *
 
 # Load the xstoolsApi DLL that provides access to the XuLA board.
 print os.getcwd()
@@ -37,17 +38,17 @@ xstoolsApi = cdll.LoadLibrary(os.path.join(os.getcwd(), 'XstoolsApi.dll'))
 MemInit = xstoolsApi.XsMemInit
 MemWrite = xstoolsApi.XsMemWrite
 MemRead = xstoolsApi.XsMemRead
-DutInit = xstoolsApi.XsDutInit
-DutWrite = xstoolsApi.XsDutWrite
-DutRead = xstoolsApi.XsDutRead
+#DutInit = xstoolsApi.XsDutInit
+#DutWrite = xstoolsApi.XsDutWrite
+#DutRead = xstoolsApi.XsDutRead
 
 # Create prototypes so the Python interpreter can detect function invocation errors.
 MemInit.argtypes = [c_uint, c_uint, POINTER(c_uint), POINTER(c_uint)]
 MemWrite.argtypes = [c_void_p, c_uint, POINTER(c_ulonglong), c_uint]
 MemRead.argtypes = [c_void_p, c_uint, POINTER(c_ulonglong), c_uint]
-DutInit.argtypes = [c_uint, c_uint, POINTER(c_uint), POINTER(c_uint)]
-DutWrite.argtypes = [c_void_p, POINTER(c_ubyte), c_uint]
-DutRead.argtypes = [c_void_p, POINTER(c_ubyte), c_uint]
+#DutInit.argtypes = [c_uint, c_uint, POINTER(c_uint), POINTER(c_uint)]
+#DutWrite.argtypes = [c_void_p, POINTER(c_ubyte), c_uint]
+#DutRead.argtypes = [c_void_p, POINTER(c_ubyte), c_uint]
 
 
 class XsMem:
@@ -97,102 +98,39 @@ class XsMem:
         MemWrite(self.mem, c_uint(startAddr), cBuffer,
                  c_uint(len(buffer)))
 
+                 
+Bitvec = XsBitarray
+XsDut = XsDutIo
 
-class Bitvec(list):
+# class Bitvec(list):
 
-    '''Class for storing and manipulating bits.'''
+    # '''Class for storing and manipulating bits.'''
     
-    def ___init__(self):
-        list.__init__(self)
+    # def ___init__(self):
+        # list.__init__(self)
         
-    def __setattr__(self, name, val):
-        if name == 'unsigned' or name == 'int':
-            v = val
-            for i in range(0,len(self)):
-                self[i] = (v & 1) and 1 or 0
-                v >>= 1
-        elif name == 'string':
-            v = val[::-1] # Reverse the string so LSB comes first.
-            for i in range(0, len(self)):
-                self[i] = (v[i] == '1') and 1 or 0
-        return val
+    # def __setattr__(self, name, val):
+        # if name == 'unsigned' or name == 'int':
+            # v = val
+            # for i in range(0,len(self)):
+                # self[i] = (v & 1) and 1 or 0
+                # v >>= 1
+        # elif name == 'string':
+            # v = val[::-1] # Reverse the string so LSB comes first.
+            # for i in range(0, len(self)):
+                # self[i] = (v[i] == '1') and 1 or 0
+        # return val
         
-    def __getattr__(self, name):
-        if name == 'unsigned':
-            val = 0
-            for b in reversed(self):
-                val = val * 2 + b
-        elif name == 'int':
-            val = self.unsigned
-            if self[-1] == 1:
-                val -= (1<<len(self))
-        elif name == 'string':
-            val = ''.join([str(b) for b in reversed(self)])
-        return val
-
-        
-class XsDut:
-
-    '''Class for sending inputs to a device-under-test (DUT) and reading back its response.'''
-
-    def __init__(self, usbId, moduleId, inWidths=None, outWidths=None):
-        '''Create a comm. channel to the DUT and get its parameters from the FPGA.'''
-
-        cNumInputs = c_uint(0)
-        cNumOutputs = c_uint(0)
-        # Open a link to the DUT in the FPGA and get the number of inputs and outputs.
-        self.dut = DutInit(c_uint(usbId), c_uint(moduleId),
-                            byref(cNumInputs), byref(cNumOutputs))
-        if self.dut == 0:
-            print "Couldn't get a handle for the DUT in the XESS board!"
-            sys.exit()
-        self.numInputs = cNumInputs.value  # Store number of DUT inputs.
-        self.numOutputs = cNumOutputs.value  # Store number of DUT outputs.
-        self.SetInWidths(inWidths) # Store the bit widths of inputs.
-        self.SetOutWidths(outWidths) # Store the bit widths of outputs.
-        
-    def SetInWidths(self, inWidths):
-        if inWidths == None:
-            self.inWidths = [self.numInputs]
-        else:
-            self.inWidths = inWidths
-        
-    def SetOutWidths(self, outWidths):
-        if outWidths == None:
-            self.outWidths = [self.numOutputs]
-        else:
-            self.outWidths = outWidths
-        
-    def Read(self):
-        '''Read the outputs of the DUT and return them.'''
-        
-        cOutputs = (c_ubyte * self.numOutputs)()  # Create a ctypes list for storing the outputs.
-        DutRead(self.dut, cOutputs, c_uint(self.numOutputs))  # Get the output levels from the DUT.
-        if len(self.outWidths) == 1:
-            return Bitvec(cOutputs)
-        else:
-            outputFields = []
-            for w in self.outWidths:
-                outputFields.append(Bitvec(cOutputs[:w]))
-                cOutputs = cOutputs[w:]
-            return outputFields
-
-    def Write(self, *inputs):
-        '''Write the inputs to the DUT.'''
-
-        cInputs = (c_ubyte * self.numInputs)()  # Create a ctypes list the same size as the given input list.
-        in_bits = []
-        for i in range(0, len(inputs)):
-            field = Bitvec([0] * self.inWidths[i])
-            field.unsigned = inputs[i]
-            in_bits.extend(field)
-        # Transfer the input list into the ctypes buffer.
-        for i in range(0, len(cInputs)):
-            cInputs[i] = in_bits[i]
-        # Write the input values to the DUT in the FPGA.
-        DutWrite(self.dut, cInputs, c_uint(self.numInputs))
-        
-    def Exec(self, *inputs):
-        '''Write and then read the DUT.'''
-        self.Write(*inputs)
-        return self.Read()
+    # def __getattr__(self, name):
+        # if name == 'unsigned':
+            # val = 0
+            # for b in reversed(self):
+                # val = val * 2 + b
+        # elif name == 'int':
+            # val = self.unsigned
+            # if self[-1] == 1:
+                # val -= (1<<len(self))
+        # elif name == 'string':
+            # val = ''.join([str(b) for b in reversed(self)])
+        # return val
+       
