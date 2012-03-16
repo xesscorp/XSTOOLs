@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 # /***********************************************************************************
 # *   This program is free software; you can redistribute it and/or
 # *   modify it under the terms of the GNU General Public License
@@ -17,81 +20,155 @@
 # *   (c)2012 - X Engineering Software Systems Corp. (www.xess.com)
 # ***********************************************************************************/
 
-'''
+"""
 Object for forcing inputs and reading outputs from a device-under-test (DUT).
-'''
+"""
 
+import logging
 from xshostio import *
 
-class XsDutIo(XsHostIo):
-    _NOP_OPCODE   = XsBitarray('00'[::-1])
-    _SIZE_OPCODE  = XsBitarray('01'[::-1])
-    _WRITE_OPCODE = XsBitarray('10'[::-1])
-    _READ_OPCODE  = XsBitarray('11'[::-1])
-    _SIZE_RESULT_LENGTH = 16
 
-    def __init__(self, xsjtag_port=None, xsusb_id=0, module_id=255, in_widths=None, out_widths=None):
-#        super(XsDutIo,self).__init__(xsjtag_port=xsjtag_port, xsusb_id=xsusb_id, module_id=module_id)
-        XsHostIo.__init__(self, xsjtag_port=xsjtag_port, xsusb_id=xsusb_id, module_id=module_id)
-        self._num_inputs, self._num_outputs = self._get_io_widths()
-        print self._num_inputs, self._num_outputs
-        if in_widths == None:
-            self._in_widths = [self._num_inputs]
-        else:
-            self._in_widths = in_widths
-            total_width = 0
-            for w in self._in_widths:
-                total_width += w
-            assert total_width == self._num_inputs
-        if out_widths == None:
-            self._out_widths = [self._num_outputs]
-        else:
-            self._out_widths = out_widths
-            total_width = 0
-            for w in self._out_widths:
-                total_width += w
-            assert total_width == self._num_outputs
+class XsDutIo(XsHostIo):
+
+    """Object for forcing inputs and reading outputs from a device-under-test (DUT)."""
+
+    # DUT opcodes.
+    _NOP_OPCODE = XsBitarray('00'[::-1])
+    _READ_OPCODE = XsBitarray('11'[::-1])  # Read DUT outputs.
+    _WRITE_OPCODE = XsBitarray('10'[::-1])  # Write to DUT inputs.
+    _SIZE_OPCODE = XsBitarray('01'[::-1])  # Get number of inputs and outputs of DUT.
+    _SIZE_RESULT_LENGTH = 16  # Length of _SIZE_OPCODE result.
+
+    def __init__(
+        self,
+        xsusb_id=DEFAULT_XSUSB_ID,
+        module_id=DEFAULT_MODULE_ID,
+        dut_output_widths=None,
+        dut_input_widths=None,
+        xsjtag_port=None
+        ):
+        """Setup a DUT I/O object.
         
+        xsusb_id = The ID for the USB port.
+        module_id = The ID for the DUT I/O module in the FPGA.
+        dut_output_widths = A list of widths of the DUT output fields.
+        dut_input_widths = A list of widths of the DUT input fields.
+        xsjtag_port = The Xsjtag USB port object. (Use this if not using xsusb_id.)
+        """
+
+        # Setup the super-class object.
+        XsHostIo.__init__(self, xsusb_id=xsusb_id, module_id=module_id, xsjtag_port=xsjtag_port)
+        # Get the number of inputs and outputs of the DUT.
+        (self.total_dut_input_width, self.total_dut_output_width) = \
+            self._get_io_widths()
+        assert self.total_dut_input_width != 0
+        assert self.total_dut_output_width != 0
+        logging.debug('# DUT input bits = '
+                      + str(self.total_dut_input_width))
+        logging.debug('# DUT output bits = '
+                      + str(self.total_dut_output_width))
+
+        if dut_input_widths == None:
+            # If no DUT input widths are provided, then make a single-element
+            # list containing just the total number of DUT input bits.
+            self._dut_input_widths = [self.total_dut_input_width]
+        else:
+            # Otherwise, store the given list of DUT input field widths.
+            self._dut_input_widths = dut_input_widths
+            assert len(self._dut_input_widths) != 0
+            # Total all the input field widths.
+            total_width = 0
+            for w in self._dut_input_widths:
+                total_width += w
+            # The total should equal the total number of DUT inputs.
+            assert total_width == self.total_dut_input_width
+        if dut_output_widths == None:
+            # If no DUT output widths are provided, then make a single-element
+            # list containing just the total number of DUT output bits.
+            self._dut_output_widths = [self.total_dut_output_width]
+        else:
+            # Otherwise, store the given list of DUT output field widths.
+            self._dut_output_widths = dut_output_widths
+            assert len(self._dut_output_widths) != 0
+            # Total all the output field widths.
+            total_width = 0
+            for w in self._dut_output_widths:
+                total_width += w
+            # The total should equal the total number of DUT outputs.
+            assert total_width == self.total_dut_output_width
+
     def _get_io_widths(self):
-        SKIP_CYCLES = 1
-        params = self.send_rcv(payload=self._SIZE_OPCODE, 
-                num_result_bits=self._SIZE_RESULT_LENGTH + SKIP_CYCLES)
-        params = params[:-SKIP_CYCLES]
-        input_width = params[self._SIZE_RESULT_LENGTH/2:].to_int()
-        output_width = params[:self._SIZE_RESULT_LENGTH/2].to_int()
-        return input_width, output_width
-        
+        """Return the (total_dut_input_width, total_dut_output_width) of the DUT."""
+
+        SKIP_CYCLES = 1  # Skip cycles between issuing command and reading back result.
+        # Send the opcode and then read back the bits with the DUT's #inputs and #outputs.
+        params = self.send_rcv(payload=self._SIZE_OPCODE,
+                               num_result_bits=self._SIZE_RESULT_LENGTH
+                               + SKIP_CYCLES)
+        params = params[SKIP_CYCLES:]  # Remove the skipped cycles.
+        # The number of DUT inputs is in the first half of the bit array.
+        total_dut_input_width = params[:self._SIZE_RESULT_LENGTH
+            / 2].to_int()
+        # The number of DUT outputs is in the last half of the bit array.
+        total_dut_output_width = params[self._SIZE_RESULT_LENGTH
+            / 2:].to_int()
+        return (total_dut_input_width, total_dut_output_width)
+
     def read(self):
-        SKIP_CYCLES = 1
+        """Return a list of bit arrays for the DUT output fields."""
+
+        SKIP_CYCLES = 1  # Skip cycles between issuing command and reading back result.
+        # Send the READ_OPCODE and then read back the bits with the DUT's output values.
         result = self.send_rcv(payload=self._READ_OPCODE,
-                num_result_bits=self._num_inputs + SKIP_CYCLES)
-        result = result[SKIP_CYCLES:]
-        assert result.length() == self._num_inputs
-        print 'Read result = ', result
-        if len(self._out_widths) == 1:
+                               num_result_bits=self.total_dut_output_width
+                               + SKIP_CYCLES)
+        result = result[SKIP_CYCLES:]  # Remove the skipped cycles.
+        assert result.length() == self.total_dut_output_width
+        logging.debug('Read result = ' + repr(result))
+        if len(self._dut_output_widths) == 1:
+            # Return the result bit array if there's only a single output field.
             return result
         else:
+            # Otherwise, partition the result bit array into the given output field widths.
             outputs = []
-            for w in self._out_widths:
+            for w in self._dut_output_widths:
                 outputs.append(result[:w])
                 result = result[w:]
             return outputs
-            
-    Read = read
-        
-    def write(self, *inputs):
-        assert len(inputs) != 0
-        assert len(inputs) == self.num_inputs
-        payload = XsBitarray(self._WRITE_OPCODE)
-        for i, w in inputs, self._input_widths:
-            payload.extend(XsBitarray.from_int(i, w))
-        assert payload.length() > 0
-        self.send_rcv(payload=payload, num_result_bits=0)
-        
-    Write = write
 
-    def execute(self, *inputs): 
+    Read = read  # Associate the old Read() method with the new read() method.
+
+    def write(self, *inputs):
+        """Send a list of bit arrays to the DUT input fields."""
+
+        # You need as many input bit arrays as there are input fields.
+        assert len(inputs) == len(self._dut_input_widths)
+        # Start the payload with the WRITE_OPCODE.
+        payload = XsBitarray(self._WRITE_OPCODE)
+        # Concatenate the DUT input field bit arrays to the payload.
+        for (inp, width) in zip(inputs, self._dut_input_widths):
+            if type(inp) == type(1):
+                # Convert the integer to a bit array and concatenate it.
+                payload.extend(XsBitarray.from_int(inp, width))
+            else:
+                # Assume it's a bit array, so just concatenate it.
+                payload.extend(inp)
+        # for i in range(0, len(inputs)):
+            # payload.extend(XsBitarray.from_int(inputs[i],
+                           # self._dut_input_widths[i]))
+        assert payload.length() > self._WRITE_OPCODE.length()
+        # Send the payload to force the bit arrays onto the DUT inputs.
+        self.send_rcv(payload=payload, num_result_bits=0)
+
+    Write = write  # Associate the old Write() method with the new write() method.
+
+    def execute(self, *inputs):
+        """Send a list of bit arrays to the DUT input fields and get the DUT outputs."""
+
         self.write(*inputs)
         return self.read()
-        
-    Exec = execute
+
+    Exec = execute  # Associate the old Exec() method with the new exec() method.
+
+
+XsDut = XsDutIo  # Associate the old XsDut class with the new XsDutIo class.
