@@ -111,7 +111,9 @@ class XsUsb:
 
 
 if __name__ == '__main__':
+    # Get the number of XESS USB devices out there.
     print '#XSUSB = %d' % XsUsb.get_num_xsusb()
+    # Create a link for talking over USB to an XESS USB device.
     xsusb = XsUsb()
+    # Just write something to the device and see if it responds (i.e., its LED blinks).
     xsusb.write([0x01, 0x02, 0x03, 0x04])
-    print xsusb.read(0x04)

@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+
 # /***********************************************************************************
 # *   This program is free software; you can redistribute it and/or
 # *   modify it under the terms of the GNU General Public License
@@ -84,7 +85,7 @@ class XsBitarray(bitarray):
             val = self.to_int()
             # Correct for sign bit.
             if self[-1] == 1:
-                val -= (1 << self.length())
+                val -= 1 << self.length()
         elif name == 'unsigned':
             # No need to correct for sign bit.
             val = self.to_int()
@@ -92,8 +93,8 @@ class XsBitarray(bitarray):
             val = self.to01()
         return val
 
-Bitvec = XsBitarray # Associate old Bitvec class with new XsBitarray class.
 
+Bitvec = XsBitarray  # Associate old Bitvec class with new XsBitarray class.
 
 if __name__ == '__main__':
     xsbits = XsBitarray('1010101')

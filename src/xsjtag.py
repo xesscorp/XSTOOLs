@@ -285,20 +285,24 @@ class XsJtag:
 
 if __name__ == '__main__':
     print '#XSUSB = %d' % XsUsb.get_num_xsusb()
-    xsusb = XsUsb()
-    xsjtag = XsJtag(xsusb)
+
+    # Create an object for sending JTAG through the USB link.
+    xsjtag = XsJtag(XsUsb())
+    # Move the JTAG TAP FSM to the shift-ir state.
     xsjtag.reset_tap()
     xsjtag.go_thru_tap_states(['run_test_idle', 'select_dr_scan',
                               'select_ir_scan', 'capture_ir', 'shift_ir'
                               ])
-
+    # Enter the IDCODE instruction into the JTAG IR.
     idcode_instr = XsBitarray('001001'[::-0x01])
     xsjtag.shift_tdi(idcode_instr, do_exit_shift=True, do_flush=True)
+    # Now move the JTAG FSM to the shift-dr state.
     xsjtag.go_thru_tap_states(['update_ir', 'select_dr_scan',
                               'capture_dr', 'shift_dr'])
-
+    # Get the 32-bit ID code from the DR.
     idcode = xsjtag.shift_tdo(32, do_exit_shift=False)
     print idcode
+    # Compare the ID code to the XC3S200A ID code.
     assert idcode[:28].to01()[::-0x01] == '0010001000011000000010010011'
     xsjtag.runtest(1000)
     print '\n***Test passed!***'

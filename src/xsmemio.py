@@ -131,3 +131,65 @@ class XsMemIo(XsHostIo):
 
 
 XsMem = XsMemIo  # Associate the old XsMem class with the new XsMemIo class.
+
+if __name__ == '__main__':
+    import sys
+    import random
+    from scipy import *
+    from pylab import *
+
+
+    def NumberOfSetBits(i):
+        cnt = 0
+        mask = 1 << 31
+        while mask != 0:
+            if mask & i != 0:
+                cnt += 1
+            mask >>= 1
+        return cnt
+
+
+    def Prng(curr, poly, mask):
+        b = NumberOfSetBits(curr & poly) & 1 == 1 and 1 or 0
+        return (curr << 1 | b) & mask
+
+
+    print '''
+
+
+
+    ##################################################################
+    # Get some random numbers from the RNG in the XuLA FPGA.
+    ##################################################################
+    '''
+
+    USB_ID = 0  # This is the USB index for the XuLA board connected to the host PC.
+    RAND_ID = 1  # This is the identifier for the RNG in the FPGA.
+    rand = XsMem(USB_ID, RAND_ID)  # Create an object for reading/writing the register.
+
+    PERIOD = 2 ** rand.data_width  # Number of random numbers to read.
+    rand.write(0, [0x80])
+    randNums = rand.read(0, PERIOD)
+    randNums = [XsBitarray(d).unsigned for d in randNums]
+
+    prngPoly = 1 << 31 | 1 << 30 | 1 << 29 | 1 << 9
+    prngPoly = 1 << 31 | 1 << 29 | 1 << 6 | 1 << 3
+    prngPoly = 1 << 11 | 1 << 10 | 1 << 7 | 1 << 5
+    mask = (1 << rand.data_width) - 1
+    pyRandNums = [0] * PERIOD
+    pyRandNums[0] = 0x80
+    for i in range(1, PERIOD):
+        pyRandNums[i] = Prng(pyRandNums[i - 1], prngPoly, mask)
+
+    for i in range(1, PERIOD):
+        print '%8x %8x' % (pyRandNums[i], randNums[i - 1])
+
+    compare = [randNums[i] != Prng(randNums[i - 1], prngPoly, mask)
+               for i in range(1, PERIOD)]
+    if sum(compare) == 0:
+        print '\nSUCCESS!'
+    else:
+        print '\n', sum(compare), 'ERRORS'
+
+    hist(randNums, 40)
+    show()

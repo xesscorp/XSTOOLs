@@ -5,17 +5,8 @@ Right now, it contains the following main items:
 
 =over 4
 
-=item * XstoolsLib
+=item * src
 
-contains the C++ files for the library of classes used by the user-visible XSTOOLs utilities.
-
-=item * XstoolsApi
-
-contains C source files for an API that allows access to the XSTOOLs library as a DLL.
-There is also a Python interface to the DLL.
-
-=item * XstoolsApiTest
-
-contains a badly written, hacked up test program for the XSTOOLs library.
+A collection of Python files for the classes that interface to the XESS FPGA boards.
 
 =back

@@ -42,7 +42,7 @@ class XsHostIo:
         self,
         xsusb_id=DEFAULT_XSUSB_ID,
         module_id=DEFAULT_MODULE_ID,
-        xsjtag_port=None
+        xsjtag_port=None,
         ):
         """Setup the parameters for the USB I/O link between the PC and the XESS board."""
 

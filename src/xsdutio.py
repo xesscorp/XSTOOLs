@@ -45,7 +45,7 @@ class XsDutIo(XsHostIo):
         module_id=DEFAULT_MODULE_ID,
         dut_output_widths=None,
         dut_input_widths=None,
-        xsjtag_port=None
+        xsjtag_port=None,
         ):
         """Setup a DUT I/O object.
         
@@ -57,7 +57,8 @@ class XsDutIo(XsHostIo):
         """
 
         # Setup the super-class object.
-        XsHostIo.__init__(self, xsusb_id=xsusb_id, module_id=module_id, xsjtag_port=xsjtag_port)
+        XsHostIo.__init__(self, xsusb_id=xsusb_id, module_id=module_id,
+                          xsjtag_port=xsjtag_port)
         # Get the number of inputs and outputs of the DUT.
         (self.total_dut_input_width, self.total_dut_output_width) = \
             self._get_io_widths()
@@ -172,3 +173,36 @@ class XsDutIo(XsHostIo):
 
 
 XsDut = XsDutIo  # Associate the old XsDut class with the new XsDutIo class.
+
+if __name__ == '__main__':
+    from random import *  # Import some random number generator routines.
+
+    print '''
+    ##################################################################
+    # This program tests the interface between the host PC and the FPGA 
+    # on the XuLA board that has been programmed to act as a subtractor.
+    ##################################################################
+    '''
+
+    USB_ID = 0  # USB port index for the XuLA board connected to the host PC.
+    SUBTRACTOR_ID = 4  # This is the identifier for the subtractor in the FPGA.
+
+    # Create a subtractor intfc obj with two 8-bit inputs and one 8-bit output.
+    subtractor = XsDut(USB_ID, SUBTRACTOR_ID, [8], [8, 8])
+
+    # Test the subtractor by iterating through some random inputs.
+    error = False
+    for i in range(0, 100):
+        minuend = randint(0, 127)  # Get a random, positive byte...
+        subtrahend = randint(0, 127)  # And subtract this random byte from it.
+        diff = subtractor.Exec(minuend, subtrahend)  # Use the subtractor in FPGA.
+        print '%3d - %3d = %4d' % (minuend, subtrahend, diff.int),
+        if diff.int == minuend - subtrahend:  # Compare Python result to FPGA's.
+            print '==> CORRECT!'  # Print this if the differences match.
+        else:
+            print '==> ERROR!!!'  # Oops! Something's wrong with the subtractor.
+            error = True
+    if error == True:
+        print '\nERROR!'
+    else:
+        print '\nSUCCESS!'
