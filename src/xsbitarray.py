@@ -25,6 +25,7 @@ XESS extensions to bitarray object.
 """
 
 from bitarray import bitarray
+import logging
 
 
 class XsBitarray(bitarray):
@@ -36,8 +37,7 @@ class XsBitarray(bitarray):
 
     def __init__(self, initial=None):
         """Create a bit array and initialize it."""
-
-        super(bitarray, self).__init__(initial, endian='little')
+        bitarray.__init__(self, initial, endian='little')
 
     @staticmethod
     def from_int(num, num_of_bits=32):
@@ -50,6 +50,30 @@ class XsBitarray(bitarray):
         # Then reverse the binary string so the LSB is at position 0.
         # Then create a bit array using the binary string as the initializer.
         return XsBitarray(bin(num | 1 << num_of_bits)[3:][::-1])
+        
+    @staticmethod
+    def from_hex(hex_string):
+        bin_string = hex_string
+        bin_string.lower()
+        logging.debug(bin_string)
+        bin_string = bin_string.replace('0', '0000')
+        bin_string = bin_string.replace('1', '0001')
+        bin_string = bin_string.replace('2', '0010')
+        bin_string = bin_string.replace('3', '0011')
+        bin_string = bin_string.replace('4', '0100')
+        bin_string = bin_string.replace('5', '0101')
+        bin_string = bin_string.replace('6', '0110')
+        bin_string = bin_string.replace('7', '0111')
+        bin_string = bin_string.replace('8', '1000')
+        bin_string = bin_string.replace('9', '1001')
+        bin_string = bin_string.replace('a', '1010')
+        bin_string = bin_string.replace('b', '1011')
+        bin_string = bin_string.replace('c', '1100')
+        bin_string = bin_string.replace('d', '1101')
+        bin_string = bin_string.replace('e', '1110')
+        bin_string = bin_string.replace('f', '1111')
+        logging.debug(bin_string)
+        return XsBitarray(bin_string)
 
     def to_int(self):
         """Return the integer representation of a bit array."""

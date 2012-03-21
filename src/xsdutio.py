@@ -148,7 +148,7 @@ class XsDutIo(XsHostIo):
         payload = XsBitarray(self._WRITE_OPCODE)
         # Concatenate the DUT input field bit arrays to the payload.
         for (inp, width) in zip(inputs, self._dut_input_widths):
-            if type(inp) == type(1):
+            if type(inp) is int:
                 # Convert the integer to a bit array and concatenate it.
                 payload.extend(XsBitarray.from_int(inp, width))
             else:

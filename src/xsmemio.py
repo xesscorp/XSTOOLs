@@ -119,7 +119,7 @@ class XsMemIo(XsHostIo):
                        self.address_width))
         # Concatenate the data to the payload.
         for d in data:
-            if type(d) == type(1):
+            if type(d) is int:
                 # Convert integers to bit arrays.
                 payload.extend(XsBitarray.from_int(d, self.data_width))
             else:

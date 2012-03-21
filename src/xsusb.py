@@ -36,7 +36,7 @@ class XsUsb:
     _VENDOR_ID = 0x04d8
     _PRODUCT_ID = 0xff8c
     _DEFAULT_ENDPOINT = 0x01
-    _USB_XFER_TIMEOUT = 100  # USB read/write transfer timeout in milliseconds.
+    _USB_XFER_TIMEOUT = 1000  # USB read/write transfer timeout in milliseconds.
 
     #  Commands understood by XESS FPGA boards.
     READ_VERSION_CMD = 0x00
@@ -97,6 +97,7 @@ class XsUsb:
 
         logging.debug('OUT => ' + str([bin(x | 0x100)[0x03:] for x in
                       data]))
+        print "=>", len(data), "bytes."
         self._dev.write(usb.util.ENDPOINT_OUT | self._endpoint, data,
                         0x00, self._USB_XFER_TIMEOUT)
 
@@ -105,9 +106,13 @@ class XsUsb:
 
         data = self._dev.read(usb.util.ENDPOINT_IN | self._endpoint,
                               num_bytes, 0x00, self._USB_XFER_TIMEOUT)
+        print "<=", len(data) , num_bytes, "bytes."
         logging.debug('IN <=  ' + str([bin(x | 0x100)[0x03:] for x in
                       data]))
         return data
+        
+    def set_prog(self, bit_val):
+        self.write(bytearray([self.PROG_CMD,bit_val]))
 
 
 if __name__ == '__main__':
