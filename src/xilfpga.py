@@ -145,5 +145,5 @@ if __name__ == "__main__":
     xc3s200a.configure(bitstream='test_board_jtag.bit')
     t = time.clock() - t
     print "Time to download bitstream = %fs" % t 
-    print "DONE =",xc3s200a.get_status()['DONE']
+#    print "DONE =",xc3s200a.get_status()
     
