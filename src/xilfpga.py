@@ -20,7 +20,7 @@
 # ***********************************************************************************/
 
 """
-Xilinx FPGA object.
+Xilinx FPGA objects - from generic to more-specific subclasses.
 """
 
 import logging
@@ -34,11 +34,17 @@ class XilinxFpga:
     """Generic Xilinx FPGA object."""
 
     def __init__(self, xsjtag_port=None):
+        """Initialize the FPGA."""
+        
         self.xsjtag_port = xsjtag_port
 
     def configure(self, bitstream=None):
+        """Return True if the bitstream downloads OK into the FPGA."""
+        
+        # String argument indicates a file name containing the bitstream, so read it in.
         if type(bitstream) is str:
             bitstream = XilinxBitstream(bitstream)
+        # Abort if the FPGA doesn't match with the bitstream's target device type.
         if bitstream.device_type != self._DEVICE_TYPE:
             print 'ERROR: mismatched device types: %s != %s' \
                 % (bitstream.device_type, self._DEVICE_TYPE)
@@ -49,13 +55,12 @@ class XilinxFpga:
         # See AR 16829.
         self.xsjtag_port.load_ir_then_dr(instruction=self._JPROGRAM_INSTR)
         self.xsjtag_port.load_ir_then_dr(instruction=self._CFG_IN_INSTR)
+        # Give time for FPGA to clear its memory.
         time.sleep(0.001)
+        # Now download the bitstream.
         self.xsjtag_port.load_ir_then_dr(instruction=self._CFG_IN_INSTR,
                 data=bitstream.bits)
-        # BEFORE: (wants CCLK as startup clock)
-        # self.tlr()
-        # self.LoadBSIRthenBSDR(self.JSTART, None)
-        # NOW: (works OK with JTAG Clock as startup clock)
+        # Bitstream downloaded, now startup the FPGA.
         self.xsjtag_port.load_ir_then_dr(instruction=self._JSTART_INSTR)
         self.xsjtag_port.runtest(num_tcks=12)
         self.xsjtag_port.load_ir_then_dr(instruction=self._JSTART_INSTR,
@@ -64,11 +69,15 @@ class XilinxFpga:
         return True
 
     def get_idcode(self):
+        """Return the FPGA's 32-bit IDCODE."""
+        
         # Enter the IDCODE instruction into the JTAG IR and then return the 32 ID bits.
         return self.xsjtag_port.load_ir_then_dr(instruction=self._IDCODE_INSTR,
                 data=None, num_return_bits=32)
 
     def get_status(self):
+        """Return dict containing the FPGA's status register bits."""
+        
         # This is the command for reading the status register from UG332, pg 340.
         command = XsBitarray('1010101010011001')  # 0xaa99
         command.extend(XsBitarray('0010000000000000'))  # 0x2000
