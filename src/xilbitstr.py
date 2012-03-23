@@ -85,9 +85,9 @@ class XilinxBitstream:
                 # After this, the first bit to send to FPGA is in self.bits[0].
             else:
                 assert 1==0
-        logging.debug("Bitstream file %s with design %s was compiled for %s at %s on %s into a bitstream of length %d" % 
-            (self.filename, self.design_name, self.compile_time, self.device_type, self.compile_date, self.bits.length()))
-        logging.debug("Bitstream start = %s" % self.bits[32*8:32*16].to01())
+        logging.debug("Bitstream file %s with design %s was compiled for %s at %s on %s into a bitstream of length %d", 
+            self.filename, self.design_name, self.compile_time, self.device_type, self.compile_date, self.bits.length())
+        logging.debug("Bitstream start = %s", self.bits[32*8:32*16].to01())
 
             
 if __name__ == "__main__":
