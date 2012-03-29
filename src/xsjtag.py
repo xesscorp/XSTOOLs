@@ -25,6 +25,7 @@ USB <=> JTAG port interface for an XESS FPGA board.
 """
 
 import logging
+from xserror import *
 from xsbitarray import *
 from xsusb import XsUsb
 
@@ -36,30 +37,30 @@ class XsJtag:
     # Table that stores the next JTAG TAP state for a given TAP state and value of TMS.
     # Current TAP state : [Next TAP state if TMS=0, Next TAP state if TMS=1]
     _next_tap_state = {
-        'Invalid': ['Invalid', 'Invalid'],
-        'Test-Logic-Reset': ['Run-Test/Idle', 'Test-Logic-Reset'],
-        'Run-Test/Idle': ['Run-Test/Idle', 'Select-DR-Scan'],
-        'Select-DR-Scan': ['Capture-DR', 'Select-IR-Scan'],
-        'Select-IR-Scan': ['Capture-IR', 'Test-Logic-Reset'],
-        'Capture-DR': ['Shift-DR', 'Exit1-DR'],
-        'Capture-IR': ['Shift-IR', 'Exit1-IR'],
-        'Shift-DR': ['Shift-DR', 'Exit1-DR'],
-        'Shift-IR': ['Shift-IR', 'Exit1-IR'],
-        'Exit1-DR': ['Pause-DR', 'Update-DR'],
-        'Exit1-IR': ['Pause-IR', 'Update-IR'],
-        'Pause-DR': ['Pause-DR', 'Exit2-DR'],
-        'Pause-IR': ['Pause-IR', 'Exit2-IR'],
-        'Exit2-DR': ['Shift-DR', 'Update-DR'],
-        'Exit2-IR': ['Shift-IR', 'Update-IR'],
-        'Update-DR': ['Run-Test/Idle', 'Select-DR-Scan'],
-        'Update-IR': ['Run-Test/Idle', 'Select-DR-Scan'],
+        "Invalid": ["Invalid", "Invalid"],
+        "Test-Logic-Reset": ["Run-Test/Idle", "Test-Logic-Reset"],
+        "Run-Test/Idle": ["Run-Test/Idle", "Select-DR-Scan"],
+        "Select-DR-Scan": ["Capture-DR", "Select-IR-Scan"],
+        "Select-IR-Scan": ["Capture-IR", "Test-Logic-Reset"],
+        "Capture-DR": ["Shift-DR", "Exit1-DR"],
+        "Capture-IR": ["Shift-IR", "Exit1-IR"],
+        "Shift-DR": ["Shift-DR", "Exit1-DR"],
+        "Shift-IR": ["Shift-IR", "Exit1-IR"],
+        "Exit1-DR": ["Pause-DR", "Update-DR"],
+        "Exit1-IR": ["Pause-IR", "Update-IR"],
+        "Pause-DR": ["Pause-DR", "Exit2-DR"],
+        "Pause-IR": ["Pause-IR", "Exit2-IR"],
+        "Exit2-DR": ["Shift-DR", "Update-DR"],
+        "Exit2-IR": ["Shift-IR", "Update-IR"],
+        "Update-DR": ["Run-Test/Idle", "Select-DR-Scan"],
+        "Update-IR": ["Run-Test/Idle", "Select-DR-Scan"],
         }
 
     def __init__(self, xsusb=None):
         """Initialize object."""
 
         self._xsusb = xsusb  # USB port to board.
-        self._tap_state = 'Invalid'  # Start TAP FSM in undefined state.
+        self._tap_state = "Invalid"  # Start TAP FSM in undefined state.
         # Clear bit arrays that store TDI and TMS bits to be sent to board.
         self._tdi_bits = XsBitarray()
         self._tms_bits = XsBitarray()
@@ -74,10 +75,10 @@ class XsJtag:
         """Append the TMS bit to the TMS bit buffer and update the TAP state."""
 
         self._tms_bits.append(tms)  # Append the bit to the buffer.
-        logging.debug('Current TAP state = %s', self._tap_state)
+        logging.debug("Current TAP state = %s", self._tap_state)
         # Update the TAP state given the current state and the TMS bit value.
         self._tap_state = self._next_tap_state[self._tap_state][tms]
-        logging.debug('New TAP state = %s', self._tap_state)
+        logging.debug("New TAP state = %s", self._tap_state)
 
     def shift_tdi(self, tdi, do_exit_shift=False):
         """Append given bits to the TDI bit buffer.
@@ -89,8 +90,8 @@ class XsJtag:
         if self._tms_bits.length() > 0:
             self.flush()
         # TAP FSM must be in the shift-ir or shift-dr state if fetching TDO bits.
-        assert self._tap_state == 'Shift-DR' or self._tap_state \
-            == 'Shift-IR'
+        assert self._tap_state == "Shift-DR" or self._tap_state \
+            == "Shift-IR"
         # Create a single-item bit array if just a single bit is being sent.
         if not isinstance(tdi, bitarray):
             tdi = XsBitarray([tdi])
@@ -99,8 +100,8 @@ class XsJtag:
         if do_exit_shift:
             self.shift_tms(1)  # TMS=1 exits the shift-ir/dr state.
             self.flush()  # Flush everything to the JTAG port.
-            assert self._tap_state == 'Exit1-IR' or self._tap_state \
-                == 'Exit1-DR'
+            assert self._tap_state == "Exit1-IR" or self._tap_state \
+                == "Exit1-DR"
 
     def shift_tdo(self, num_bits, do_exit_shift=False):
         """Return a bit array with a given number of bits from the TDO pin."""
@@ -113,8 +114,8 @@ class XsJtag:
         # Flush any pending TMS/TDI bits before gathering TDO bits.
         self.flush()
         # TAP FSM must be in the shift-ir or shift-dr state if fetching TDO bits.
-        assert self._tap_state == 'Shift-DR' or self._tap_state \
-            == 'Shift-IR'
+        assert self._tap_state == "Shift-DR" or self._tap_state \
+            == "Shift-IR"
 
         if do_exit_shift == True:
             # Get the first N-1 TDO bits before exiting the shift-ir/dr state.
@@ -130,8 +131,8 @@ class XsJtag:
             # Get the final TDO bit and put it on the end of the buffer.
             buffer = self._xsusb.read(1)
             tdo_bits.append(buffer[0] & 0x01)
-            assert self._tap_state == 'Exit1-IR' or self._tap_state \
-                == 'Exit1-DR'
+            assert self._tap_state == "Exit1-IR" or self._tap_state \
+                == "Exit1-DR"
         else:
             # Get the TDO bits but do not exit the shift-ir/dr state.
             cmd = self._make_jtag_cmd_hdr(num_bits=num_bits,
@@ -147,8 +148,8 @@ class XsJtag:
             bits.bytereverse()
             # Remove any extra bits added at the end during the bytereverse() operation.
             tdo_bits = bits[:num_bits]
-            assert self._tap_state == 'Shift-IR' or self._tap_state \
-                == 'Shift-DR'
+            assert self._tap_state == "Shift-IR" or self._tap_state \
+                == "Shift-DR"
         return tdo_bits
 
     def _make_jtag_cmd_hdr(self, num_bits=0, flags=0):
@@ -245,6 +246,7 @@ class XsJtag:
         """Go through a sequence of TAP states."""
 
         for next_state in states:
+            assert next_state in self._next_tap_state, "Illegal TAP state label: %s." % next_state
             # Make sure the next TAP state is reachable from current state.
             assert next_state \
                 == self._next_tap_state[self._tap_state][0] \
@@ -267,40 +269,40 @@ class XsJtag:
         """
 
         # The TAP FSM should always start and return to the run-test/idle state until all instructions are done.
-        if self._tap_state != 'Run-Test/Idle':
+        if self._tap_state != "Run-Test/Idle":
             self.reset_tap()
-            self.go_thru_tap_states('Run-Test/Idle')
+            self.go_thru_tap_states("Run-Test/Idle")
         if instruction != None:
             # Go  to the shift-ir state.
-            self.go_thru_tap_states('Select-DR-Scan', 'Select-IR-Scan',
-                                    'Capture-IR', 'Shift-IR')
+            self.go_thru_tap_states("Select-DR-Scan", "Select-IR-Scan",
+                                    "Capture-IR", "Shift-IR")
             # Now shift in the instruction opcode and activate it.
             self.shift_tdi(tdi=instruction, do_exit_shift=True)
-            self.go_thru_tap_states('Update-IR')
+            self.go_thru_tap_states("Update-IR")
         # TAP FSM can get to select-dr-scan from either of these states.
-        assert self._tap_state == 'Run-Test/Idle' or self._tap_state \
-            == 'Update-IR'
+        assert self._tap_state == "Run-Test/Idle" or self._tap_state \
+            == "Update-IR"
         bits = XsBitarray()
         if data != None:
             # If there's data to send, then there should never be data to return.
             assert num_return_bits == 0
             # Go  to the shift-dr state.
-            self.go_thru_tap_states('Select-DR-Scan', 'Capture-DR',
-                                    'Shift-DR')
+            self.go_thru_tap_states("Select-DR-Scan", "Capture-DR",
+                                    "Shift-DR")
             # Now shift in the data for the instruction.
             self.shift_tdi(tdi=data, do_exit_shift=True)
-            self.go_thru_tap_states('Update-DR')
+            self.go_thru_tap_states("Update-DR")
         elif num_return_bits != 0:
             # No data to send, but there is data to receive from the DR.
-            self.go_thru_tap_states('Select-DR-Scan', 'Capture-DR',
-                                    'Shift-DR')
+            self.go_thru_tap_states("Select-DR-Scan", "Capture-DR",
+                                    "Shift-DR")
             # Shift the data out of the DR.
             bits = self.shift_tdo(num_bits=num_return_bits,
                                   do_exit_shift=True)
-            self.go_thru_tap_states('Update-DR')
-        assert self._tap_state == 'Run-Test/Idle' or self._tap_state \
-            == 'Update-IR' or self._tap_state == 'Update-DR'
-        self.go_thru_tap_states('Run-Test/Idle')
+            self.go_thru_tap_states("Update-DR")
+        assert self._tap_state == "Run-Test/Idle" or self._tap_state \
+            == "Update-IR" or self._tap_state == "Update-DR"
+        self.go_thru_tap_states("Run-Test/Idle")
         self.flush()
         return bits
 
@@ -313,10 +315,10 @@ class XsJtag:
         for i in range(0, 5):
             self.shift_tms(1)
         self.flush()
-        self._tap_state = 'Test-Logic-Reset'
+        self._tap_state = "Test-Logic-Reset"
         
     def run_test_idle(self):
-        self.go_thru_tap_states('Run-Test/Idle')
+        self.go_thru_tap_states("Run-Test/Idle")
 
     def runtest(self, num_tcks):
         """Clock the JTAG port a given number of times."""
@@ -329,23 +331,23 @@ class XsJtag:
                         >> 8 & 0xff, num_tcks >> 16 & 0xff, num_tcks
                         >> 24 & 0xff])
         self._xsusb.write(cmd)  # Send the command.
-        # Check that the 1st byte of response matches the command opcode.
-        response = self._xsusb.read(5)  # Get the command response.
-        assert response[0] == XsUsb.RUNTEST_CMD
+        # Check that the 1st byte of the command response matches the command opcode.
+        if self._xsusb.read(5)[0] != XsUsb.RUNTEST_CMD:
+            raise XsMajorError("Communication error with XESS board in 'runtest'.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging.root.setLevel(logging.DEBUG)
 
-    print '#XSUSB = %d' % XsUsb.get_num_xsusb()
+    print "#XSUSB = %d" % XsUsb.get_num_xsusb()
 
     # Create an object for sending JTAG through the USB link.
     xsjtag = XsJtag(XsUsb())
     # Enter the IDCODE instruction into the JTAG IR and then receive 32 ID bits.
-    idcode_instr = XsBitarray('001001'[::-1])
+    idcode_instr = XsBitarray("001001"[::-1])
     idcode = xsjtag.load_ir_then_dr(idcode_instr, None, 32)
     print idcode
     # Compare the ID code to the XC3S200A ID code.
-    assert idcode[:28].to01()[::-1] == '0010001000011000000010010011'
+    assert idcode[:28].to01()[::-1] == "0010001000011000000010010011"
     xsjtag.runtest(1000)
-    print '\n***Test passed!***'
+    print "\n***Test passed!***"
