@@ -24,9 +24,11 @@
 USB interface to XESS FPGA boards.
 """
 
+import time
 import logging
 import usb.core
 import usb.util
+from xserror import *
 
 
 class XsUsb:
@@ -75,6 +77,16 @@ class XsUsb:
     PUT_TDI_MASK = 0x08  # Write bits to the JTAG TDI pin.
     TDI_VAL_MASK = 0x10  # Place a static value on the TDI pin.
 
+    BOOT_SELECT_FLAG_ADDR  = 0xff
+    BOOT_INTO_REFLASH_MODE = 0x3a
+    BOOT_INTO_USER_MODE    = 0xc5
+
+    JTAG_DISABLE_FLAG_ADDR = 0xfd
+    DISABLE_JTAG           = 0x69
+                                 
+    FLASH_ENABLE_FLAG_ADDR = 0xfe
+    ENABLE_FLASH           = 0xac
+
     @classmethod
     def get_num_xsusb(cls):
         """Return the number of XESS boards attached to USB ports."""
@@ -88,34 +100,119 @@ class XsUsb:
         devs = usb.core.find(idVendor=self._VENDOR_ID,
                              idProduct=self._PRODUCT_ID, find_all=True)
         if devs == []:
-            raise ValueError('XESS USB device not found')
+            raise XsMinorError("XESS USB device could not be found.")
         self._dev = devs[xsusb_id]
+        self._xsusb_id = xsusb_id
         self._endpoint = endpoint
 
-    def write(self, data):
+    def write(self, bytes):
         """Write a byte array to an XESS board."""
 
-        logging.debug('OUT => (%d) %s', len(data),
-            str([bin(x | 0x100)[0x03:] for x in data]))
-        self._dev.write(usb.util.ENDPOINT_OUT | self._endpoint, data,
-                        0x00, self._USB_XFER_TIMEOUT)
+        logging.debug("OUT => (%d) %s", len(bytes),
+            str([bin(x | 0x100)[0x03:] for x in bytes]))
+        if self._dev.write(usb.util.ENDPOINT_OUT | self._endpoint, bytes,
+                        0x00, self._USB_XFER_TIMEOUT) != len(bytes):
+            raise XsMajorError("Failed to write required number of bytes over the USB link")
 
     def read(self, num_bytes=0x00):
         """Return a byte array read from an XESS board."""
 
-        data = self._dev.read(usb.util.ENDPOINT_IN | self._endpoint,
+        bytes = self._dev.read(usb.util.ENDPOINT_IN | self._endpoint,
                               num_bytes, 0x00, self._USB_XFER_TIMEOUT)
-        logging.debug('IN <= (%d %d) %s', len(data), num_bytes, 
-            str([bin(x | 0x100)[0x03:] for x in data]))
-        return data
+        if len(bytes) != num_bytes:
+            raise XsMajorError("Failed to read required number of bytes over the USB link")
+        logging.debug("IN <= (%d %d) %s", len(bytes), num_bytes, 
+            str([bin(x | 0x100)[0x03:] for x in bytes]))
+        return bytes
         
-    def set_prog(self, bit_val):
-        self.write(bytearray([self.PROG_CMD,bit_val]))
+    def set_prog(self, level):
+        """Change the level on the PROG# pin of the FPGA."""
+        cmd = bytearray([self.PROG_CMD, level])
+        self.write(cmd)
+        
+    def reset(self):
+        """Reset the XESS board."""
+        cmd = bytearray([self.RESET_CMD])
+        self.write(cmd)
+        usb.util.dispose_resources (self._dev)
+        time.sleep(2)
+        self.__init__(self._xsusb_id, self._endpoint)
+        
+    def get_info(self):
+        """Return the info string stored in the XESS board."""
+        cmd = bytearray([self.INFO_CMD])
+        self.write(cmd)
+        return self.read(32)
+        
+    def erase_flash(self, address):
+        """Erase a block of flash in the microcontroller."""
+        num_blocks = 1
+        cmd = bytearray([self.ERASE_FLASH_CMD, num_blocks])
+        cmd.extend(bytearray([address & 0xff, (address>>8)&0xff, (address>>16)&0xff]))
+        self.write(cmd)
+        response = self.read(num_bytes=1)
+        if response[0] != self.ERASE_FLASH_CMD:
+            raise XsMajorError("Incorrect command echo in 'erase_flash'.")
+        
+    def write_flash(self, address, bytes):
+        """Write data to a block of flash in the microcontroller."""
+        cmd = bytearray([self.WRITE_FLASH_CMD, len(bytes)])
+        cmd.extend(bytearray([address & 0xff, (address>>8)&0xff, (address>>16)&0xff]))
+        cmd.extend(bytearray(bytes))
+        self.write(cmd)
+        response = self.read(num_bytes=1)
+        if response[0] != self.WRITE_FLASH_CMD:
+            raise XsMajorError("Incorrect command echo in 'write_flash'.")
+        
+    def read_flash(self, address, num_bytes=0):
+        """Read data from the flash in the microcontroller."""
+        cmd = bytearray([self.READ_FLASH_CMD, num_bytes])
+        cmd.extend(bytearray([address & 0xff, (address>>8)&0xff, (address>>16)&0xff]))
+        self.write(cmd)
+        response = self.read(num_bytes=num_bytes+len(cmd))
+        if response[0] != self.READ_FLASH_CMD:
+            raise XsMajorError("Incorrect command echo in 'read_flash'.")
+        return response[5:]
 
+    def read_eedata(self, address):
+        """Return a byte read from the microcontroller EEDATA."""
+        cmd = bytearray([self.READ_EEDATA_CMD, 1])
+        cmd.extend(bytearray([address & 0xff, (address>>8)&0xff, (address>>16)&0xff]))
+        self.write (cmd)
+        response = self.read(num_bytes=6)
+        if response[0] != self.READ_EEDATA_CMD:
+            raise XsMajorError("Incorrect command echo in 'read_eedata'.")
+        return response[5]
 
-if __name__ == '__main__':
+    def write_eedata (self, address, byte):
+        """Write a byte to the microcontroller EEDATA."""
+        cmd = bytearray([self.WRITE_EEDATA_CMD, 1])
+        cmd.extend(bytearray([address & 0xff, (address>>8)&0xff, (address>>16)&0xff]))
+        cmd.extend(bytearray([byte]))
+        self.write (cmd)
+        response = self.read(num_bytes=1)
+        if response[0] != self.WRITE_EEDATA_CMD:
+            raise XsMajorError("Incorrect command echo in 'write_eedata'.")
+
+    def set_reflash_mode(self):
+        """Set EEDATA flag to reset microcontroller into flash programming mode."""
+        self.write_eedata(self.BOOT_SELECT_FLAG_ADDR, self.BOOT_INTO_REFLASH_MODE)
+    
+    def set_user_mode(self):
+        """Set EEDATA flag to reset microcontroller into user mode."""
+        self.write_eedata(self.BOOT_SELECT_FLAG_ADDR, self.BOOT_INTO_USER_MODE)
+    
+    def enable_jtag_cable(self):
+        """Set EEDATA flag to enable JTAG cable interface."""
+        self.write_eedata(self.JTAG_DISABLE_FLAG_ADDR, 0)
+            
+    def disable_jtag_cable(self):
+        """Set EEDATA flag to disable JTAG cable interface."""
+        self.write_eedata(self.JTAG_DISABLE_FLAG_ADDR, self.DISABLE_JTAG)
+
+if __name__ == "__main__":
     # Get the number of XESS USB devices out there.
-    print '#XSUSB = %d' % XsUsb.get_num_xsusb()
+    print "#XSUSB = %d" % XsUsb.get_num_xsusb()
     # Create a link for talking over USB to an XESS USB device.
     xsusb = XsUsb()
     # Just write something to the device and see if it responds (i.e., its LED blinks).
