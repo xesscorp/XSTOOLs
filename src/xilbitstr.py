@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 # /***********************************************************************************
 # *   This program is free software; you can redistribute it and/or
 # *   modify it under the terms of the GNU General Public License
@@ -25,7 +27,9 @@ import os
 import struct
 import logging
 import string
+from xserror import *
 from bitarray import bitarray
+
 
 class XilinxBitstream:
 
@@ -38,21 +42,25 @@ class XilinxBitstream:
         self.bits = None
         if filename != None:
             self.from_file(filename=self.filename)
-        
-    def from_file(self, filename=None):
+
+    def from_file(self, filename):
         """Load object from .bit file."""
-        assert filename != None;
         
+        try:
+            fptr = open(filename,"rb")
+        except:
+            raise XsMajorError("Unable to open file '%s'" % filename)
         self.filename = filename
-        fptr = open(self.filename, 'rb')
-        
+
         def get_int(fptr):
             return struct.unpack(">H", fptr.read(2))[0]
+
         def get_word(fptr):
             return struct.unpack(">I", fptr.read(4))[0]
 
         fptr.seek(get_int(fptr), os.SEEK_CUR)
-        assert get_int(fptr) == 1
+        if get_int(fptr) != 1:
+            raise XsMajorError("'%s' does not appear to be a bit file." % self.filename)
 
         # Field codes for the various fields of a Xilinx bitstream file.
         DESIGN_NAME_FC = 0x61
@@ -64,14 +72,15 @@ class XilinxBitstream:
         while True:
             field_byte = fptr.read(1)
             if len(field_byte) == 0:
-                break # EOF
+                break  # EOF
             field_code = ord(field_byte)
             if field_code == DESIGN_NAME_FC:
                 field_length = get_int(fptr)
                 self.design_name = fptr.read(field_length)
             elif field_code == DEVICE_TYPE_FC:
                 field_length = get_int(fptr)
-                self.device_type = filter(lambda x: x in string.printable,fptr.read(field_length))
+                self.device_type = filter(lambda x: x \
+                        in string.printable, fptr.read(field_length))
             elif field_code == COMPILE_DATE_FC:
                 field_length = get_int(fptr)
                 self.compile_date = fptr.read(field_length)
@@ -81,16 +90,26 @@ class XilinxBitstream:
             elif field_code == BITSTREAM_FC:
                 field_length = get_word(fptr)
                 self.bits = bitarray()
-                self.bits.fromfile(fptr,field_length)
-                # After this, the first bit to send to FPGA is in self.bits[0].
+                self.bits.fromfile(fptr, field_length)
             else:
-                assert 1==0
-        logging.debug("Bitstream file %s with design %s was compiled for %s at %s on %s into a bitstream of length %d", 
-            self.filename, self.design_name, self.compile_time, self.device_type, self.compile_date, self.bits.length())
-        logging.debug("Bitstream start = %s", self.bits[32*8:32*16].to01())
+                raise XsMajorError("Unknown field in bit file '%s'." % self.filename)
 
-            
+        logging.debug(
+            "Bitstream file %s with design %s was compiled for %s at %s on %s into a bitstream of length %d"
+                ,
+            self.filename,
+            self.design_name,
+            self.compile_time,
+            self.device_type,
+            self.compile_date,
+            self.bits.length(),
+            )
+        logging.debug("Bitstream start = %s", self.bits[32 * 8:32
+                      * 16].to01())
+                      
+        return True
+
+
 if __name__ == "__main__":
     logging.root.setLevel(logging.DEBUG)
-    xil_bitstream = XilinxBitstream('test.bit')
-    
+    xil_bitstream = XilinxBitstream("test.bit")
