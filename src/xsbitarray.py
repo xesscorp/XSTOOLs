@@ -24,8 +24,9 @@
 XESS extensions to bitarray object.
 """
 
-from bitarray import bitarray
 import logging
+from xserror import *
+from bitarray import bitarray
 
 
 class XsBitarray(bitarray):
@@ -37,13 +38,14 @@ class XsBitarray(bitarray):
 
     def __init__(self, initial=None):
         """Create a bit array and initialize it."""
-        bitarray.__init__(self, initial, endian='little')
+        bitarray.__init__(self, initial, endian="little")
 
     @staticmethod
     def from_int(num, num_of_bits=32):
         """Convert an integer and return a bit array with the specified # of bits."""
 
-        assert num < 1 << num_of_bits
+        if num >= (1 << num_of_bits):
+            raise XsMajorError("Number overflowed XsBitarray field size.")
         # Take the number and OR it with a mask to set the MSB+1 bit position.
         # This insures the binary representation has (num_of_bits+1) binary digits.
         # Then remove the leading '0b1' from the binary string.
@@ -53,25 +55,24 @@ class XsBitarray(bitarray):
         
     @staticmethod
     def from_hex(hex_string):
-        bin_string = hex_string
-        bin_string.lower()
+        bin_string = string.lower(hex_string)
         logging.debug(bin_string)
-        bin_string = bin_string.replace('0', '0000')
-        bin_string = bin_string.replace('1', '0001')
-        bin_string = bin_string.replace('2', '0010')
-        bin_string = bin_string.replace('3', '0011')
-        bin_string = bin_string.replace('4', '0100')
-        bin_string = bin_string.replace('5', '0101')
-        bin_string = bin_string.replace('6', '0110')
-        bin_string = bin_string.replace('7', '0111')
-        bin_string = bin_string.replace('8', '1000')
-        bin_string = bin_string.replace('9', '1001')
-        bin_string = bin_string.replace('a', '1010')
-        bin_string = bin_string.replace('b', '1011')
-        bin_string = bin_string.replace('c', '1100')
-        bin_string = bin_string.replace('d', '1101')
-        bin_string = bin_string.replace('e', '1110')
-        bin_string = bin_string.replace('f', '1111')
+        bin_string = bin_string.replace("0", "0000")
+        bin_string = bin_string.replace("1", "0001")
+        bin_string = bin_string.replace("2", "0010")
+        bin_string = bin_string.replace("3", "0011")
+        bin_string = bin_string.replace("4", "0100")
+        bin_string = bin_string.replace("5", "0101")
+        bin_string = bin_string.replace("6", "0110")
+        bin_string = bin_string.replace("7", "0111")
+        bin_string = bin_string.replace("8", "1000")
+        bin_string = bin_string.replace("9", "1001")
+        bin_string = bin_string.replace("a", "1010")
+        bin_string = bin_string.replace("b", "1011")
+        bin_string = bin_string.replace("c", "1100")
+        bin_string = bin_string.replace("d", "1101")
+        bin_string = bin_string.replace("e", "1110")
+        bin_string = bin_string.replace("f", "1111")
         logging.debug(bin_string)
         return XsBitarray(bin_string)
 
@@ -96,32 +97,32 @@ class XsBitarray(bitarray):
     def __setattr__(self, name, val):
         """Set the bit array from an integer, unsigned integer or string."""
 
-        if name == 'unsigned' or name == 'int':
+        if name == "unsigned" or name == "int":
             self = XsBitarray.from_int(val, len(self))
-        elif name == 'string':
+        elif name == "string":
             self = XsBitarray(val)
         return val
 
     def __getattr__(self, name):
         """Return the unsigned, integer or string representation of a bit array."""
 
-        if name == 'int':
+        if name == "int":
             val = self.to_int()
             # Correct for sign bit.
             if self[-1] == 1:
                 val -= 1 << self.length()
-        elif name == 'unsigned':
+        elif name == "unsigned":
             # No need to correct for sign bit.
             val = self.to_int()
-        elif name == 'string':
+        elif name == "string":
             val = self.to01()
         return val
 
 
 Bitvec = XsBitarray  # Associate old Bitvec class with new XsBitarray class.
 
-if __name__ == '__main__':
-    xsbits = XsBitarray('1010101')
+if __name__ == "__main__":
+    xsbits = XsBitarray("1010101")
     print str(xsbits)
     xsbits = XsBitarray.from_int(45)
     print str(xsbits)
