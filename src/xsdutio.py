@@ -33,10 +33,10 @@ class XsDutIo(XsHostIo):
     """Object for forcing inputs and reading outputs from a device-under-test (DUT)."""
 
     # DUT opcodes.
-    _NOP_OPCODE = XsBitarray('00'[::-1])
-    _READ_OPCODE = XsBitarray('11'[::-1])  # Read DUT outputs.
-    _WRITE_OPCODE = XsBitarray('10'[::-1])  # Write to DUT inputs.
-    _SIZE_OPCODE = XsBitarray('01'[::-1])  # Get number of inputs and outputs of DUT.
+    _NOP_OPCODE = XsBitarray("00"[::-1])
+    _READ_OPCODE = XsBitarray("11"[::-1])  # Read DUT outputs.
+    _WRITE_OPCODE = XsBitarray("10"[::-1])  # Write to DUT inputs.
+    _SIZE_OPCODE = XsBitarray("01"[::-1])  # Get number of inputs and outputs of DUT.
     _SIZE_RESULT_LENGTH = 16  # Length of _SIZE_OPCODE result.
 
     def __init__(
@@ -45,7 +45,7 @@ class XsDutIo(XsHostIo):
         module_id=DEFAULT_MODULE_ID,
         dut_output_widths=None,
         dut_input_widths=None,
-        xsjtag_port=None,
+        xsjtag=None,
         ):
         """Setup a DUT I/O object.
         
@@ -53,27 +53,28 @@ class XsDutIo(XsHostIo):
         module_id = The ID for the DUT I/O module in the FPGA.
         dut_output_widths = A list of widths of the DUT output fields.
         dut_input_widths = A list of widths of the DUT input fields.
-        xsjtag_port = The Xsjtag USB port object. (Use this if not using xsusb_id.)
+        xsjtag = The Xsjtag USB port object. (Use this if not using xsusb_id.)
         """
 
         # Setup the super-class object.
         XsHostIo.__init__(self, xsusb_id=xsusb_id, module_id=module_id,
-                          xsjtag_port=xsjtag_port)
+                          xsjtag=xsjtag)
         # Get the number of inputs and outputs of the DUT.
         (self.total_dut_input_width, self.total_dut_output_width) = \
             self._get_io_widths()
         assert self.total_dut_input_width != 0
         assert self.total_dut_output_width != 0
-        logging.debug('# DUT input bits = '
-                      + str(self.total_dut_input_width))
-        logging.debug('# DUT output bits = '
-                      + str(self.total_dut_output_width))
+        logging.debug("# DUT input bits = %d" % self.total_dut_input_width)
+        logging.debug("# DUT output bits = %d" % self.total_dut_output_width)
 
         if dut_input_widths == None:
             # If no DUT input widths are provided, then make a single-element
             # list containing just the total number of DUT input bits.
             self._dut_input_widths = [self.total_dut_input_width]
-        else:
+        elif type(dut_input_widths) is int:
+            # Just a single input field, so make it into a list.
+            self._dut_input_widths = [dut_input_widths]
+        elif type(dut_input_widths) is list:
             # Otherwise, store the given list of DUT input field widths.
             self._dut_input_widths = dut_input_widths
             assert len(self._dut_input_widths) != 0
@@ -83,11 +84,16 @@ class XsDutIo(XsHostIo):
                 total_width += w
             # The total should equal the total number of DUT inputs.
             assert total_width == self.total_dut_input_width
+        else:
+            raise XsMinorError("Unknown type of input width list.")
         if dut_output_widths == None:
             # If no DUT output widths are provided, then make a single-element
             # list containing just the total number of DUT output bits.
             self._dut_output_widths = [self.total_dut_output_width]
-        else:
+        elif type(dut_output_widths) is int:
+            # Just a single output field, so make it into a list.
+            self._dut_output_widths = [dut_output_widths]
+        elif type(dut_output_widths) is list:
             # Otherwise, store the given list of DUT output field widths.
             self._dut_output_widths = dut_output_widths
             assert len(self._dut_output_widths) != 0
@@ -97,6 +103,8 @@ class XsDutIo(XsHostIo):
                 total_width += w
             # The total should equal the total number of DUT outputs.
             assert total_width == self.total_dut_output_width
+        else:
+            raise XsMinorError("Unknown type of output width list.")
 
     def _get_io_widths(self):
         """Return the (total_dut_input_width, total_dut_output_width) of the DUT."""
@@ -125,7 +133,7 @@ class XsDutIo(XsHostIo):
                                + SKIP_CYCLES)
         result = result[SKIP_CYCLES:]  # Remove the skipped cycles.
         assert result.length() == self.total_dut_output_width
-        logging.debug('Read result = ' + repr(result))
+        logging.debug("Read result = " + repr(result))
         if len(self._dut_output_widths) == 1:
             # Return the result bit array if there's only a single output field.
             return result
@@ -172,23 +180,32 @@ class XsDutIo(XsHostIo):
     Exec = execute  # Associate the old Exec() method with the new exec() method.
 
 
-XsDut = XsDutIo  # Associate the old XsDut class with the new XsDutIo class.
+class XsDut(XsDutIo):
+    def __init__(        self,
+        xsusb_id=DEFAULT_XSUSB_ID,
+        module_id=DEFAULT_MODULE_ID,
+        dut_input_widths=None,
+        dut_output_widths=None,
+        ):
+        # The __init__ function of the old XsDut class had the argument positions of the input and output width lists reversed.
+        XsDutIo.__init__(self, xsusb_id, module_id, dut_output_widths, dut_input_widths)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     from random import *  # Import some random number generator routines.
 
-    print '''
+    print """
     ##################################################################
     # This program tests the interface between the host PC and the FPGA 
     # on the XuLA board that has been programmed to act as a subtractor.
     ##################################################################
-    '''
+    """
 
     USB_ID = 0  # USB port index for the XuLA board connected to the host PC.
     SUBTRACTOR_ID = 4  # This is the identifier for the subtractor in the FPGA.
 
     # Create a subtractor intfc obj with two 8-bit inputs and one 8-bit output.
-    subtractor = XsDut(USB_ID, SUBTRACTOR_ID, [8], [8, 8])
+    subtractor = XsDut(xsusb_id=USB_ID, module_id=SUBTRACTOR_ID, dut_output_widths=8, dut_input_widths=[8, 8])
 
     # Test the subtractor by iterating through some random inputs.
     error = False
@@ -196,13 +213,13 @@ if __name__ == '__main__':
         minuend = randint(0, 127)  # Get a random, positive byte...
         subtrahend = randint(0, 127)  # And subtract this random byte from it.
         diff = subtractor.Exec(minuend, subtrahend)  # Use the subtractor in FPGA.
-        print '%3d - %3d = %4d' % (minuend, subtrahend, diff.int),
+        print "%3d - %3d = %4d" % (minuend, subtrahend, diff.int),
         if diff.int == minuend - subtrahend:  # Compare Python result to FPGA's.
-            print '==> CORRECT!'  # Print this if the differences match.
+            print "==> CORRECT!"  # Print this if the differences match.
         else:
-            print '==> ERROR!!!'  # Oops! Something's wrong with the subtractor.
+            print "==> ERROR!!!"  # Oops! Something's wrong with the subtractor.
             error = True
     if error == True:
-        print '\nERROR!'
+        print "\nERROR!"
     else:
-        print '\nSUCCESS!'
+        print "\nSUCCESS!"
