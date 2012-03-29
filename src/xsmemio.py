@@ -34,34 +34,34 @@ class XsMemIo(XsHostIo):
     """Object for reading and writing memory or registers."""
 
     # Memory opcodes.
-    _NOP_OPCODE = XsBitarray('00'[::-1])
-    _READ_OPCODE = XsBitarray('11'[::-1])  # Read from memory.
-    _WRITE_OPCODE = XsBitarray('10'[::-1])  # Write to memory.
-    _SIZE_OPCODE = XsBitarray('01'[::-1])  # Get the address and data widths of memory.
+    _NOP_OPCODE = XsBitarray("00"[::-1])
+    _READ_OPCODE = XsBitarray("11"[::-1])  # Read from memory.
+    _WRITE_OPCODE = XsBitarray("10"[::-1])  # Write to memory.
+    _SIZE_OPCODE = XsBitarray("01"[::-1])  # Get the address and data widths of memory.
     _SIZE_RESULT_LENGTH = 16  # Length of _SIZE_OPCODE result.
 
     def __init__(
         self,
         xsusb_id=DEFAULT_XSUSB_ID,
         module_id=DEFAULT_MODULE_ID,
-        xsjtag_port=None,
+        xsjtag=None,
         ):
         """Setup a DUT I/O object.
         
         xsusb_id = The ID for the USB port.
         module_id = The ID for the DUT I/O module in the FPGA.
-        xsjtag_port = The Xsjtag USB port object. (Use this if not using xsusb_id.)
+        xsjtag = The Xsjtag USB port object. (Use this if not using xsusb_id.)
         """
 
         # Setup the super-class object.
-        XsHostIo.__init__(self, xsjtag_port=xsjtag_port,
+        XsHostIo.__init__(self, xsjtag=xsjtag,
                           xsusb_id=xsusb_id, module_id=module_id)
         # Get the number of inputs and outputs of the DUT.
         (self.address_width, self.data_width) = self._get_mem_widths()
         assert self.address_width != 0
         assert self.data_width != 0
-        logging.debug('address width = ' + str(self.address_width))
-        logging.debug('data width = ' + str(self.data_width))
+        logging.debug("address width = " + str(self.address_width))
+        logging.debug("data width = " + str(self.data_width))
 
     def _get_mem_widths(self):
         """Return the (address_width, data_width) of the memory."""
@@ -132,7 +132,7 @@ class XsMemIo(XsHostIo):
 
 XsMem = XsMemIo  # Associate the old XsMem class with the new XsMemIo class.
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
     import random
     from scipy import *
@@ -154,14 +154,11 @@ if __name__ == '__main__':
         return (curr << 1 | b) & mask
 
 
-    print '''
-
-
-
+    print """
     ##################################################################
     # Get some random numbers from the RNG in the XuLA FPGA.
     ##################################################################
-    '''
+    """
 
     USB_ID = 0  # This is the USB index for the XuLA board connected to the host PC.
     RAND_ID = 1  # This is the identifier for the RNG in the FPGA.
@@ -182,14 +179,14 @@ if __name__ == '__main__':
         pyRandNums[i] = Prng(pyRandNums[i - 1], prngPoly, mask)
 
     for i in range(1, PERIOD):
-        print '%8x %8x' % (pyRandNums[i], randNums[i - 1])
+        print "%8x %8x" % (pyRandNums[i], randNums[i - 1])
 
     compare = [randNums[i] != Prng(randNums[i - 1], prngPoly, mask)
                for i in range(1, PERIOD)]
     if sum(compare) == 0:
-        print '\nSUCCESS!'
+        print "\nSUCCESS!"
     else:
-        print '\n', sum(compare), 'ERRORS'
+        print "\n", sum(compare), "ERRORS"
 
     hist(randNums, 40)
     show()
