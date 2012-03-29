@@ -35,14 +35,14 @@ class XsHostIo:
 
     """Base object for performing USB I/O between XESS board and host PC."""
 
-    USER1_INSTR = XsBitarray('000010'[::-1])
-    USER2_INSTR = XsBitarray('000011'[::-1])
+    USER1_INSTR = XsBitarray("000010"[::-1])
+    USER2_INSTR = XsBitarray("000011"[::-1])
 
     def __init__(
         self,
         xsusb_id=DEFAULT_XSUSB_ID,
         module_id=DEFAULT_MODULE_ID,
-        xsjtag_port=None,
+        xsjtag=None,
         ):
         """Setup the parameters for the USB I/O link between the PC and the XESS board."""
 
@@ -51,30 +51,29 @@ class XsHostIo:
             self._module_id = XsBitarray.from_int(module_id, 8)
         else:
             self._module_id = XsBitarray(module_id)
-        if xsjtag_port == None:
-            self._xsusb_port = XsUsb(xsusb_id)
-            self._xsjtag_port = XsJtag(self._xsusb_port)
+        if xsjtag == None:
+            self._xsusb = XsUsb(xsusb_id)
+            self.xsjtag = XsJtag(self._xsusb)
         else:
-            self._xsjtag_port = xsjtag_port
+            self.xsjtag = xsjtag
         self.user_instr = self.USER1_INSTR
         self.initialize()
 
     def initialize(self):
         """Initialize the USB I/O link."""
 
-        assert self._xsjtag_port != None
-        self._xsjtag_port.reset_tap()  # Reset TAP FSM to test-logic-reset state.
+        assert self.xsjtag != None
+        self.xsjtag.reset_tap()  # Reset TAP FSM to test-logic-reset state.
         # Send TAP FSM to the shift-ir state.
-        self._xsjtag_port.go_thru_tap_states(['run_test_idle',
-                'select_dr_scan', 'select_ir_scan', 'capture_ir',
-                'shift_ir'])
+        self.xsjtag.go_thru_tap_states("Run-Test/Idle",
+                "Select-DR-Scan", "Select-IR-Scan", "Capture-IR",
+                "Shift-IR")
         # Now enter the USER1 JTAG instruction into the IR and go to the update-ir state.
-        self._xsjtag_port.shift_tdi(tdi=self.user_instr,
-                                    do_exit_shift=True, do_flush=True)
+        self.xsjtag.shift_tdi(tdi=self.user_instr, do_exit_shift=True)
         # USER instruction is now active, so transfer to the shift-dr state where
         # data transfers will occur.
-        self._xsjtag_port.go_thru_tap_states(['update_ir',
-                'select_dr_scan', 'capture_dr', 'shift_dr'])
+        self.xsjtag.go_thru_tap_states("Update-IR",
+                "Select-DR-Scan", "Capture-DR", "Shift-DR")
 
     def reset(self):
         """Reset the USB I/O link."""
@@ -84,8 +83,8 @@ class XsHostIo:
     def send_rcv(self, payload, num_result_bits):
         """Send a bit array payload and then return a results bit array with num_result_bits."""
 
-        logging.debug('Send ' + str(payload.length()) + 'bits. Receive '
-                       + str(num_result_bits) + ' bits.')
+        logging.debug("Send " + str(payload.length()) + "bits. Receive "
+                       + str(num_result_bits) + " bits.")
 
         # Create the TDI bit array by concatenating the module ID, number of bits in the payload, and the payload bits.
         tdi_bits = XsBitarray()
@@ -95,18 +94,17 @@ class XsHostIo:
         tdi_bits.extend(num_payload_bits)
         tdi_bits.extend(payload)
 
-        logging.debug('Module ID = ' + repr(self._module_id))
-        logging.debug('# payload bits = ' + repr(num_payload_bits))
-        logging.debug('payload = ' + repr(payload))
-        logging.debug('# TDI bits = ' + str(tdi_bits.length()))
-        logging.debug('TDI = ' + repr(tdi_bits))
+        logging.debug("Module ID = " + repr(self._module_id))
+        logging.debug("# payload bits = " + repr(num_payload_bits))
+        logging.debug("payload = " + repr(payload))
+        logging.debug("# TDI bits = " + str(tdi_bits.length()))
+        logging.debug("TDI = " + repr(tdi_bits))
 
         # Send the TDI bits.
-        self._xsjtag_port.shift_tdi(tdi=tdi_bits, do_exit_shift=False,
-                                    do_flush=True)
+        self.xsjtag.shift_tdi(tdi=tdi_bits)
+        self.xsjtag.flush()
         # Get the result bits from TDO.
-        tdo_bits = self._xsjtag_port.shift_tdo(num_result_bits,
-                do_exit_shift=False)
+        tdo_bits = self.xsjtag.shift_tdo(num_result_bits)
         return tdo_bits
 
 
