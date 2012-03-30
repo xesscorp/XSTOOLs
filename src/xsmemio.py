@@ -1,27 +1,28 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# /***********************************************************************************
-# *   This program is free software; you can redistribute it and/or
-# *   modify it under the terms of the GNU General Public License
-# *   as published by the Free Software Foundation; either version 2
-# *   of the License, or (at your option) any later version.
-# *
-# *   This program is distributed in the hope that it will be useful,
-# *   but WITHOUT ANY WARRANTY; without even the implied warranty of
-# *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# *   GNU General Public License for more details.
-# *
-# *   You should have received a copy of the GNU General Public License
-# *   along with this program; if not, write to the Free Software
-# *   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-# *   02111-1307, USA.
-# *
-# *   (c)2012 - X Engineering Software Systems Corp. (www.xess.com)
-# ***********************************************************************************/
+# **********************************************************************
+#   This program is free software; you can redistribute it and/or
+#   modify it under the terms of the GNU General Public License
+#   as published by the Free Software Foundation; either version 2
+#   of the License, or (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the Free Software
+#   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+#   02111-1307, USA.
+#
+#   (c)2012 - X Engineering Software Systems Corp. (www.xess.com)
+# **********************************************************************
 
 """
-Object for reading and writing memory or registers.
+Class for reading and writing memory or registers in the FPGA
+of an XESS board through the USB port.
 """
 
 import logging
@@ -34,10 +35,10 @@ class XsMemIo(XsHostIo):
     """Object for reading and writing memory or registers."""
 
     # Memory opcodes.
-    _NOP_OPCODE = XsBitarray("00"[::-1])
-    _READ_OPCODE = XsBitarray("11"[::-1])  # Read from memory.
-    _WRITE_OPCODE = XsBitarray("10"[::-1])  # Write to memory.
-    _SIZE_OPCODE = XsBitarray("01"[::-1])  # Get the address and data widths of memory.
+    _NOP_OPCODE = XsBitarray('00'[::-1])
+    _READ_OPCODE = XsBitarray('11'[::-1])  # Read from memory.
+    _WRITE_OPCODE = XsBitarray('10'[::-1])  # Write to memory.
+    _SIZE_OPCODE = XsBitarray('01'[::-1])  # Get the address and data widths of memory.
     _SIZE_RESULT_LENGTH = 16  # Length of _SIZE_OPCODE result.
 
     def __init__(
@@ -54,14 +55,14 @@ class XsMemIo(XsHostIo):
         """
 
         # Setup the super-class object.
-        XsHostIo.__init__(self, xsjtag=xsjtag,
-                          xsusb_id=xsusb_id, module_id=module_id)
+        XsHostIo.__init__(self, xsjtag=xsjtag, xsusb_id=xsusb_id,
+                          module_id=module_id)
         # Get the number of inputs and outputs of the DUT.
         (self.address_width, self.data_width) = self._get_mem_widths()
         assert self.address_width != 0
         assert self.data_width != 0
-        logging.debug("address width = " + str(self.address_width))
-        logging.debug("data width = " + str(self.data_width))
+        logging.debug('address width = ' + str(self.address_width))
+        logging.debug('data width = ' + str(self.data_width))
 
     def _get_mem_widths(self):
         """Return the (address_width, data_width) of the memory."""
@@ -132,26 +133,21 @@ class XsMemIo(XsHostIo):
 
 XsMem = XsMemIo  # Associate the old XsMem class with the new XsMemIo class.
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     import sys
     import random
+    from bitarray import *
     from scipy import *
     from pylab import *
 
 
-    def NumberOfSetBits(i):
-        cnt = 0
-        mask = 1 << 31
-        while mask != 0:
-            if mask & i != 0:
-                cnt += 1
-            mask >>= 1
-        return cnt
+    def number_of_set_bits(i):
+        return bitarray(bin(i)[2:]).count()
 
 
-    def Prng(curr, poly, mask):
-        b = NumberOfSetBits(curr & poly) & 1 == 1 and 1 or 0
-        return (curr << 1 | b) & mask
+    def prng(curr, poly, mask):
+        b = number_of_set_bits(curr & poly) & 1
+        return ((curr << 1) | b) & mask
 
 
     print """
@@ -166,27 +162,25 @@ if __name__ == "__main__":
 
     PERIOD = 2 ** rand.data_width  # Number of random numbers to read.
     rand.write(0, [0x80])
-    randNums = rand.read(0, PERIOD)
-    randNums = [XsBitarray(d).unsigned for d in randNums]
+    rand_nums = rand.read(0, PERIOD)
+    rand_nums = [XsBitarray(d).unsigned for d in rand_nums]
 
-    prngPoly = 1 << 31 | 1 << 30 | 1 << 29 | 1 << 9
-    prngPoly = 1 << 31 | 1 << 29 | 1 << 6 | 1 << 3
-    prngPoly = 1 << 11 | 1 << 10 | 1 << 7 | 1 << 5
+    prng_poly = (1 << 11) | (1 << 10) | (1 << 7) | (1 << 5)
     mask = (1 << rand.data_width) - 1
-    pyRandNums = [0] * PERIOD
-    pyRandNums[0] = 0x80
+    py_rand_nums = [0] * PERIOD
+    py_rand_nums[0] = 0x80
     for i in range(1, PERIOD):
-        pyRandNums[i] = Prng(pyRandNums[i - 1], prngPoly, mask)
+        py_rand_nums[i] = prng(py_rand_nums[i - 1], prng_poly, mask)
 
     for i in range(1, PERIOD):
-        print "%8x %8x" % (pyRandNums[i], randNums[i - 1])
+        print '%8x %8x' % (py_rand_nums[i], rand_nums[i - 1])
 
-    compare = [randNums[i] != Prng(randNums[i - 1], prngPoly, mask)
+    compare = [rand_nums[i] != prng(rand_nums[i - 1], prng_poly, mask)
                for i in range(1, PERIOD)]
     if sum(compare) == 0:
-        print "\nSUCCESS!"
+        print '\nSUCCESS!'
     else:
-        print "\n", sum(compare), "ERRORS"
+        print '\n', sum(compare), 'ERRORS'
 
-    hist(randNums, 40)
+    hist(rand_nums, 40)
     show()
