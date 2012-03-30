@@ -1,24 +1,23 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
-# /***********************************************************************************
-# *   This program is free software; you can redistribute it and/or
-# *   modify it under the terms of the GNU General Public License
-# *   as published by the Free Software Foundation; either version 2
-# *   of the License, or (at your option) any later version.
-# *
-# *   This program is distributed in the hope that it will be useful,
-# *   but WITHOUT ANY WARRANTY; without even the implied warranty of
-# *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# *   GNU General Public License for more details.
-# *
-# *   You should have received a copy of the GNU General Public License
-# *   along with this program; if not, write to the Free Software
-# *   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-# *   02111-1307, USA.
-# *
-# *   (c)2012 - X Engineering Software Systems Corp. (www.xess.com)
-# ***********************************************************************************/
+# **********************************************************************
+#   This program is free software; you can redistribute it and/or
+#   modify it under the terms of the GNU General Public License
+#   as published by the Free Software Foundation; either version 2
+#   of the License, or (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the Free Software
+#   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+#   02111-1307, USA.
+#
+#   (c)2012 - X Engineering Software Systems Corp. (www.xess.com)
+# **********************************************************************
 
 """
 Object for forcing inputs and reading outputs from a device-under-test (DUT).
@@ -33,10 +32,10 @@ class XsDutIo(XsHostIo):
     """Object for forcing inputs and reading outputs from a device-under-test (DUT)."""
 
     # DUT opcodes.
-    _NOP_OPCODE = XsBitarray("00"[::-1])
-    _READ_OPCODE = XsBitarray("11"[::-1])  # Read DUT outputs.
-    _WRITE_OPCODE = XsBitarray("10"[::-1])  # Write to DUT inputs.
-    _SIZE_OPCODE = XsBitarray("01"[::-1])  # Get number of inputs and outputs of DUT.
+    _NOP_OPCODE = XsBitarray('00'[::-1])
+    _READ_OPCODE = XsBitarray('11'[::-1])  # Read DUT outputs.
+    _WRITE_OPCODE = XsBitarray('10'[::-1])  # Write to DUT inputs.
+    _SIZE_OPCODE = XsBitarray('01'[::-1])  # Get number of inputs and outputs of DUT.
     _SIZE_RESULT_LENGTH = 16  # Length of _SIZE_OPCODE result.
 
     def __init__(
@@ -64,8 +63,10 @@ class XsDutIo(XsHostIo):
             self._get_io_widths()
         assert self.total_dut_input_width != 0
         assert self.total_dut_output_width != 0
-        logging.debug("# DUT input bits = %d" % self.total_dut_input_width)
-        logging.debug("# DUT output bits = %d" % self.total_dut_output_width)
+        logging.debug('# DUT input bits = %d'
+                      % self.total_dut_input_width)
+        logging.debug('# DUT output bits = %d'
+                      % self.total_dut_output_width)
 
         if dut_input_widths == None:
             # If no DUT input widths are provided, then make a single-element
@@ -85,7 +86,7 @@ class XsDutIo(XsHostIo):
             # The total should equal the total number of DUT inputs.
             assert total_width == self.total_dut_input_width
         else:
-            raise XsMinorError("Unknown type of input width list.")
+            raise XsMinorError('Unknown type of input width list.')
         if dut_output_widths == None:
             # If no DUT output widths are provided, then make a single-element
             # list containing just the total number of DUT output bits.
@@ -104,7 +105,7 @@ class XsDutIo(XsHostIo):
             # The total should equal the total number of DUT outputs.
             assert total_width == self.total_dut_output_width
         else:
-            raise XsMinorError("Unknown type of output width list.")
+            raise XsMinorError('Unknown type of output width list.')
 
     def _get_io_widths(self):
         """Return the (total_dut_input_width, total_dut_output_width) of the DUT."""
@@ -133,7 +134,7 @@ class XsDutIo(XsHostIo):
                                + SKIP_CYCLES)
         result = result[SKIP_CYCLES:]  # Remove the skipped cycles.
         assert result.length() == self.total_dut_output_width
-        logging.debug("Read result = " + repr(result))
+        logging.debug('Read result = ' + repr(result))
         if len(self._dut_output_widths) == 1:
             # Return the result bit array if there's only a single output field.
             return result
@@ -181,17 +182,21 @@ class XsDutIo(XsHostIo):
 
 
 class XsDut(XsDutIo):
-    def __init__(        self,
+
+    def __init__(
+        self,
         xsusb_id=DEFAULT_XSUSB_ID,
         module_id=DEFAULT_MODULE_ID,
         dut_input_widths=None,
         dut_output_widths=None,
         ):
+
         # The __init__ function of the old XsDut class had the argument positions of the input and output width lists reversed.
-        XsDutIo.__init__(self, xsusb_id, module_id, dut_output_widths, dut_input_widths)
+        XsDutIo.__init__(self, xsusb_id, module_id, dut_output_widths,
+                         dut_input_widths)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     from random import *  # Import some random number generator routines.
 
     print """
@@ -205,7 +210,8 @@ if __name__ == "__main__":
     SUBTRACTOR_ID = 4  # This is the identifier for the subtractor in the FPGA.
 
     # Create a subtractor intfc obj with two 8-bit inputs and one 8-bit output.
-    subtractor = XsDut(xsusb_id=USB_ID, module_id=SUBTRACTOR_ID, dut_output_widths=8, dut_input_widths=[8, 8])
+    subtractor = XsDut(xsusb_id=USB_ID, module_id=SUBTRACTOR_ID,
+                       dut_output_widths=8, dut_input_widths=[8, 8])
 
     # Test the subtractor by iterating through some random inputs.
     error = False
@@ -213,13 +219,13 @@ if __name__ == "__main__":
         minuend = randint(0, 127)  # Get a random, positive byte...
         subtrahend = randint(0, 127)  # And subtract this random byte from it.
         diff = subtractor.Exec(minuend, subtrahend)  # Use the subtractor in FPGA.
-        print "%3d - %3d = %4d" % (minuend, subtrahend, diff.int),
+        print '%3d - %3d = %4d' % (minuend, subtrahend, diff.int),
         if diff.int == minuend - subtrahend:  # Compare Python result to FPGA's.
-            print "==> CORRECT!"  # Print this if the differences match.
+            print '==> CORRECT!'  # Print this if the differences match.
         else:
-            print "==> ERROR!!!"  # Oops! Something's wrong with the subtractor.
+            print '==> ERROR!!!'  # Oops! Something's wrong with the subtractor.
             error = True
     if error == True:
-        print "\nERROR!"
+        print '\nERROR!'
     else:
-        print "\nSUCCESS!"
+        print '\nSUCCESS!'
