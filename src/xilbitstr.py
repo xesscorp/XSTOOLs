@@ -1,23 +1,23 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-# /***********************************************************************************
-# *   This program is free software; you can redistribute it and/or
-# *   modify it under the terms of the GNU General Public License
-# *   as published by the Free Software Foundation; either version 2
-# *   of the License, or (at your option) any later version.
-# *
-# *   This program is distributed in the hope that it will be useful,
-# *   but WITHOUT ANY WARRANTY; without even the implied warranty of
-# *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# *   GNU General Public License for more details.
-# *
-# *   You should have received a copy of the GNU General Public License
-# *   along with this program; if not, write to the Free Software
-# *   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-# *   02111-1307, USA.
-# *
-# *   (c)2012 - X Engineering Software Systems Corp. (www.xess.com)
-# ***********************************************************************************/
+# **********************************************************************
+#   This program is free software; you can redistribute it and/or
+#   modify it under the terms of the GNU General Public License
+#   as published by the Free Software Foundation; either version 2
+#   of the License, or (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the Free Software
+#   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+#   02111-1307, USA.
+#
+#   (c)2012 - X Engineering Software Systems Corp. (www.xess.com)
+# **********************************************************************
 
 """
 Xilinx bitstream object.
@@ -45,22 +45,23 @@ class XilinxBitstream:
 
     def from_file(self, filename):
         """Load object from .bit file."""
-        
+
         try:
-            fptr = open(filename,"rb")
+            fptr = open(filename, 'rb')
         except:
             raise XsMajorError("Unable to open file '%s'" % filename)
         self.filename = filename
 
         def get_int(fptr):
-            return struct.unpack(">H", fptr.read(2))[0]
+            return struct.unpack('>H', fptr.read(2))[0]
 
         def get_word(fptr):
-            return struct.unpack(">I", fptr.read(4))[0]
+            return struct.unpack('>I', fptr.read(4))[0]
 
         fptr.seek(get_int(fptr), os.SEEK_CUR)
         if get_int(fptr) != 1:
-            raise XsMajorError("'%s' does not appear to be a bit file." % self.filename)
+            raise XsMajorError("'%s' does not appear to be a bit file."
+                               % self.filename)
 
         # Field codes for the various fields of a Xilinx bitstream file.
         DESIGN_NAME_FC = 0x61
@@ -92,10 +93,11 @@ class XilinxBitstream:
                 self.bits = bitarray()
                 self.bits.fromfile(fptr, field_length)
             else:
-                raise XsMajorError("Unknown field in bit file '%s'." % self.filename)
+                raise XsMajorError("Unknown field in bit file '%s'."
+                                   % self.filename)
 
         logging.debug(
-            "Bitstream file %s with design %s was compiled for %s at %s on %s into a bitstream of length %d"
+            'Bitstream file %s with design %s was compiled for %s at %s on %s into a bitstream of length %d'
                 ,
             self.filename,
             self.design_name,
@@ -104,12 +106,12 @@ class XilinxBitstream:
             self.compile_date,
             self.bits.length(),
             )
-        logging.debug("Bitstream start = %s", self.bits[32 * 8:32
+        logging.debug('Bitstream start = %s', self.bits[32 * 8:32
                       * 16].to01())
-                      
+
         return True
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     logging.root.setLevel(logging.DEBUG)
-    xil_bitstream = XilinxBitstream("test.bit")
+    xil_bitstream = XilinxBitstream('test.bit')
