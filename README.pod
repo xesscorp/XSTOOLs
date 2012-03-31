@@ -1,7 +1,10 @@
 =head1 XSTOOLs - Utilities for Using XESS FPGA Boards
 
-This is the source code for the new version of XSTOOLs.
-Right now, it contains the following main items:
+This was the start of the C++ source code for a new version of XSTOOLs.
+As of now, it is <b>DEAD</b> and no longer being worked on (at least by me).
+All new development is proceeding on the python version of XSTOOLs.
+
+Here are the main sections of this code:
 
 =over 4
 
