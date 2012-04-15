@@ -26,12 +26,17 @@ Classes for XESS XuLA board types.
 import time
 from xserror import *
 from xilfpga import *
+from xsdutio import *
 from picmicro import *
 
 
 class Xula:
 
     """Class object for a generic XuLA board."""
+
+    BASE_SIGNATURE = 0xA50000A5
+    SELF_TEST_SIGNATURE = BASE_SIGNATURE | (1<<8)
+    TEST_DONE = 3
 
     def __init__(self, xsusb_id=0):
         self.xsusb = XsUsb(xsusb_id)
@@ -72,7 +77,7 @@ class Xula:
         self.xsusb.set_prog(0)
         self.xsusb.set_prog(1)
         time.sleep(0.03)  # Wait for FPGA to clear.
-        # Configure the FPGA with the bitstream and return true if successful.
+        # Configure the FPGA with the bitstream.
         self.fpga.configure(bitstream)
 
     def set_flags(self, boot, jtag):
@@ -91,6 +96,24 @@ class Xula:
         self.xsusb.enter_reflash_mode()
         self.micro.verify_flash(hexfile)
         self.xsusb.enter_user_mode()
+        
+    def do_self_test(self, test_bitstream):
+        """Load the FPGA with a bitstream to test the board and return true if the board passes."""
+        self.configure(test_bitstream)
+        # Create a channel to query the results of the board test.
+        dut = XsDutIo( dut_output_widths=[2,1,32], dut_input_widths=1, xsjtag=self.xsjtag)
+        # Assert and release the reset for the testing circuit.
+        dut.write(1)
+        dut.write(0)
+        while True:
+            [progress, failed, signature] = dut.read()
+            if signature.unsigned != Xula.SELF_TEST_SIGNATURE:
+                raise XsMajorError("Self-test bitstream is not present.")
+            #print "Progress = %x, Failed=%x, Signature=%x" % (progress.unsigned,failed.unsigned,signature.unsigned)
+            if progress.unsigned == Xula.TEST_DONE:
+                break;
+        return not failed.unsigned
+        
 
 
 class Xula50(Xula):
@@ -119,8 +142,8 @@ try:
     xs_board_list  # See if the dictionary already exists.
 except:
     xs_board_list = {}  # Create dictionary if it doesn't exist.
-xs_board_list['xula-50'] = {'BOARD_CLASS': Xula50}
-xs_board_list['xula-200'] = {'BOARD_CLASS': Xula200}
+xs_board_list['xula-50'] = {'BOARD_CLASS': Xula50, 'TEST_BITSTREAM':'test_board_jtag.bit'}
+xs_board_list['xula-200'] = {'BOARD_CLASS': Xula200, 'TEST_BITSTREAM':'test_board_jtag.bit'}
 
 if __name__ == '__main__':
     xula = Xula200(0)
