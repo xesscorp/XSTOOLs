@@ -135,6 +135,17 @@ class Xula200(Xula):
         self.fpga = Xc3s200avq100(self.xsjtag)
         self.micro = Pic18f14k50(self.xsusb)
 
+class Xula2(Xula):
+    """Class for generic XuLA2 board."""
+    pass
+    
+class Xula2lx25(Xula2):
+    """Class for a XuLA2 board with an XC6SLX25 FPGA."""
+    
+    def __init__(self, xsusb_id=0):
+        Xula2.__init__(self, xsusb_id)
+        self.fpga = Xc6slx25ftg256(self.xsjtag)
+        self.micro = Pic18f14k50(self.xsusb)
 
 # Add the previous class objects to the global dictionary of XESS board classes.
 global xs_board_list
@@ -144,6 +155,7 @@ except:
     xs_board_list = {}  # Create dictionary if it doesn't exist.
 xs_board_list['xula-50'] = {'BOARD_CLASS': Xula50, 'TEST_BITSTREAM':'test_board_jtag.bit'}
 xs_board_list['xula-200'] = {'BOARD_CLASS': Xula200, 'TEST_BITSTREAM':'test_board_jtag.bit'}
+xs_board_list['xula2-lx25'] = {'BOARD_CLASS': Xula2lx25, 'TEST_BITSTREAM':'test_board_jtag.bit'}
 
 if __name__ == '__main__':
     xula = Xula200(0)
