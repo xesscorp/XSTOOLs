@@ -132,13 +132,17 @@ class XsUsb:
 
         cmd = bytearray([self.PROG_CMD, level])
         self.write(cmd)
+        
+    def disconnect(self):
+        """Disconnect the XESS board from the USB link."""
+        usb.util.dispose_resources(self._dev)
 
     def reset(self):
         """Reset the XESS board."""
 
         cmd = bytearray([self.RESET_CMD])
         self.write(cmd)
-        usb.util.dispose_resources(self._dev)
+        self.disconnect()
         time.sleep(2)
         self.__init__(self._xsusb_id, self._endpoint)
 
