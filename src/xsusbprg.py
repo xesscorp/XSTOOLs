@@ -57,6 +57,8 @@ p.add_argument('-u', '--usb', type=int, default=0,
                )
 p.add_argument('-b', '--board', type=str, default='xula-200',
                help='The XESS board type (e.g., xula-200)')
+p.add_argument('-m', '--multiple', action='store_const', const=True,
+               default=False, help='Program multiple boards whenever a board is detected on the USB port.')
 p.add_argument('--verify', action='store_const', const=True,
                default=False,
                help='Verify the microcontroller flash against the firmware hex file.'
@@ -70,20 +72,27 @@ args = p.parse_args()
 args.board = string.lower(args.board)
 
 try:
-    if args.board in xs_board_list:
-        xs_board = xs_board_list[args.board]['BOARD_CLASS'](args.usb)
-    else:
-        raise XsMinorError("Unknown XESS board type '%s'." % args.board)
-    if args.verify == True:
-        print 'Verifying microcontroller firmware against %s.' \
-            % args.filename
-        xs_board.verify_firmware(args.filename)
-        print 'Verification passed!'
-    else:
-        print 'Programming microcontroller firmware with %s.' \
-            % args.filename
-        xs_board.update_firmware(args.filename)
-        print 'Programming complete!'
+    while True:
+        while XsUsb.get_num_xsusb() == 0:
+            pass
+        if args.board in xs_board_list:
+            xs_board = xs_board_list[args.board]['BOARD_CLASS'](args.usb)
+        else:
+            raise XsMinorError("Unknown XESS board type '%s'." % args.board)
+        if args.verify == True:
+            print 'Verifying microcontroller firmware against %s.' \
+                % args.filename
+            xs_board.verify_firmware(args.filename)
+            print 'Verification passed!'
+        else:
+            print 'Programming microcontroller firmware with %s.' \
+                % args.filename
+            xs_board.update_firmware(args.filename)
+            print 'Programming complete!'
+        if args.multiple == False:
+            break
+        while XsUsb.get_num_xsusb() != 0:
+            pass
 except XsError:
     raise XsFatalError('Program terminated abnormally.')
     exit()
