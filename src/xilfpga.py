@@ -170,6 +170,48 @@ class Xc3s200avq100(Xc3sa):
         Xc3sa.__init__(self, xsjtag=xsjtag)
 
 
+
+class Xc6s(XilinxFpga):
+
+    """Generic Xilinx Spartan-6 FPGA object."""
+
+    # Spartan-3A JTAG instruction opcodes.
+    _SAMPLE_INSTR = XsBitarray('000001'[::-1])
+    _USER1_INSTR = XsBitarray('000010'[::-1])
+    _USER2_INSTR = XsBitarray('000011'[::-1])
+    _USER3_INSTR = XsBitarray('011010'[::-1])
+    _USER4_INSTR = XsBitarray('011011'[::-1])
+    _CFG_OUT_INSTR = XsBitarray('000100'[::-1])
+    _CFG_IN_INSTR = XsBitarray('000101'[::-1])
+    _INTEST_INSTR = XsBitarray('000111'[::-1])
+    _USERCODE_INSTR = XsBitarray('001000'[::-1])
+    _IDCODE_INSTR = XsBitarray('001001'[::-1])
+    _HIGHZ_INSTR = XsBitarray('001010'[::-1])
+    _JPROGRAM_INSTR = XsBitarray('001011'[::-1])
+    _JSTART_INSTR = XsBitarray('001100'[::-1])
+    _JSHUTDOWN_INSTR = XsBitarray('001101'[::-1])
+    _EXTEST_INSTR = XsBitarray('001111'[::-1])
+    _ISC_ENABLE_INSTR = XsBitarray('010000'[::-1])
+    _ISC_PROGRAM_INSTR = XsBitarray('010001'[::-1])
+    _ISC_NOOP_INSTR = XsBitarray('010100'[::-1])
+    _ISC_READ_INSTR = XsBitarray('010101'[::-1])
+    _ISC_DISABLE_INSTR = XsBitarray('010110'[::-1])
+    _ISC_DNA_INSTR = XsBitarray('110000'[::-1])
+    _BYPASS_INSTR = XsBitarray('111111'[::-1])
+
+    def __init__(self, xsjtag=None):
+        XilinxFpga.__init__(self, xsjtag=xsjtag)
+
+class Xc6slx25ftg256(Xc6s):
+
+    """LX25 Spartan-6 FPGA in 256-pin BGA package."""
+
+    _DEVICE_TYPE = '6slx25ftg256'
+    _IDCODE = XsBitarray('00000100000000000010000010010011'[::-1])
+
+    def __init__(self, xsjtag=None):
+        Xc6s.__init__(self, xsjtag=xsjtag)
+
 if __name__ == '__main__':
 
     # logging.root.setLevel(logging.DEBUG)
