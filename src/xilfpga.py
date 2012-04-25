@@ -41,7 +41,7 @@ class XilinxFpga:
 
     def configure(self, bitstream=None):
         """Download the bitstream into the FPGA."""
-
+        
         # String argument indicates a file name containing the bitstream, so read it in.
         if type(bitstream) is str:
             bitstream = XilinxBitstream(bitstream)
@@ -55,29 +55,12 @@ class XilinxFpga:
         if self.get_idcode()[:28] != self._IDCODE[:28]:
             raise XsMinorError("FPGA IDCODE doesn't match the expected value (%s)."
                                 % self.get_idcode().string)
-        # Start off configuration in the run-test/idle state.
-        self.xsjtag.reset_tap()
-        self.xsjtag.run_test_idle()
-        # xapp139 -
-        # http://www.xilinx.com/support/documentation/application_notes/xapp452.pdf
-        # Must follow JPROGRAM with CFG_IN to keep device locked to JTAG.
-        # See AR 16829.
-        self.xsjtag.load_ir_then_dr(instruction=self._JPROGRAM_INSTR)
-        self.xsjtag.load_ir_then_dr(instruction=self._CFG_IN_INSTR)
-        # Give time for FPGA to clear its memory.
-        time.sleep(0.001)
-        # Now download the bitstream.
-        self.xsjtag.load_ir_then_dr(instruction=self._CFG_IN_INSTR,
-                                    data=bitstream.bits)
-        # Bitstream downloaded, now startup the FPGA.
-        self.xsjtag.load_ir_then_dr(instruction=self._JSTART_INSTR)
-        self.xsjtag.runtest(num_tcks=12)
-        self.xsjtag.load_ir_then_dr(instruction=self._JSTART_INSTR,
-                                    data=XsBitarray(22))
-        self.xsjtag.reset_tap()
+        
+        self.download_bitstream(bitstream)
+
         # Check to see if configuration was successful.
         if self.get_status()['DONE'] != True:
-            raise XsMinorError('FPGA failed to configure (DONE=0).')
+            raise XsMinorError('FPGA failed to configure (DONE=False).')
 
     def get_idcode(self):
         """Return the FPGA's 32-bit IDCODE."""
@@ -85,37 +68,6 @@ class XilinxFpga:
         # Enter the IDCODE instruction into the JTAG IR and then return the 32 ID bits.
         return self.xsjtag.load_ir_then_dr(instruction=self._IDCODE_INSTR,
                 data=None, num_return_bits=32)
-
-    def get_status(self):
-        """Return dict containing the FPGA's status register bits."""
-
-        # This is the command for reading the status register from UG332, pg 340.
-        command = XsBitarray('1010101010011001')  # 0xaa99
-        command.extend(XsBitarray('0010000000000000'))  # 0x2000
-        command.extend(XsBitarray('0010100100000001'))  # 0x2901
-        command.extend(XsBitarray('0010000000000000'))  # 0x2000
-        command.extend(XsBitarray('0010000000000000'))  # 0x2000
-        self.xsjtag.load_ir_then_dr(instruction=self._CFG_IN_INSTR,
-                                    data=command)
-        # Now read the 32 bits from the status register.
-        status_bits = \
-            self.xsjtag.load_ir_then_dr(instruction=self._CFG_OUT_INSTR,
-                num_return_bits=32)
-        status = {
-            'SYNC_TIMEOUT': status_bits[15],
-            'SEU_ERR': status_bits[14],
-            'DONE': status_bits[13],
-            'INIT': status_bits[12],
-            'MODE': status_bits[9:12],
-            'VSEL': status_bits[6:9],
-            'GHIGH_B': status_bits[5],
-            'GWE': status_bits[4],
-            'GTS_CFG_B': status_bits[3],
-            'DCM_LOCK': status_bits[2],
-            'ID_ERROR': status_bits[1],
-            'CRC_ERROR': status_bits[0],
-            }
-        return status
 
 
 class Xc3sa(XilinxFpga):
@@ -147,6 +99,60 @@ class Xc3sa(XilinxFpga):
     def __init__(self, xsjtag=None):
         XilinxFpga.__init__(self, xsjtag=xsjtag)
 
+    def download_bitstream(self, bitstream):
+        """Perform the detailed steps for downloading a bitstream to this FPGA device type."""
+        
+        # Start off configuration in the run-test/idle state.
+        self.xsjtag.reset_tap()
+        self.xsjtag.run_test_idle()
+        # xapp139 -
+        # http://www.xilinx.com/support/documentation/application_notes/xapp452.pdf
+        # Must follow JPROGRAM with CFG_IN to keep device locked to JTAG.
+        # See AR 16829.
+        self.xsjtag.load_ir_then_dr(instruction=self._JPROGRAM_INSTR)
+        self.xsjtag.load_ir_then_dr(instruction=self._CFG_IN_INSTR)
+        # Give time for FPGA to clear its memory.
+        time.sleep(0.001)
+        # Now download the bitstream.
+        self.xsjtag.load_ir_then_dr(instruction=self._CFG_IN_INSTR,
+                                    data=bitstream.bits)
+        # Bitstream downloaded, now startup the FPGA.
+        self.xsjtag.load_ir_then_dr(instruction=self._JSTART_INSTR)
+        self.xsjtag.runtest(num_tcks=12)
+        self.xsjtag.load_ir_then_dr(instruction=self._JSTART_INSTR,
+                                    data=XsBitarray(22))
+        self.xsjtag.reset_tap()
+
+    def get_status(self):
+        """Return dict containing the Spartan-3A FPGA's status register bits."""
+
+        # This is the command for reading the status register from UG332, pg 340.
+        command = XsBitarray('1010101010011001')  # 0xaa99
+        command.extend(XsBitarray('0010000000000000'))  # 0x2000 - NOP
+        command.extend(XsBitarray('0010100100000001'))  # 0x2901 - Read status register @ 0x08
+        command.extend(XsBitarray('0010000000000000'))  # 0x2000 - NOP
+        command.extend(XsBitarray('0010000000000000'))  # 0x2000 - NOP
+        self.xsjtag.load_ir_then_dr(instruction=self._CFG_IN_INSTR,
+                                    data=command)
+        # Now read the 32 bits from the status register.
+        status_bits = \
+            self.xsjtag.load_ir_then_dr(instruction=self._CFG_OUT_INSTR,
+                num_return_bits=32)
+        status = {
+            'SYNC_TIMEOUT': status_bits[15],
+            'SEU_ERR': status_bits[14],
+            'DONE': status_bits[13],
+            'INIT': status_bits[12],
+            'MODE': status_bits[9:12],
+            'VSEL': status_bits[6:9],
+            'GHIGH_B': status_bits[5],
+            'GWE': status_bits[4],
+            'GTS_CFG_B': status_bits[3],
+            'DCM_LOCK': status_bits[2],
+            'ID_ERROR': status_bits[1],
+            'CRC_ERROR': status_bits[0],
+            }
+        return status
 
 class Xc3s50avq100(Xc3sa):
 
@@ -202,12 +208,70 @@ class Xc6s(XilinxFpga):
     def __init__(self, xsjtag=None):
         XilinxFpga.__init__(self, xsjtag=xsjtag)
 
+    def download_bitstream(self, bitstream):
+        """Perform the detailed steps for downloading a bitstream to this FPGA device type."""
+
+        self.xsjtag.reset_tap()
+        self.xsjtag.go_thru_tap_states('Run-Test/Idle')
+        self.xsjtag.load_ir_then_dr(instruction=self._JPROGRAM_INSTR)
+        self.xsjtag.load_ir_then_dr(instruction=self._CFG_IN_INSTR)
+        # Give time for FPGA to clear its memory.
+        time.sleep(0.001)
+        # Download the bitstream.
+        self.xsjtag.load_ir_then_dr(instruction=self._CFG_IN_INSTR,
+                                    data=bitstream.bits)
+        # Bitstream downloaded, now startup the FPGA.
+        self.xsjtag.load_ir_then_dr(instruction=self._JSTART_INSTR)
+        self.xsjtag.runtest(num_tcks=30)
+        self.xsjtag.reset_tap()
+
+    def get_status(self):
+        """Return dict containing the Spartan-6 FPGA's status register bits."""
+
+        # This is the command for reading the status register from UG332, pg 340.
+        command = XsBitarray() 
+        command.extend(XsBitarray('1111111111111111'))  # 0xffff
+        command.extend(XsBitarray('1111111111111111'))  # 0xffff
+        command.extend(XsBitarray('1010101010011001'))  # 0xaa99
+        command.extend(XsBitarray('0101010101100110'))  # 0x5566
+        command.extend(XsBitarray('0010000000000000'))  # 0x2000 - NOP
+        command.extend(XsBitarray('0010100100000001'))  # 0x2901 - Read status register @ 0x08
+        command.extend(XsBitarray('0010000000000000'))  # 0x2000 - NOP
+        command.extend(XsBitarray('0010000000000000'))  # 0x2000 - NOP
+        command.extend(XsBitarray('0010000000000000'))  # 0x2000 - NOP
+        command.extend(XsBitarray('0010000000000000'))  # 0x2000 - NOP
+        
+        self.xsjtag.reset_tap()
+        self.xsjtag.load_ir_then_dr(instruction=self._CFG_IN_INSTR,
+                                    data=command)
+        #Now read the 32 bits from the status register.
+        status_bits = \
+            self.xsjtag.load_ir_then_dr(instruction=self._CFG_OUT_INSTR,
+                num_return_bits=16)
+        status = {
+            'SWWD_Strikeout': status_bits[15],
+            'IN_PWRDN': status_bits[14],
+            'DONE': status_bits[13],
+            'INIT': status_bits[12],
+            'MODE': status_bits[9:12],
+            'HSWAPEN': status_bits[8],
+            'PART_SECURED': status_bits[7],
+            'DEC_ERROR': status_bits[6],
+            'GHIGH_B' : status_bits[5],
+            'GWE': status_bits[4],
+            'GTS_CFG_B': status_bits[3],
+            'DCM_LOCK': status_bits[2],
+            'ID_ERROR': status_bits[1],
+            'CRC_ERROR': status_bits[0],
+            }
+        return status
+
 class Xc6slx25ftg256(Xc6s):
 
     """LX25 Spartan-6 FPGA in 256-pin BGA package."""
 
     _DEVICE_TYPE = '6slx25ftg256'
-    _IDCODE = XsBitarray('00000100000000000010000010010011'[::-1])
+    _IDCODE = XsBitarray('00000100000000000100000010010011'[::-1])
 
     def __init__(self, xsjtag=None):
         Xc6s.__init__(self, xsjtag=xsjtag)
