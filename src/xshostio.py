@@ -72,6 +72,7 @@ class XsHostIo:
         # data transfers will occur.
         self.xsjtag.go_thru_tap_states('Update-IR', 'Select-DR-Scan',
                 'Capture-DR', 'Shift-DR')
+        self.xsjtag.flush()
 
     def reset(self):
         """Reset the USB I/O link."""
