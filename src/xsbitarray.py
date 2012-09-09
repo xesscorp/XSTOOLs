@@ -81,7 +81,7 @@ class XsBitarray(bitarray):
     def to_int(self):
         """Return the integer representation of a bit array."""
 
-        # Convert the bit array to a biinary string.
+        # Convert the bit array to a binary string.
         # Then reverse the string so the LSB is in position 0.
         # Then convert the binary string (base 2) into an integer.
         return int(self.to01()[::-1], 2)
@@ -99,7 +99,7 @@ class XsBitarray(bitarray):
     def __setattr__(self, name, val):
         """Set the bit array from an integer, unsigned integer or string."""
 
-        if name == 'unsigned' or name == 'int':
+        if name == 'unsigned' or name == 'int' or name == 'integer':
             self = XsBitarray.from_int(val, len(self))
         elif name == 'string':
             self = XsBitarray(val)
@@ -108,7 +108,7 @@ class XsBitarray(bitarray):
     def __getattr__(self, name):
         """Return the unsigned, integer or string representation of a bit array."""
 
-        if name == 'int':
+        if name == 'int' or name == 'integer':
             val = self.to_int()
             # Correct for sign bit.
             if self[-1] == 1:

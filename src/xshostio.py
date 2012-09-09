@@ -47,9 +47,9 @@ class XsHostIo:
 
         self._xsusb_id = xsusb_id
         if type(module_id) is int:
-            self._module_id = XsBitarray.from_int(module_id, 8)
+            self.module_id = XsBitarray.from_int(module_id, 8)
         else:
-            self._module_id = XsBitarray(module_id)
+            self.module_id = XsBitarray(module_id)
         if xsjtag == None:
             self._xsusb = XsUsb(xsusb_id)
             self.xsjtag = XsJtag(self._xsusb)
@@ -87,13 +87,13 @@ class XsHostIo:
 
         # Create the TDI bit array by concatenating the module ID, number of bits in the payload, and the payload bits.
         tdi_bits = XsBitarray()
-        tdi_bits.extend(self._module_id)
+        tdi_bits.extend(self.module_id)
         num_payload_bits = XsBitarray.from_int(payload.length()
                 + num_result_bits, 32)
         tdi_bits.extend(num_payload_bits)
         tdi_bits.extend(payload)
 
-        logging.debug('Module ID = ' + repr(self._module_id))
+        logging.debug('Module ID = ' + repr(self.module_id))
         logging.debug('# payload bits = ' + repr(num_payload_bits))
         logging.debug('payload = ' + repr(payload))
         logging.debug('# TDI bits = ' + str(tdi_bits.length()))

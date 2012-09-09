@@ -109,7 +109,7 @@ class Xula:
             [progress, failed, signature] = dut.read()
             if signature.unsigned != Xula.SELF_TEST_SIGNATURE:
                 raise XsMajorError("Self-test bitstream is not present.")
-            #print "Progress = %x, Failed=%x, Signature=%x" % (progress.unsigned,failed.unsigned,signature.unsigned)
+            print "Progress = %x, Failed=%x, Signature=%x" % (progress.unsigned,failed.unsigned,signature.unsigned)
             if progress.unsigned == Xula.TEST_DONE:
                 break;
         return not failed.unsigned
