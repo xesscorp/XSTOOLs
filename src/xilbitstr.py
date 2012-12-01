@@ -47,7 +47,8 @@ class XilinxBitstream:
         """Load object from .bit file."""
 
         try:
-            fptr = open(filename, 'rb')
+        
+            fptr = open(os.path.abspath(filename), 'rb')
         except:
             raise XsMajorError("Unable to open file '%s'" % filename)
         self.filename = filename
