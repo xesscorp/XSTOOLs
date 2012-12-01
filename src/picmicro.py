@@ -46,8 +46,8 @@ class PicMicro:
         bottom = bottom & (1 << 32) - self.ERASE_BLOCK_SIZE
         top = int((top + self.ERASE_BLOCK_SIZE - 1)
                   / self.ERASE_BLOCK_SIZE) * self.ERASE_BLOCK_SIZE
-        assert bottom <= top, \
-            'Bottom address is greater than the top address.'
+        if bottom > top:
+            raise XsMinorError('Bottom address is greater than the top address.')
         for address in range(bottom, top, self.ERASE_BLOCK_SIZE):
             self.xsusb.erase_flash(address)
 
@@ -61,8 +61,8 @@ class PicMicro:
 
         bottom = (self.USER_START if bottom == None else bottom)
         top = (self.USER_END if top == None else top)
-        # String argument indicates a file name containing the hexfile, so read it in.
-        if type(hexfile) is str:
+        # If the argument is not already a hex data object, then it must be a file name, so read the hex data from it.
+        if not type(hexfile) is IntelHex:
             try:
                 hexfile_data = IntelHex(hexfile)
                 hexfile = hexfile_data
@@ -72,8 +72,8 @@ class PicMicro:
         bottom = bottom & (1 << 32) - self.WRITE_BLOCK_SIZE
         top = int((top + self.WRITE_BLOCK_SIZE - 1)
                   / self.WRITE_BLOCK_SIZE) * self.WRITE_BLOCK_SIZE
-        assert bottom <= top, \
-            'Bottom address is greater than the top address.'
+        if bottom > top:
+            raise XsMinorError('Bottom address is greater than the top address.')
         for address in range(bottom, top, self.WRITE_BLOCK_SIZE):
             # The tobinarray() method fills unused array locations with 0xFF so the flash at those
             # addresses will stay unprogrammed.
@@ -89,8 +89,8 @@ class PicMicro:
         bottom = bottom & (1 << 32) - self.WRITE_BLOCK_SIZE
         top = int((top + self.WRITE_BLOCK_SIZE - 1)
                   / self.WRITE_BLOCK_SIZE) * self.WRITE_BLOCK_SIZE
-        assert bottom <= top, \
-            'Bottom address is greater than the top address.'
+        if bottom > top:
+            raise XsMinorError('Bottom address is greater than the top address.')
         data = bytearray()
         for address in range(bottom, top, self.READ_BLOCK_SIZE):
             data.extend(self.xsusb.read_flash(address,
@@ -109,8 +109,8 @@ class PicMicro:
 
         bottom = (self.USER_START if bottom == None else bottom)
         top = (self.USER_END if top == None else top)
-        # String argument indicates a file name containing the hexfile, so read it in.
-        if type(hexfile) is str:
+        # If the argument is not already a hex data object, then it must be a file name, so read the hex data from it.
+        if not type(hexfile) is IntelHex:
             try:
                 hexfile_data = IntelHex(hexfile)
                 hexfile = hexfile_data
@@ -120,8 +120,8 @@ class PicMicro:
         bottom = bottom & (1 << 32) - self.WRITE_BLOCK_SIZE
         top = int((top + self.WRITE_BLOCK_SIZE - 1)
                   / self.WRITE_BLOCK_SIZE) * self.WRITE_BLOCK_SIZE
-        assert bottom <= top, \
-            'Bottom address is greater than the top address.'
+        if bottom > top:
+            raise XsMinorError('Bottom address is greater than the top address.')
         flash = self.read_flash(bottom, top)
         errors = [(a, flash[a], hexfile[a]) for a in
                   sorted(hexfile.todict().keys()) if flash[a]
