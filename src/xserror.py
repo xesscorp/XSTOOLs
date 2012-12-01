@@ -26,8 +26,9 @@ XESS error processing class.
 
 class XsError(Exception):
 
-    def __init__(self, arg):
-        print 'ERROR: %s' % arg
+    def __init__(self, *args, **kwargs):
+        Exception.__init__(self, *args, **kwargs)
+        print 'ERROR: %s' % args[0]
 
 
 class XsMinorError(XsError):
@@ -44,4 +45,7 @@ class XsFatalError(XsError):
 
     pass
 
+class XsTerminate(Exception):
+
+    pass
 
