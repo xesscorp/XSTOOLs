@@ -87,36 +87,63 @@ class XsUsb:
     ENABLE_FLASH = 0xac
 
     @classmethod
+    def get_xsusb_ports(cls):
+        """Return the device descriptors for all XESS boards attached to USB ports."""
+
+        return usb.core.find(idVendor=cls._VENDOR_ID,
+                   idProduct=cls._PRODUCT_ID, find_all=True)
+
+    @classmethod
     def get_num_xsusb(cls):
         """Return the number of XESS boards attached to USB ports."""
 
-        return len(usb.core.find(idVendor=cls._VENDOR_ID,
-                   idProduct=cls._PRODUCT_ID, find_all=True))
+        return len(XsUsb.get_xsusb_ports())
+        
+    def get_hash(self):
+        return 256 * self._bus + self._address
+        
+    def get_xsusb_id(self):
+        hash = self.get_hash()
+        devs = XsUsb.get_xsusb_ports()
+        indexed_devs = zip(range(0,len(devs)), devs)
+        for index, dev in indexed_devs:
+            if hash == 256 * dev.bus + dev.address:
+                return index
+        return None
 
     def __init__(self, xsusb_id=0, endpoint=1):
         """Initiate a USB connection to an XESS board."""
 
-        devs = usb.core.find(idVendor=self._VENDOR_ID,
-                             idProduct=self._PRODUCT_ID, find_all=True)
+        devs = XsUsb.get_xsusb_ports()
         if devs == []:
             raise XsMinorError('XESS USB device could not be found.')
-        self._dev = devs[xsusb_id]
         self._xsusb_id = xsusb_id
+        self._dev = devs[xsusb_id]
+        self._address = devs[xsusb_id].address
+        self._bus = devs[xsusb_id].bus
         self._endpoint = endpoint
+        self.terminate = False
 
     def write(self, bytes):
         """Write a byte array to an XESS board."""
+        
+        if self.terminate:
+            self.terminate = False
+            raise XsTerminate()
 
         logging.debug('OUT => (%d) %s', len(bytes), str([bin(x
                       | 0x100)[3:] for x in bytes]))
         if self._dev.write(usb.util.ENDPOINT_OUT | self._endpoint,
                            bytes, 0, self._USB_XFER_TIMEOUT) \
             != len(bytes):
-            raise XsMajorError('Failed to write required number of bytes over the USB link'
-                               )
+            raise XsMajorError('Failed to write required number of bytes over the USB link')
 
     def read(self, num_bytes=0x00):
         """Return a byte array read from an XESS board."""
+
+        if self.terminate:
+            self.terminate = False
+            raise XsTerminate()
 
         bytes = self._dev.read(usb.util.ENDPOINT_IN | self._endpoint,
                                num_bytes, 0, self._USB_XFER_TIMEOUT)
@@ -135,7 +162,9 @@ class XsUsb:
         
     def disconnect(self):
         """Disconnect the XESS board from the USB link."""
-        usb.util.dispose_resources(self._dev)
+        if self._dev != None:
+            usb.util.dispose_resources(self._dev)
+        self._dev = None
 
     def reset(self):
         """Reset the XESS board."""
