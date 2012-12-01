@@ -20,23 +20,38 @@
 # **********************************************************************
 
 """
-Classes for XESS XuLA board types.
+Classes for XESS FPGA board types.
 """
 
 import time
+import wx
+import wx.lib.pubsub as PUBSUB
 from xserror import *
 from xilfpga import *
 from xsdutio import *
 from picmicro import *
 
 
-class Xula:
+class XsBoard:
 
-    """Class object for a generic XuLA board."""
+    """Class object for a generic XESS FPGA board."""
 
     BASE_SIGNATURE = 0xA50000A5
     SELF_TEST_SIGNATURE = BASE_SIGNATURE | (1<<8)
-    TEST_DONE = 3
+    (TEST_START, TEST_WRITE, TEST_READ, TEST_DONE) = range(0,4)
+    
+    @classmethod
+    def get_xsboard(cls, xsusb_id=0):
+        xsboard = Xula50(xsusb_id)
+        if xsboard.is_connected():
+            return xsboard
+        xsboard = Xula200(xsusb_id)
+        if xsboard.is_connected():
+            return xsboard
+        xsboard = Xula2lx25(xsusb_id)
+        if xsboard.is_connected():
+            return xsboard
+        return None
 
     def __init__(self, xsusb_id=0):
         self.xsusb = XsUsb(xsusb_id)
@@ -68,57 +83,100 @@ class Xula:
         desc_len = desc.index(0)
         board['DESCRIPTION'] = desc[:desc_len].tostring()
         return board
+        
+    def is_connected(self):
+        return self.fpga.is_connected()
+        
+    def get_xsusb_id(self):
+        return self.xsusb.get_xsusb_id()
 
     def configure(self, bitstream):
         """Configure the FPGA on the board with a bitstream."""
 
-        # Clear any configuration already in the FPGA.
-        self.xsusb.set_prog(1)
-        self.xsusb.set_prog(0)
-        self.xsusb.set_prog(1)
-        time.sleep(0.03)  # Wait for FPGA to clear.
-        # Configure the FPGA with the bitstream.
-        self.fpga.configure(bitstream)
-
-    def set_flags(self, boot, jtag):
-        """Set nonvolatile flags controlling the XuLA behavior."""
-
-        pass
+        try:
+            PUBSUB.Publisher().sendMessage("Progress.Phase","Downloading bitstream")
+            # Clear any configuration already in the FPGA.
+            self.xsusb.set_prog(1)
+            self.xsusb.set_prog(0)
+            self.xsusb.set_prog(1)
+            time.sleep(0.03)  # Wait for FPGA to clear.
+            # Configure the FPGA with the bitstream.
+            self.fpga.configure(bitstream)
+            PUBSUB.Publisher().sendMessage("Progress.Phase","Download complete")
+        except Exception as e:
+            raise(e)
 
     def update_firmware(self, hexfile):
         """Re-flash microcontroller with new firmware from hex file."""
 
-        self.xsusb.enter_reflash_mode()
-        self.micro.program_flash(hexfile)
-        self.xsusb.enter_user_mode()
+        try:
+            PUBSUB.Publisher().sendMessage("Progress.Phase","Updating firmware")
+            self.xsusb.enter_reflash_mode()
+            self.micro.program_flash(hexfile)
+            self.xsusb.enter_user_mode()
+            PUBSUB.Publisher().sendMessage("Xsboard.Progress.Phase","Firmware update done")
+        except Exception as e:
+            raise(e)
 
     def verify_firmware(self, hexfile):
         self.xsusb.enter_reflash_mode()
         self.micro.verify_flash(hexfile)
         self.xsusb.enter_user_mode()
         
-    def do_self_test(self, test_bitstream):
+    def do_self_test(self, test_bitstream=None):
         """Load the FPGA with a bitstream to test the board and return true if the board passes."""
-        self.configure(test_bitstream)
-        # Create a channel to query the results of the board test.
-        dut = XsDutIo( dut_output_widths=[2,1,32], dut_input_widths=1, xsjtag=self.xsjtag)
-        # Assert and release the reset for the testing circuit.
-        dut.write(1)
-        dut.write(0)
-        while True:
-            [progress, failed, signature] = dut.read()
-            if signature.unsigned != Xula.SELF_TEST_SIGNATURE:
-                raise XsMajorError("Self-test bitstream is not present.")
-            print "Progress = %x, Failed=%x, Signature=%x" % (progress.unsigned,failed.unsigned,signature.unsigned)
-            if progress.unsigned == Xula.TEST_DONE:
-                break;
-        return not failed.unsigned
+
+        try:
+            if test_bitstream == None:
+                test_bitstream = self.test_bitstream
+            PUBSUB.Publisher().sendMessage("Progress.Phase","Downloading diagostic bitstream")
+            self.configure(test_bitstream, silent=True)
+            # Create a channel to query the results of the board test.
+            dut = XsDutIo( dut_output_widths=[2,1,32], dut_input_widths=1, xsjtag=self.xsjtag)
+            # Assert and release the reset for the testing circuit.
+            dut.write(1)
+            dut.write(0)
+            PUBSUB.Publisher().sendMessage("Progress.Phase","Writing SDRAM")
+            prev_progress = XsBoard.TEST_START
+            while True:
+                [progress, failed, signature] = dut.read()
+                if signature.unsigned != XsBoard.SELF_TEST_SIGNATURE:
+                    raise XsMajorError("Self-test bitstream is not present.")
+                if progress.unsigned != prev_progress:
+                    if progress.unsigned == XsBoard.TEST_READ:
+                        PUBSUB.Publisher().sendMessage("Progress.Phase","Reading SDRAM")
+                    if failed.unsigned == 1:
+                        PUBSUB.Publisher().sendMessage("Xsboard.Progress.Phase","Test Done")
+                        raise XsMinorError("Board failed diagnostic.")
+                    elif progress.unsigned == XsBoard.TEST_DONE:
+                        PUBSUB.Publisher().sendMessage("Xsboard.Progress.Phase","Test Done")
+                        return # Test passed!
+                prev_progress = progress.unsigned
+        except Exception as e:
+            raise(e)
+        
+        
+class Xula(XsBoard):
+
+    """Class for a generic XuLA board."""
+    
+    name = "XuLA"
+    dir = "xula/"
+
+    def set_flags(self, boot, jtag):
+        """Set nonvolatile flags controlling the XuLA behavior."""
+
+        pass
         
 
 
 class Xula50(Xula):
 
     """Class for a XuLA board with an XC3S50A FPGA."""
+    
+    name = Xula.name + "-50"
+    dir = Xula.dir + "50/usb/"
+    test_bitstream = dir + "test_board_jtag.bit"
 
     def __init__(self, xsusb_id=0):
         Xula.__init__(self, xsusb_id)
@@ -130,6 +188,10 @@ class Xula200(Xula):
 
     """Class for a XuLA board with an XC3S200A FPGA."""
 
+    name = Xula.name + "-200"
+    dir = Xula.dir + "200/usb/"
+    test_bitstream = dir + "test_board_jtag.bit"
+
     def __init__(self, xsusb_id=0):
         Xula.__init__(self, xsusb_id)
         self.fpga = Xc3s200avq100(self.xsjtag)
@@ -137,17 +199,24 @@ class Xula200(Xula):
 
 class Xula2(Xula):
     """Class for generic XuLA2 board."""
+    
+    name = "XuLA2"
+    dir = "xula2/"
     pass
     
 class Xula2lx25(Xula2):
     """Class for a XuLA2 board with an XC6SLX25 FPGA."""
+
+    name = Xula2.name + "-LX25"
+    dir = Xula2.dir + "lx25/usb/"
+    test_bitstream = dir + "test_board_jtag.bit"
     
     def __init__(self, xsusb_id=0):
         Xula2.__init__(self, xsusb_id)
         self.fpga = Xc6slx25ftg256(self.xsjtag)
         self.micro = Pic18f14k50(self.xsusb)
 
-# Add the previous class objects to the global dictionary of XESS board classes.
+
 global xs_board_list
 try:
     xs_board_list  # See if the dictionary already exists.
