@@ -67,6 +67,9 @@ class XsUsb:
     DISABLE_RETURN_CMD = 0x4e  # Disable return of info in response to a command.
     JTAG_CMD = 0x4f  # Send multiple TMS & TDI bits while receiving multiple TDO bits.
     FLASH_ONOFF_CMD = 0x50  # Enable/disable the FPGA configuration flash.
+    AIO0_ADC_CMD = 0x60   # Do an ADC conversion on AIO0 (AN6 pin on pic)
+    AIO1_ADC_CMD = 0x61   # Do an ADC conversion on AIO1 (AN11 pin on pic)
+
     RESET_CMD = 0xff  # Cause a power-on reset.
 
     # Flag fields for the JTAG_CMD.
@@ -97,7 +100,7 @@ class XsUsb:
     def get_num_xsusb(cls):
         """Return the number of XESS boards attached to USB ports."""
 
-        return len(XsUsb.get_xsusb_ports())
+        return len(cls.get_xsusb_ports())
         
     def get_hash(self):
         return 256 * self._bus + self._address
@@ -181,6 +184,22 @@ class XsUsb:
         cmd = bytearray([self.INFO_CMD])
         self.write(cmd)
         return self.read(32)
+
+    def adc_aio0(self):
+        """Return the voltage on AIO0."""
+
+        cmd = bytearray([self.AIO0_ADC_CMD])
+        self.write(cmd)
+        v = self.read(3)
+        return (v[1]*256 + v[2]) / 1023.0 * 2.048
+
+    def adc_aio1(self):
+        """Return the voltage on AIO1."""
+
+        cmd = bytearray([self.AIO1_ADC_CMD])
+        self.write(cmd)
+        v = self.read(3)
+        return (v[1]*256 + v[2]) / 1023.0 * 2.048
 
     def erase_flash(self, address):
         """Erase a block of flash in the microcontroller."""
