@@ -46,7 +46,7 @@ class XsHostIo:
         """Setup the parameters for the USB I/O link between the PC and the XESS board."""
 
         self._xsusb_id = xsusb_id
-        if type(module_id) is int:
+        if isinstance(module_id, int):
             self.module_id = XsBitarray.from_int(module_id, 8)
         else:
             self.module_id = XsBitarray(module_id)

@@ -45,7 +45,7 @@ class XilinxFpga:
 
         # If the argument is not already a bitstream, then it must be a file name, so read the bitstream from it.
 
-        if not type(bitstream) is XilinxBitstream:
+        if not isinstance(bitstream, XilinxBitstream):
             bitstream = XilinxBitstream(bitstream)
 
         # Abort if the FPGA doesn't match with the bitstream's target device type.

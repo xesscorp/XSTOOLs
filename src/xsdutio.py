@@ -72,10 +72,10 @@ class XsDutIo(XsHostIo):
             # If no DUT input widths are provided, then make a single-element
             # list containing just the total number of DUT input bits.
             self._dut_input_widths = [self.total_dut_input_width]
-        elif type(dut_input_widths) is int:
+        elif isinstance(dut_input_widths, int):
             # Just a single input field, so make it into a list.
             self._dut_input_widths = [dut_input_widths]
-        elif type(dut_input_widths) is list:
+        elif isinstance(dut_input_widths, list):
             # Otherwise, store the given list of DUT input field widths.
             self._dut_input_widths = dut_input_widths
             assert len(self._dut_input_widths) != 0
@@ -91,10 +91,10 @@ class XsDutIo(XsHostIo):
             # If no DUT output widths are provided, then make a single-element
             # list containing just the total number of DUT output bits.
             self._dut_output_widths = [self.total_dut_output_width]
-        elif type(dut_output_widths) is int:
+        elif isinstance(dut_output_widths, int):
             # Just a single output field, so make it into a list.
             self._dut_output_widths = [dut_output_widths]
-        elif type(dut_output_widths) is list:
+        elif isinstance(dut_output_widths, list):
             # Otherwise, store the given list of DUT output field widths.
             self._dut_output_widths = dut_output_widths
             assert len(self._dut_output_widths) != 0
@@ -157,7 +157,7 @@ class XsDutIo(XsHostIo):
         payload = XsBitarray(self._WRITE_OPCODE)
         # Concatenate the DUT input field bit arrays to the payload.
         for (inp, width) in zip(inputs, self._dut_input_widths):
-            if type(inp) is int or type(inp) is bool:
+            if isinstance(inp, (int, bool)):
                 # Convert the integer to a bit array and concatenate it.
                 payload.extend(XsBitarray.from_int(inp, width))
             else:

@@ -120,12 +120,11 @@ class XsMemIo(XsHostIo):
                        self.address_width))
         # Concatenate the data to the payload.
         for d in data:
-            if type(d) is int:
+            if isinstance(d, XsBitarray):
+                payload.extend(d)
+            else:
                 # Convert integers to bit arrays.
                 payload.extend(XsBitarray.from_int(d, self.data_width))
-            else:
-                # Assume it's a bit array so just concatenate it.
-                payload.extend(d)
         assert payload.length() > self._WRITE_OPCODE.length()
         # Send the payload to write the data to memory.
         self.send_rcv(payload=payload, num_result_bits=0)

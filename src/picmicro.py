@@ -62,7 +62,7 @@ class PicMicro:
         bottom = (self.USER_START if bottom == None else bottom)
         top = (self.USER_END if top == None else top)
         # If the argument is not already a hex data object, then it must be a file name, so read the hex data from it.
-        if not type(hexfile) is IntelHex:
+        if not isinstance(hexfile, IntelHex):
             try:
                 hexfile_data = IntelHex(hexfile)
                 hexfile = hexfile_data
@@ -110,7 +110,7 @@ class PicMicro:
         bottom = (self.USER_START if bottom == None else bottom)
         top = (self.USER_END if top == None else top)
         # If the argument is not already a hex data object, then it must be a file name, so read the hex data from it.
-        if not type(hexfile) is IntelHex:
+        if not isinstance(hexfile, IntelHex):
             try:
                 hexfile_data = IntelHex(hexfile)
                 hexfile = hexfile_data
