@@ -41,41 +41,42 @@ Dave took ideas and bits of Hector's code and integrated them
 into this program and the XSTOOLs classes and methods.
 """
 
+import string
 from argparse import ArgumentParser
-import logging
-from xula import *
-from xserror import *
+import xsboard as XSBOARD
+import xserror as XSERROR
 
 VERSION = '6.0.0'
 
-p = \
-    ArgumentParser(description='Program a bitstream file into the FPGA on an XESS board.'
-                   )
+p = ArgumentParser(description='Program a bitstream file into the FPGA on an XESS board.')
+
 p.add_argument('-f', '--filename', type=str, required=True,
                help='The name of the bitstream file.')
-p.add_argument('-l', '--logfile', type=str, default='./xsload.log',
-               help='Name of the log file to fill with all the nasty output for debugging and tracing what this program is doing: [%(default)s]'
-               )
 p.add_argument('-u', '--usb', type=int, default=0,
-               help='The USB port number for the XESS board. If you only have one board, then use 0.'
-               )
+               help='The USB port number for the XESS board. If you only have one board, then use 0.')
 p.add_argument('-b', '--board', type=str, default='xula-200',
-               help='The XESS board type (e.g., xula-200)')
-p.add_argument('-v', '--version', action='version', version='%(prog)s '
-               + VERSION,
-               help='Print the version number of this program and exit.'
-               )
+               help='***DEPRECATED*** The XESS board type (e.g., xula-200)')
+p.add_argument('-v', '--version', action='version', version='%(prog)s ' + VERSION,
+               help='Print the version number of this program and exit.')
 args = p.parse_args()
 
 args.board = string.lower(args.board)
-
-try:
-    if args.board in xs_board_list:
-        xs_board = xs_board_list[args.board]['BOARD_CLASS'
-                ](xsusb_id=args.usb)
+    
+num_boards = XSBOARD.XsUsb.get_num_xsusb()
+if num_boards > 0:
+    if 0 <= args.usb < num_boards:
+        xs_board = XSBOARD.XsBoard.get_xsboard(args.usb)
+        try:
+            xs_board.configure(args.filename)
+        except XSERROR.XsError as e:
+            xs_board.xsusb.disconnect()
+            exit()
+        print "Success: Bitstream", args.filename, "downloaded into", xs_board.name, "!"
+        xs_board.xsusb.disconnect()
+        exit()
     else:
-        raise XsMinorError("Unknown XESS board type '%s'." % args.board)
-    xs_board.configure(args.filename)
-except XsError:
-    raise XsFatalError('Program terminated abnormally.')
+        XSERROR.XsFatalError( "%d is not within USB port range [0,%d]" % (args.usb, num_boards-1))
+        exit()
+else:
+    XSERROR.XsFatalError("No XESS Boards found!")
     exit()

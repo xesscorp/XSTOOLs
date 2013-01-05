@@ -23,9 +23,9 @@
 """
 This command-line program runs a self-test on an XESS board like so:
 
-    xstest -b xula-200
+    python xstest.py
     
-which downloads a self-test bitstream into a XuLA-200 board
+which downloads a self-test bitstream into an XESS board
 attached to a USB port and reports the result. For more info on 
 using this program, type xsload -h.
 
@@ -33,55 +33,57 @@ This program was originally conceived and written in C++ by Dave
 Vandenbout and then ported to python.
 """
 
+import string
 import winsound
 from argparse import ArgumentParser
-import logging
-from xula import *
-from xserror import *
+import xsboard as XSBOARD
+import xserror as XSERROR
 
 VERSION = '6.0.0'
 
-p = \
-    ArgumentParser(description='Run self-test on an XESS board.'
-                   )
-p.add_argument('-l', '--logfile', type=str, default='./xsload.log',
-               help='Name of the log file to fill with all the nasty output for debugging and tracing what this program is doing: [%(default)s]'
-               )
+p = ArgumentParser(description='Run self-test on an XESS board.')
+    
 p.add_argument('-u', '--usb', type=int, default=0,
-               help='The USB port number for the XESS board. If you only have one board, then use 0.'
-               )
+               help='The USB port number for the XESS board. If you only have one board, then use 0.')
 p.add_argument('-b', '--board', type=str, default='xula-200',
-               help='The XESS board type (e.g., xula-200)')
+               help='***DEPRECATED*** The XESS board type (e.g., xula-200)')
 p.add_argument('-m', '--multiple', action='store_const', const=True,
                default=False, help='Run the self-test each time a board is detected on the USB port.')
-p.add_argument('-v', '--version', action='version', version='%(prog)s '
-               + VERSION,
-               help='Print the version number of this program and exit.'
-               )
+p.add_argument('-v', '--version', action='version', version='%(prog)s ' + VERSION,
+               help='Print the version number of this program and exit.')
 args = p.parse_args()
 
 args.board = string.lower(args.board)
 
-try:
-    while True:
-        while XsUsb.get_num_xsusb() == 0:
-            pass
-        if args.board in xs_board_list:
-            xs_board = xs_board_list[args.board]['BOARD_CLASS'
-                    ](xsusb_id=args.usb)
-        else:
-            raise XsMinorError("Unknown XESS board type '%s'." % args.board)
-        if xs_board.do_self_test(xs_board_list[args.board]['TEST_BITSTREAM']) == True:
-            print "Board is OK!"
+while(True):
+    num_boards = XSBOARD.XsUsb.get_num_xsusb()
+    if num_boards > 0:
+        if 0 <= args.usb < num_boards:
+            xs_board = XSBOARD.XsBoard.get_xsboard(args.usb)
+            try:
+                xs_board.do_self_test()
+            except XSERROR.XsError as e:
+                winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+                xs_board.xsusb.disconnect()
+                if args.multiple:
+                    while XSBOARD.XsUsb.get_num_xsusb() != 0:
+                        pass
+                    continue
+                else:
+                    exit()
+            print "Success:", xs_board.name, "passed diagnostic test!"
             winsound.MessageBeep()
+            xs_board.xsusb.disconnect()
+            if args.multiple:
+                while XSBOARD.XsUsb.get_num_xsusb() != 0:
+                    pass
+                continue
+            else:
+                exit()
         else:
-            print "Board failed!"
-            winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
-        xs_board.xsusb.disconnect()
-        if args.multiple == False:
-            break
-        while XsUsb.get_num_xsusb() != 0:
-            pass
-except XsError:
-    raise XsFatalError('Program terminated abnormally.')
-    exit()
+            XSERROR.XsFatalError( "%d is not within USB port range [0,%d]" % (args.usb, num_boards-1))
+            exit()
+    elif not args.multiple:
+        XSERROR.XsFatalError("No XESS Boards found!")
+        exit()
+exit()
