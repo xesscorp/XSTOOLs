@@ -42,6 +42,8 @@ class XsBoard:
     
     @classmethod
     def get_xsboard(cls, xsusb_id=0):
+        """Detect which type of XESS board is connected to a USB port."""
+        
         xsboard = Xula50(xsusb_id)
         if xsboard.is_connected():
             return xsboard
@@ -90,7 +92,7 @@ class XsBoard:
     def get_xsusb_id(self):
         return self.xsusb.get_xsusb_id()
 
-    def configure(self, bitstream):
+    def configure(self, bitstream, silent=False):
         """Configure the FPGA on the board with a bitstream."""
 
         try:
@@ -141,13 +143,13 @@ class XsBoard:
             while True:
                 [progress, failed, signature] = dut.read()
                 if signature.unsigned != XsBoard.SELF_TEST_SIGNATURE:
-                    raise XsMajorError("Self-test bitstream is not present.")
+                    raise XsMajorError(self.name + "FPGA is not configured with diagnostic bitstream.")
                 if progress.unsigned != prev_progress:
                     if progress.unsigned == XsBoard.TEST_READ:
                         PUBSUB.Publisher().sendMessage("Progress.Phase","Reading SDRAM")
                     if failed.unsigned == 1:
                         PUBSUB.Publisher().sendMessage("Xsboard.Progress.Phase","Test Done")
-                        raise XsMinorError("Board failed diagnostic.")
+                        raise XsMinorError(self.name + " failed diagnostic test.")
                     elif progress.unsigned == XsBoard.TEST_DONE:
                         PUBSUB.Publisher().sendMessage("Xsboard.Progress.Phase","Test Done")
                         return # Test passed!
@@ -202,7 +204,6 @@ class Xula2(Xula):
     
     name = "XuLA2"
     dir = "xula2/"
-    pass
     
 class Xula2lx25(Xula2):
     """Class for a XuLA2 board with an XC6SLX25 FPGA."""
@@ -217,14 +218,6 @@ class Xula2lx25(Xula2):
         self.micro = Pic18f14k50(self.xsusb)
 
 
-global xs_board_list
-try:
-    xs_board_list  # See if the dictionary already exists.
-except:
-    xs_board_list = {}  # Create dictionary if it doesn't exist.
-xs_board_list['xula-50'] = {'BOARD_CLASS': Xula50, 'TEST_BITSTREAM':'test_board_jtag.bit'}
-xs_board_list['xula-200'] = {'BOARD_CLASS': Xula200, 'TEST_BITSTREAM':'test_board_jtag.bit'}
-xs_board_list['xula2-lx25'] = {'BOARD_CLASS': Xula2lx25, 'TEST_BITSTREAM':'test_board_jtag.bit'}
 
 if __name__ == '__main__':
     xula = Xula200(0)
