@@ -36,8 +36,8 @@ Vandenbout and then ported to python.
 import string
 import winsound
 from argparse import ArgumentParser
-import xsboard as XSBOARD
-import xserror as XSERROR
+import xstools.xsboard as XSBOARD
+import xstools.xserror as XSERROR
 
 VERSION = '6.0.0'
 

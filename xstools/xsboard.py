@@ -40,6 +40,8 @@ class XsBoard:
     SELF_TEST_SIGNATURE = BASE_SIGNATURE | (1<<8)
     (TEST_START, TEST_WRITE, TEST_READ, TEST_DONE) = range(0,4)
     
+    install_dir = os.path.dirname(__file__)
+    
     @classmethod
     def get_xsboard(cls, xsusb_id=0):
         """Detect which type of XESS board is connected to a USB port."""
@@ -163,22 +165,20 @@ class Xula(XsBoard):
     """Class for a generic XuLA board."""
     
     name = "XuLA"
-    dir = "xula/"
+    dir = os.path.join(XsBoard.install_dir ,"xula/")
 
     def set_flags(self, boot, jtag):
         """Set nonvolatile flags controlling the XuLA behavior."""
 
         pass
         
-
-
 class Xula50(Xula):
 
     """Class for a XuLA board with an XC3S50A FPGA."""
     
     name = Xula.name + "-50"
-    dir = Xula.dir + "50/usb/"
-    test_bitstream = dir + "test_board_jtag.bit"
+    dir = os.path.join(Xula.dir, "50/usb/")
+    test_bitstream = os.path.join(dir, "test_board_jtag.bit")
 
     def __init__(self, xsusb_id=0):
         Xula.__init__(self, xsusb_id)
@@ -191,26 +191,31 @@ class Xula200(Xula):
     """Class for a XuLA board with an XC3S200A FPGA."""
 
     name = Xula.name + "-200"
-    dir = Xula.dir + "200/usb/"
-    test_bitstream = dir + "test_board_jtag.bit"
+    dir = os.path.join(Xula.dir, "200/usb/")
+    test_bitstream = os.path.join(dir, "test_board_jtag.bit")
 
     def __init__(self, xsusb_id=0):
         Xula.__init__(self, xsusb_id)
         self.fpga = Xc3s200avq100(self.xsjtag)
         self.micro = Pic18f14k50(self.xsusb)
 
-class Xula2(Xula):
+class Xula2(XsBoard):
     """Class for generic XuLA2 board."""
     
     name = "XuLA2"
-    dir = "xula2/"
+    dir = os.path.join(XsBoard.install_dir ,"xula2/")
+
+    def set_flags(self, boot, jtag):
+        """Set nonvolatile flags controlling the XuLA behavior."""
+
+        pass
     
 class Xula2lx25(Xula2):
     """Class for a XuLA2 board with an XC6SLX25 FPGA."""
 
     name = Xula2.name + "-LX25"
-    dir = Xula2.dir + "lx25/usb/"
-    test_bitstream = dir + "test_board_jtag.bit"
+    dir = os.path.join(Xula2.dir, "lx25/usb/")
+    test_bitstream = os.path.join(dir, "test_board_jtag.bit")
     
     def __init__(self, xsusb_id=0):
         Xula2.__init__(self, xsusb_id)
