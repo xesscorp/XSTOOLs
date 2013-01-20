@@ -20,7 +20,7 @@
 # **********************************************************************
 
 """
-Classes for XESS FPGA board types.
+Classes for types of XESS FPGA boards.
 """
 
 import time
@@ -58,7 +58,9 @@ class XsBoard:
         return None
 
     def __init__(self, xsusb_id=0):
+        # Create a USB interface for the board object.
         self.xsusb = XsUsb(xsusb_id)
+        # Now attach a JTAG interface to the USB interface.
         self.xsjtag = XsJtag(self.xsusb)
 
     def reset(self):
@@ -67,17 +69,18 @@ class XsBoard:
         xsusb.reset()
 
     def get_board_info(self):
-        """Return XESS board information dictionary."""
+        """Return version information stored in the XESS board as a dictionary."""
 
         try:
             info = self.xsusb.get_info()
         except:
             self.reset()
-        try:
-            info = self.xsusb.get_info()
-        except:
-            raise XsMajorError('Unable to get XESS board information.')
+            try:
+                info = self.xsusb.get_info()
+            except:
+                raise XsMajorError('Unable to get XESS board information.')
         if sum(info) & 0xff != 0:
+            # Checksum failure.
             raise XsMinorError('XESS board information is corrupted.')
         board = {}
         board['ID'] = '%02x%02x' % (info[1], info[2])
@@ -89,9 +92,13 @@ class XsBoard:
         return board
         
     def is_connected(self):
+        """Return true if the board is connected to a USB port."""
+        
         return self.fpga.is_connected()
         
     def get_xsusb_id(self):
+        """Return the USB port number the board is connected to."""
+        
         return self.xsusb.get_xsusb_id()
 
     def configure(self, bitstream, silent=False):
@@ -123,6 +130,8 @@ class XsBoard:
             raise(e)
 
     def verify_firmware(self, hexfile):
+        """Compare the microcontroller firmware to the contents of a hex file."""
+        
         self.xsusb.enter_reflash_mode()
         self.micro.verify_flash(hexfile)
         self.xsusb.enter_user_mode()
@@ -200,7 +209,8 @@ class Xula200(Xula):
         self.micro = Pic18f14k50(self.xsusb)
 
 class Xula2(XsBoard):
-    """Class for generic XuLA2 board."""
+    
+    """Class for a generic XuLA2 board."""
     
     name = "XuLA2"
     dir = os.path.join(XsBoard.install_dir ,"xula2/")
@@ -211,6 +221,7 @@ class Xula2(XsBoard):
         pass
     
 class Xula2lx25(Xula2):
+    
     """Class for a XuLA2 board with an XC6SLX25 FPGA."""
 
     name = Xula2.name + "-LX25"
