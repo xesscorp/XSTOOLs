@@ -24,8 +24,7 @@ Classes for types of XESS FPGA boards.
 """
 
 import time
-import wx
-import wx.lib.pubsub as PUBSUB
+from pubsub import pub as PUBSUB
 from xserror import *
 from xilfpga import *
 from xsdutio import *
@@ -105,7 +104,7 @@ class XsBoard:
         """Configure the FPGA on the board with a bitstream."""
 
         try:
-            PUBSUB.Publisher().sendMessage("Progress.Phase","Downloading bitstream")
+            PUBSUB.sendMessage("Progress.Phase", msg="Downloading bitstream")
             # Clear any configuration already in the FPGA.
             self.xsusb.set_prog(1)
             self.xsusb.set_prog(0)
@@ -113,7 +112,7 @@ class XsBoard:
             time.sleep(0.03)  # Wait for FPGA to clear.
             # Configure the FPGA with the bitstream.
             self.fpga.configure(bitstream)
-            PUBSUB.Publisher().sendMessage("Progress.Phase","Download complete")
+            PUBSUB.sendMessage("Progress.Phase", msg="Download complete")
         except Exception as e:
             raise(e)
 
@@ -121,11 +120,11 @@ class XsBoard:
         """Re-flash microcontroller with new firmware from hex file."""
 
         try:
-            PUBSUB.Publisher().sendMessage("Progress.Phase","Updating firmware")
+            PUBSUB.sendMessage("Progress.Phase", msg="Updating firmware")
             self.xsusb.enter_reflash_mode()
             self.micro.program_flash(hexfile)
             self.xsusb.enter_user_mode()
-            PUBSUB.Publisher().sendMessage("Xsboard.Progress.Phase","Firmware update done")
+            PUBSUB.sendMessage("Xsboard.Progress.Phase", msg="Firmware update done")
         except Exception as e:
             raise(e)
 
@@ -142,14 +141,14 @@ class XsBoard:
         try:
             if test_bitstream == None:
                 test_bitstream = self.test_bitstream
-            PUBSUB.Publisher().sendMessage("Progress.Phase","Downloading diagostic bitstream")
+            PUBSUB.sendMessage("Progress.Phase", msg="Downloading diagostic bitstream")
             self.configure(test_bitstream, silent=True)
             # Create a channel to query the results of the board test.
             dut = XsDutIo( dut_output_widths=[2,1,32], dut_input_widths=1, xsjtag=self.xsjtag)
             # Assert and release the reset for the testing circuit.
             dut.write(1)
             dut.write(0)
-            PUBSUB.Publisher().sendMessage("Progress.Phase","Writing SDRAM")
+            PUBSUB.sendMessage("Progress.Phase", msg="Writing SDRAM")
             prev_progress = XsBoard.TEST_START
             while True:
                 [progress, failed, signature] = dut.read()
@@ -157,12 +156,12 @@ class XsBoard:
                     raise XsMajorError(self.name + "FPGA is not configured with diagnostic bitstream.")
                 if progress.unsigned != prev_progress:
                     if progress.unsigned == XsBoard.TEST_READ:
-                        PUBSUB.Publisher().sendMessage("Progress.Phase","Reading SDRAM")
+                        PUBSUB.sendMessage("Progress.Phase", msg="Reading SDRAM")
                     if failed.unsigned == 1:
-                        PUBSUB.Publisher().sendMessage("Xsboard.Progress.Phase","Test Done")
+                        PUBSUB.sendMessage("Xsboard.Progress.Phase", msg="Test Done")
                         raise XsMinorError(self.name + " failed diagnostic test.")
                     elif progress.unsigned == XsBoard.TEST_DONE:
-                        PUBSUB.Publisher().sendMessage("Xsboard.Progress.Phase","Test Done")
+                        PUBSUB.sendMessage("Xsboard.Progress.Phase", msg="Test Done")
                         return # Test passed!
                 prev_progress = progress.unsigned
         except Exception as e:
