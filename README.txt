@@ -9,6 +9,17 @@ Look in the ``bin`` to see several examples of command-line
 utilities that use these classes to perform operations on
 XESS boards.
 
+Install steps for Ubuntu/Debian
+==========================
+sudo apt-get install python-setuptools
+git clone git://github.com/xesscorp/XSTOOLs.git
+cd XSTOOLs
+python setup.py build
+sudo python setup.py install
+
+cd
+xsload.py --help
+
 
 Contributors
 ==========================
