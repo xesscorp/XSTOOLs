@@ -38,7 +38,6 @@ code and integrated them into this program and the XSTOOLs classes and methods.
 """
 
 import string
-import winsound
 from argparse import ArgumentParser
 import xstools.xsboard as XSBOARD
 import xstools.xserror as XSERROR
@@ -78,7 +77,6 @@ while(True):
                     xs_board.update_firmware(args.filename)
                     print 'Programming complete!'
             except XSERROR.XsError as e:
-                winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
                 xs_board.xsusb.disconnect()
                 if args.multiple:
                     while XSBOARD.XsUsb.get_num_xsusb() != 0:
@@ -86,7 +84,6 @@ while(True):
                     continue
                 else:
                     exit()
-            winsound.MessageBeep()
             xs_board.xsusb.disconnect()
             if args.multiple:
                 while XSBOARD.XsUsb.get_num_xsusb() != 0:

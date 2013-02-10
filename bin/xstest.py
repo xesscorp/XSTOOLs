@@ -34,7 +34,6 @@ Vandenbout and then ported to python.
 """
 
 import string
-import winsound
 from argparse import ArgumentParser
 import xstools.xsboard as XSBOARD
 import xstools.xserror as XSERROR
@@ -63,7 +62,6 @@ while(True):
             try:
                 xs_board.do_self_test()
             except XSERROR.XsError as e:
-                winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
                 xs_board.xsusb.disconnect()
                 if args.multiple:
                     while XSBOARD.XsUsb.get_num_xsusb() != 0:
@@ -72,7 +70,6 @@ while(True):
                 else:
                     exit()
             print "Success:", xs_board.name, "passed diagnostic test!"
-            winsound.MessageBeep()
             xs_board.xsusb.disconnect()
             if args.multiple:
                 while XSBOARD.XsUsb.get_num_xsusb() != 0:
