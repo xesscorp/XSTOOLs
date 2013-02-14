@@ -46,7 +46,7 @@ from argparse import ArgumentParser
 import xstools.xsboard as XSBOARD
 import xstools.xserror as XSERROR
 
-VERSION = '6.0.0'
+VERSION = '6.0.1'
 
 p = ArgumentParser(description='Program a bitstream file into the FPGA on an XESS board.')
 

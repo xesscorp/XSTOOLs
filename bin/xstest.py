@@ -43,7 +43,7 @@ from argparse import ArgumentParser
 import xstools.xsboard as XSBOARD
 import xstools.xserror as XSERROR
 
-VERSION = '6.0.0'
+VERSION = '6.0.1'
 
 p = ArgumentParser(description='Run self-test on an XESS board.')
     
