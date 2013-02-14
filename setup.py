@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='XsTools',
-    version='0.1.1',
+    version='0.1.2',
     author='XESS Corp.',
     author_email='info@xess.com',
     packages=['xstools'],
