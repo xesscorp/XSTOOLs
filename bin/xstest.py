@@ -33,8 +33,12 @@ This program was originally conceived and written in C++ by Dave
 Vandenbout and then ported to python.
 """
 
+try:
+    import winsound
+except ImportError:
+    pass
+
 import string
-import winsound
 from argparse import ArgumentParser
 import xstools.xsboard as XSBOARD
 import xstools.xserror as XSERROR
@@ -63,7 +67,10 @@ while(True):
             try:
                 xs_board.do_self_test()
             except XSERROR.XsError as e:
-                winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+                try:
+                    winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+                except:
+                    pass
                 xs_board.xsusb.disconnect()
                 if args.multiple:
                     while XSBOARD.XsUsb.get_num_xsusb() != 0:
@@ -72,7 +79,10 @@ while(True):
                 else:
                     exit()
             print "Success:", xs_board.name, "passed diagnostic test!"
-            winsound.MessageBeep()
+            try:
+                winsound.MessageBeep()
+            except:
+                pass
             xs_board.xsusb.disconnect()
             if args.multiple:
                 while XSBOARD.XsUsb.get_num_xsusb() != 0:
