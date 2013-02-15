@@ -88,13 +88,29 @@ class XsUsb:
 
     FLASH_ENABLE_FLAG_ADDR = 0xfe
     ENABLE_FLASH = 0xac
+    
+    # This array will store the currently-active XESS USB devices.
+    _xsusb_devs = []
 
     @classmethod
     def get_xsusb_ports(cls):
         """Return the device descriptors for all XESS boards attached to USB ports."""
 
-        return usb.core.find(idVendor=cls._VENDOR_ID,
+        # Get the currently-active XESS USB devices.
+        devs = usb.core.find(idVendor=cls._VENDOR_ID,
                    idProduct=cls._PRODUCT_ID, find_all=True)
+                   
+        # Compare them to the previous set of active XESS USB devices.
+        for i in range(len(devs)):
+            for d in cls._xsusb_devs:
+                if devs[i].bus == d.bus and devs[i].address == d.address:
+                    # Re-use a previously-assigned XESS USB device instead of the new device
+                    # so that multiple devices can share the USB link to a single XESS board.
+                    devs[i] = d
+                    
+        # Update the array of currently-active XESS USB devices.
+        cls._xsusb_devs = devs
+        return cls._xsusb_devs
 
     @classmethod
     def get_num_xsusb(cls):
