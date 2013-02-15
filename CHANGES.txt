@@ -1,3 +1,5 @@
+v0.1.3, 02/15/2013 -- Fixed so multiple XsUsb objects can share a single USB link to access an XESS board."
+
 v0.1.2, 02/14/2013 -- Changed CR-LF EOL in .py files to LF EOL so linux wouldn't barf.
 
 v0.1.1, 01/23/2013 -- Use pypubsub instead of wxpython for publish/subscribe communications.
