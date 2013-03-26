@@ -28,7 +28,7 @@ import struct
 import logging
 import string
 from xserror import *
-from bitarray import bitarray
+from xsbitarray import *
 
 
 class XilinxBitstream:
@@ -47,22 +47,15 @@ class XilinxBitstream:
         """Load object from .bit file."""
 
         try:
-        
-            fptr = open(os.path.abspath(filename), 'rb')
+            bitfile = ConstBitStream(filename=filename)
         except:
             raise XsMajorError("Unable to open file '%s'" % filename)
         self.filename = filename
 
-        def get_int(fptr):
-            return struct.unpack('>H', fptr.read(2))[0]
-
-        def get_word(fptr):
-            return struct.unpack('>I', fptr.read(4))[0]
-
-        fptr.seek(get_int(fptr), os.SEEK_CUR)
-        if get_int(fptr) != 1:
-            raise XsMajorError("'%s' does not appear to be a bit file."
-                               % self.filename)
+        initial_offset = bitfile.read(16).uint * 8
+        bitfile.pos += initial_offset
+        if bitfile.read(16).uint != 1:
+            raise XsMajorError("'%s' does not appear to be a bit file." % self.filename)
 
         # Field codes for the various fields of a Xilinx bitstream file.
         DESIGN_NAME_FC = 0x61
@@ -72,43 +65,43 @@ class XilinxBitstream:
         BITSTREAM_FC = 0x65
         # Extract the fields from the bitstream file.
         while True:
-            field_byte = fptr.read(1)
-            if len(field_byte) == 0:
-                break  # EOF
-            field_code = ord(field_byte)
+            if bitfile.pos == bitfile.len:
+                break   # EOF
+            field_code = bitfile.read(8).uint
             if field_code == DESIGN_NAME_FC:
-                field_length = get_int(fptr)
-                self.design_name = fptr.read(field_length)
+                field_length = bitfile.read(16).uint * 8
+                # Get the string but clip-off the NUL character at the end.
+                self.design_name = bitfile.read(field_length).tobytes()[:-1]
             elif field_code == DEVICE_TYPE_FC:
-                field_length = get_int(fptr)
-                self.device_type = filter(lambda x: x \
-                        in string.printable, fptr.read(field_length))
+                field_length = bitfile.read(16).uint * 8
+                # Get the string but clip-off the NUL character at the end.
+                self.device_type = bitfile.read(field_length).tobytes()[:-1]
             elif field_code == COMPILE_DATE_FC:
-                field_length = get_int(fptr)
-                self.compile_date = fptr.read(field_length)
+                field_length = bitfile.read(16).uint * 8
+                # Get the string but clip-off the NUL character at the end.
+                self.compile_date = bitfile.read(field_length).tobytes()[:-1]
             elif field_code == COMPILE_TIME_FC:
-                field_length = get_int(fptr)
-                self.compile_time = fptr.read(field_length)
+                field_length = bitfile.read(16).uint * 8
+                # Get the string but clip-off the NUL character at the end.
+                self.compile_time = bitfile.read(field_length).tobytes()[:-1]
             elif field_code == BITSTREAM_FC:
-                field_length = get_word(fptr)
-                self.bits = bitarray()
-                self.bits.fromfile(fptr, field_length)
+                field_length = bitfile.read(32).uint * 8
+                self.bits = XsBitArray(bitfile.read(field_length))
             else:
-                raise XsMajorError("Unknown field in bit file '%s'."
-                                   % self.filename)
+                raise XsMajorError("Unknown field %d at position %d in bit file '%s'."
+                                   % (field_code, bitfile.pos-8, self.filename))
 
         logging.debug(
             'Bitstream file %s with design %s was compiled for %s at %s on %s into a bitstream of length %d'
                 ,
             self.filename,
             self.design_name,
-            self.compile_time,
             self.device_type,
+            self.compile_time,
             self.compile_date,
-            self.bits.length(),
+            self.bits.len,
             )
-        logging.debug('Bitstream start = %s', self.bits[32 * 8:32
-                      * 16].to01())
+        logging.debug('Bitstream start = %s', self.bits[0:1024])
 
         return True
 

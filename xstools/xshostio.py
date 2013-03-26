@@ -34,8 +34,8 @@ class XsHostIo:
 
     """Base object for performing USB I/O between XESS board and host PC."""
 
-    USER1_INSTR = XsBitarray('000010'[::-1])
-    USER2_INSTR = XsBitarray('000011'[::-1])
+    USER1_INSTR = XsBitArray(bin='000010'[::-1])
+    USER2_INSTR = XsBitArray(bin='000011'[::-1])
 
     def __init__(
         self,
@@ -47,9 +47,10 @@ class XsHostIo:
 
         self._xsusb_id = xsusb_id
         if isinstance(module_id, int):
-            self.module_id = XsBitarray.from_int(module_id, 8)
+            self.module_id = XsBitArray(uint=module_id, length=8)
+            self.module_id.reverse()
         else:
-            self.module_id = XsBitarray(module_id)
+            self.module_id = XsBitArray(module_id)
         if xsjtag == None:
             self._xsusb = XsUsb(xsusb_id)
             self.xsjtag = XsJtag(self._xsusb)
@@ -82,21 +83,20 @@ class XsHostIo:
     def send_rcv(self, payload, num_result_bits):
         """Send a bit array payload and then return a results bit array with num_result_bits."""
 
-        logging.debug('Send ' + str(payload.length()) + 'bits. Receive '
+        logging.debug('Send ' + str(payload.len) + 'bits. Receive '
                        + str(num_result_bits) + ' bits.')
 
         # Create the TDI bit array by concatenating the module ID, number of bits in the payload, and the payload bits.
-        tdi_bits = XsBitarray()
-        tdi_bits.extend(self.module_id)
-        num_payload_bits = XsBitarray.from_int(payload.length()
-                + num_result_bits, 32)
-        tdi_bits.extend(num_payload_bits)
-        tdi_bits.extend(payload)
+        tdi_bits = XsBitArray(self.module_id[:])
+        num_payload_bits = XsBitArray(uint = payload.len + num_result_bits, length=32)
+        num_payload_bits.reverse()
+        tdi_bits.append(num_payload_bits)
+        tdi_bits.append(payload)
 
         logging.debug('Module ID = ' + repr(self.module_id))
         logging.debug('# payload bits = ' + repr(num_payload_bits))
         logging.debug('payload = ' + repr(payload))
-        logging.debug('# TDI bits = ' + str(tdi_bits.length()))
+        logging.debug('# TDI bits = ' + str(tdi_bits.len))
         logging.debug('TDI = ' + repr(tdi_bits))
 
         # Send the TDI bits.
@@ -105,5 +105,3 @@ class XsHostIo:
         # Get the result bits from TDO.
         tdo_bits = self.xsjtag.shift_tdo(num_result_bits)
         return tdo_bits
-
-

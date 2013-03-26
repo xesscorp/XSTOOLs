@@ -150,8 +150,7 @@ class XsUsb:
             self.terminate = False
             raise XsTerminate()
 
-        logging.debug('OUT => (%d) %s', len(bytes), str([bin(x
-                      | 0x100)[3:] for x in bytes]))
+        logging.debug('OUT => (%d) %s', len(bytes), str([bin(x | 0x100)[3:] for x in bytes]))
         if self._dev.write(usb.util.ENDPOINT_OUT | self._endpoint,
                            bytes, 0, self._USB_XFER_TIMEOUT) \
             != len(bytes):

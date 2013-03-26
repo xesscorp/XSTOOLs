@@ -21,115 +21,95 @@
 # **********************************************************************
 
 """
-XESS extensions to bitarray object.
+XESS extensions to BitString-BitArray object.
 """
 
 import logging
 from xserror import *
-from bitarray import bitarray
+from bitstring import Bits, BitArray, BitStream, ConstBitStream
 
 
-class XsBitarray(bitarray):
+class XsBitArray(BitArray):
 
     """Class for storing and manipulating bit vectors.
     
     All XsBitArray objects are stored with the LSB at index 0.
     """
 
-    def __init__(self, initial=None):
-        """Create a bit array and initialize it."""
+    # @staticmethod
+    # def from_int(num, num_of_bits=32):
+        # """Convert an integer and return a bit array with the specified # of bits."""
+        # bits = XsBitArray(uint=num, length=num_of_bits)
+        # bits.reverse() # This gets us back to little-endian with least-significant bit in position 0.
+        # return bits
 
-        bitarray.__init__(self, initial, endian='little')
-
-    @staticmethod
-    def from_int(num, num_of_bits=32):
-        """Convert an integer and return a bit array with the specified # of bits."""
-
-        if num >= 1 << num_of_bits:
-            raise XsMajorError('Number %x overflowed XsBitarray field size of %d.'
-                                % (num, num_of_bits))
-        # Take the number and OR it with a mask to set the MSB+1 bit position.
-        # This insures the binary representation has (num_of_bits+1) binary digits.
-        # Then remove the leading '0b1' from the binary string.
-        # Then reverse the binary string so the LSB is at position 0.
-        # Then create a bit array using the binary string as the initializer.
-        return XsBitarray(bin(num | 1 << num_of_bits)[3:][::-1])
-
-    @staticmethod
-    def from_hex(hex_string):
-        bin_string = string.lower(hex_string)
-        logging.debug(bin_string)
-        bin_string = bin_string.replace('0', '0000')
-        bin_string = bin_string.replace('1', '0001')
-        bin_string = bin_string.replace('2', '0010')
-        bin_string = bin_string.replace('3', '0011')
-        bin_string = bin_string.replace('4', '0100')
-        bin_string = bin_string.replace('5', '0101')
-        bin_string = bin_string.replace('6', '0110')
-        bin_string = bin_string.replace('7', '0111')
-        bin_string = bin_string.replace('8', '1000')
-        bin_string = bin_string.replace('9', '1001')
-        bin_string = bin_string.replace('a', '1010')
-        bin_string = bin_string.replace('b', '1011')
-        bin_string = bin_string.replace('c', '1100')
-        bin_string = bin_string.replace('d', '1101')
-        bin_string = bin_string.replace('e', '1110')
-        bin_string = bin_string.replace('f', '1111')
-        logging.debug(bin_string)
-        return XsBitarray(bin_string)
-
-    def to_int(self):
-        """Return the integer representation of a bit array."""
-
-        # Convert the bit array to a binary string.
-        # Then reverse the string so the LSB is in position 0.
-        # Then convert the binary string (base 2) into an integer.
-        return int(self.to01()[::-1], 2)
+    # def to_int(self):
+        # """Return the integer representation of a bit array."""
+        # bits = self[:] # Make a copy of the bit string.
+        # bits.reverse() # Reverse it to bit order that BitArray expects. 
+        # return bits.uint # Return the unsigned integer value of the bits.
 
     def to_usb_buffer(self):
-        """Return a USB packet byte array from a bit array."""
+        """Convert a bitstring into a byte array with the bits in each byte
+           ordered correctly.
+           XsBitArray order:      b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 ...
+           USB buffer bit order: |b7 b6 b5 b4 b3 b2 b1 b0|b15 b14 b13 b12 b11 b10 b9 b8|...
+        """
 
-        # Create a temporary bit array from this bit array, but guaranteed to have multiple-of-8 number of bits.
-        tmp = XsBitarray()
-        tmp.frombytes(self.tobytes())
-        # Reverse the bits within each byte of the bit array to correct for reversal in XESS USB firmware.
-        tmp.bytereverse()
-        return tmp.tobytes()
+        # Create a temporary bit array from this bit array, but guaranteed to have multiple-of-8 number of bits
+        # with each 8-bit field flipped to account for the xmit reversal done in the XuLA firmware.
+        
+        bytes = self.tobytes() # Eight-bit bytes with 0 bits padded after the MS bit position.
+        bytes = bytes[::-1] # Reverse the order of the bytes so last byte to send comes first.
+        bits = XsBitArray(bytes=bytes) # Create a bit string from the bytes.
+        bits.reverse() # Now reverse the order of the entire bit string.
+        # At this point, the original bit string has been extended to a multiple of eight bits
+        # and the order of each eight-bit field has been flipped.
+        return bits.tobytes() # Return a byte array for sending over USB link.
+        
+    @staticmethod
+    def from_usb_buffer(usb_buffer, num_bits=0):
+        """Create a bitstring from a byte array received over USB
+           so that the bit ordering of the bytes is correct.
+           USB buffer bit order: |b7 b6 b5 b4 b3 b2 b1 b0|b15 b14 b13 b12 b11 b10 b9 b8|...
+           XsBitArray order:      b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 ...
+        """
+        
+        bits = XsBitArray(bytes=usb_buffer)
+        bits.reverse()
+        bits.byteswap()
+        if num_bits > 0:
+            del bits[num_bits:]
+        logging.debug('bitstring_from_usb_buffer => %s', bits)
+        return bits
 
-    def __setattr__(self, name, val):
-        """Set the bit array from an integer, unsigned integer or string."""
+    # def __setattr__(self, name, val):
+        # """Set the bit array from an integer, unsigned integer or string."""
 
-        if name == 'unsigned' or name == 'int' or name == 'integer':
-            self = XsBitarray.from_int(val, len(self))
-        elif name == 'string':
-            self = XsBitarray(val)
-        return val
+        # if name == 'unsigned' or name == 'int' or name == 'integer':
+            # self = XsBitArray.from_int(val, len(self))
+        # elif name == 'string':
+            # self = XsBitArray(val)
+        # else:
+            # super(XsBitArray, self).__setattr__(name, val)
+        # return val
 
-    def __getattr__(self, name):
-        """Return the unsigned, integer or string representation of a bit array."""
+    # def __getattr__(self, name):
+        # """Return the unsigned, integer or string representation of a bit array."""
 
-        if name == 'int' or name == 'integer':
-            val = self.to_int()
-            # Correct for sign bit.
-            if self[-1] == 1:
-                val -= 1 << self.length()
-        elif name == 'unsigned':
-            # No need to correct for sign bit.
-            val = self.to_int()
-        elif name == 'string':
-            val = self.to01()
-        return val
+        # if name == 'int' or name == 'integer':
+            # val = self.to_int()
+            # # Correct for sign bit.
+            # if self[-1] == 1:
+                # val -= 1 << self.length()
+            # return val
+        # elif name == 'unsigned':
+            # # No need to correct for sign bit.
+            # return self.to_int()
+        # elif name == 'string':
+            # return self.to01()
+        # else:
+            # return super(XsBitArray, self).__getattr__(name)
 
 
-Bitvec = XsBitarray  # Associate old Bitvec class with new XsBitarray class.
-
-if __name__ == '__main__':
-    xsbits = XsBitarray('1010101')
-    print str(xsbits)
-    xsbits = XsBitarray.from_int(45)
-    print str(xsbits)
-    print xsbits.to01()
-    print xsbits.to_int()
-    xsbits = XsBitarray.from_int(27, 8)
-    print str(xsbits)
-    print xsbits.to_int()
+Bitvec = XsBitArray  # Associate old Bitvec class with new XsBitArray class.
