@@ -94,22 +94,25 @@ class XsBitArray(BitArray):
             # super(XsBitArray, self).__setattr__(name, val)
         # return val
 
-    # def __getattr__(self, name):
-        # """Return the unsigned, integer or string representation of a bit array."""
+    def __getattr__(self, name):
+        """Return the unsigned, integer or string representation of a bit array."""
 
-        # if name == 'int' or name == 'integer':
-            # val = self.to_int()
-            # # Correct for sign bit.
-            # if self[-1] == 1:
-                # val -= 1 << self.length()
-            # return val
-        # elif name == 'unsigned':
-            # # No need to correct for sign bit.
-            # return self.to_int()
-        # elif name == 'string':
-            # return self.to01()
-        # else:
-            # return super(XsBitArray, self).__getattr__(name)
+        logging.debug('Using XsBitArray attribute %s', name)
+
+        if name == 'int' or name == 'integer':
+            bits = self[:]
+            bits.reverse()
+            return getattr(super(XsBitArray, bits), 'int')
+        elif name == 'unsigned':
+            bits = self[:]
+            bits.reverse()
+            return getattr(super(XsBitArray, bits), 'uint')
+        elif name == 'string':
+            bits = self[:]
+            bits.reverse()
+            return getattr(super(XsBitArray, bits), 'bin')[2:]
+        else:
+            return getattr(super(XsBitArray, bits), name)
 
 
 Bitvec = XsBitArray  # Associate old Bitvec class with new XsBitArray class.

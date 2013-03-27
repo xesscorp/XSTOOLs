@@ -32,10 +32,10 @@ class XsDutIo(XsHostIo):
     """Object for forcing inputs and reading outputs from a device-under-test (DUT)."""
 
     # DUT opcodes.
-    _NOP_OPCODE   = XsBitArray(bin='00'[::-1])
-    _READ_OPCODE  = XsBitArray(bin='11'[::-1])  # Read DUT outputs.
-    _WRITE_OPCODE = XsBitArray(bin='10'[::-1])  # Write to DUT inputs.
-    _SIZE_OPCODE  = XsBitArray(bin='01'[::-1])  # Get number of inputs and outputs of DUT.
+    _NOP_OPCODE   = XsBitArray(bin='00')
+    _READ_OPCODE  = XsBitArray(bin='11')  # Read DUT outputs.
+    _WRITE_OPCODE = XsBitArray(bin='10')  # Write to DUT inputs.
+    _SIZE_OPCODE  = XsBitArray(bin='01')  # Get number of inputs and outputs of DUT.
     _SIZE_RESULT_LENGTH = 16  # Length of _SIZE_OPCODE result.
 
     def __init__(
@@ -114,9 +114,9 @@ class XsDutIo(XsHostIo):
                                num_result_bits=self._SIZE_RESULT_LENGTH + SKIP_CYCLES)
         params = params[SKIP_CYCLES:]  # Remove the skipped cycles.
         # The number of DUT inputs is in the first half of the bit array.
-        total_dut_input_width = params[:self._SIZE_RESULT_LENGTH / 2].uint
+        total_dut_input_width = params[:self._SIZE_RESULT_LENGTH / 2].unsigned
         # The number of DUT outputs is in the last half of the bit array.
-        total_dut_output_width = params[self._SIZE_RESULT_LENGTH / 2:].uint
+        total_dut_output_width = params[self._SIZE_RESULT_LENGTH / 2:].unsigned
         return (total_dut_input_width, total_dut_output_width)
 
     def read(self):
@@ -127,7 +127,8 @@ class XsDutIo(XsHostIo):
         result = self.send_rcv(payload=self._READ_OPCODE,
                                num_result_bits=self.total_dut_output_width + SKIP_CYCLES)
         result = result[SKIP_CYCLES:]  # Remove the skipped cycles.
-        assert result.length() == self.total_dut_output_width
+        result.reverse()
+        assert result.len == self.total_dut_output_width
         logging.debug('Read result = ' + repr(result))
         if len(self._dut_output_widths) == 1:
             # Return the result bit array if there's only a single output field.
@@ -136,8 +137,8 @@ class XsDutIo(XsHostIo):
             # Otherwise, partition the result bit array into the given output field widths.
             outputs = []
             for w in self._dut_output_widths:
-                outputs.append(result[:w])
-                result = result[w:]
+                outputs.append(result[-w:])
+                result = result[:-w]
             return outputs
 
     Read = read  # Associate the old Read() method with the new read() method.
@@ -153,14 +154,12 @@ class XsDutIo(XsHostIo):
         for (inp, width) in zip(inputs, self._dut_input_widths):
             if isinstance(inp, (int, bool)):
                 # Convert the integer to a bit array and concatenate it.
-                payload.append(XsBitArray(uint=inp, length=width))
+                payload = XsBitArray(uintbe=inp, length=width) + payload
+                #payload.append(XsBitArray(uint=inp, length=width))
             else:
                 # Assume it's a bit array, so just concatenate it.
-                payload.append(inp)
-        # for i in range(0, len(inputs)):
-            # payload.extend(XsBitArray.from_int(inputs[i],
-                           # self._dut_input_widths[i]))
-        assert payload.length() > self._WRITE_OPCODE.len
+                payload = inp + payload
+        assert payload.len > self._WRITE_OPCODE.len
         # Send the payload to force the bit arrays onto the DUT inputs.
         self.send_rcv(payload=payload, num_result_bits=0)
 
@@ -191,7 +190,7 @@ class XsDut(XsDutIo):
 
 if __name__ == '__main__':
 
-    logging.root.setLevel(logging.DEBUG)
+    #logging.root.setLevel(logging.DEBUG)
 
     from random import *  # Import some random number generator routines.
 

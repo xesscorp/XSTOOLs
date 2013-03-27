@@ -48,7 +48,6 @@ class XsHostIo:
         self._xsusb_id = xsusb_id
         if isinstance(module_id, int):
             self.module_id = XsBitArray(uint=module_id, length=8)
-            self.module_id.reverse()
         else:
             self.module_id = XsBitArray(module_id)
         if xsjtag == None:
@@ -83,18 +82,20 @@ class XsHostIo:
     def send_rcv(self, payload, num_result_bits):
         """Send a bit array payload and then return a results bit array with num_result_bits."""
 
-        logging.debug('Send ' + str(payload.len) + 'bits. Receive '
+        logging.debug('Send ' + str(payload.len) + ' bits. Receive '
                        + str(num_result_bits) + ' bits.')
 
         # Create the TDI bit array by concatenating the module ID, number of bits in the payload, and the payload bits.
-        tdi_bits = XsBitArray(self.module_id[:])
-        num_payload_bits = XsBitArray(uint = payload.len + num_result_bits, length=32)
-        num_payload_bits.reverse()
-        tdi_bits.append(num_payload_bits)
-        tdi_bits.append(payload)
+        # tdi_bits = self.module_id[:]
+        # num_payload_bits = XsBitArray(uint = payload.len + num_result_bits, length=32)
+        # tdi_bits.append(num_payload_bits)
+        # payload_bits = XsBitArray(payload[:])
+        # tdi_bits.append(payload_bits)
+        tdi_bits = payload + XsBitArray(uintbe = payload.len + num_result_bits, length=32) + self.module_id
+        tdi_bits.reverse()
 
         logging.debug('Module ID = ' + repr(self.module_id))
-        logging.debug('# payload bits = ' + repr(num_payload_bits))
+        #logging.debug('# payload bits = ' + repr(num_payload_bits))
         logging.debug('payload = ' + repr(payload))
         logging.debug('# TDI bits = ' + str(tdi_bits.len))
         logging.debug('TDI = ' + repr(tdi_bits))
@@ -105,3 +106,15 @@ class XsHostIo:
         # Get the result bits from TDO.
         tdo_bits = self.xsjtag.shift_tdo(num_result_bits)
         return tdo_bits
+
+
+if __name__ == '__main__':
+
+    logging.root.setLevel(logging.DEBUG)
+
+    USB_ID = 0  # USB port index for the XuLA board connected to the host PC.
+    MODULE_ID = 1
+    module = XsHostIo(USB_ID, MODULE_ID)
+    payload = XsBitArray('0b100010011010')
+    num_result_bits = 20
+    module.send_rcv(payload, num_result_bits)
