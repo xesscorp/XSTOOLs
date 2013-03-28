@@ -34,8 +34,8 @@ class XsHostIo:
 
     """Base object for performing USB I/O between XESS board and host PC."""
 
-    USER1_INSTR = XsBitArray(bin='000010'[::-1])
-    USER2_INSTR = XsBitArray(bin='000011'[::-1])
+    USER1_INSTR = XsBitArray('0b000010', reverse=True)
+    USER2_INSTR = XsBitArray('0b000011', reverse=True)
 
     def __init__(
         self,

@@ -21,7 +21,7 @@
 # **********************************************************************
 
 """
-XESS extensions to BitString-BitArray object.
+XESS extensions to the BitArray class of the bitstring module.
 """
 
 import logging
@@ -32,32 +32,30 @@ from bitstring import Bits, BitArray, BitStream, ConstBitStream
 class XsBitArray(BitArray):
 
     """Class for storing and manipulating bit vectors.
-    
-    All XsBitArray objects are stored with the LSB at index 0.
+
+    The main difference from the BitArray class is that XsBitArray
+    objects store their least-significant bits in bit position 0.
+    However, the BitArray constructor is used to make XsBitArray
+    objects, so things like integers and binary strings are stored
+    with their most-significant bits first. Therefore, the bits in
+    these objects need to be reversed after they are created.
     """
-
-    # @staticmethod
-    # def from_int(num, num_of_bits=32):
-        # """Convert an integer and return a bit array with the specified # of bits."""
-        # bits = XsBitArray(uint=num, length=num_of_bits)
-        # bits.reverse() # This gets us back to little-endian with least-significant bit in position 0.
-        # return bits
-
-    # def to_int(self):
-        # """Return the integer representation of a bit array."""
-        # bits = self[:] # Make a copy of the bit string.
-        # bits.reverse() # Reverse it to bit order that BitArray expects. 
-        # return bits.uint # Return the unsigned integer value of the bits.
+    
+    def __init__(self, *args, **kwargs):
+        reverse = kwargs.pop('reverse',False)
+        super(XsBitArray, self).__init__(*args, **kwargs)
+        if reverse:
+            self.reverse()
 
     def to_usb_buffer(self):
         """Convert a bitstring into a byte array with the bits in each byte
-           ordered correctly.
+           ordered correctly for transmission over USB to an XESS board.
            XsBitArray order:      b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 ...
            USB buffer bit order: |b7 b6 b5 b4 b3 b2 b1 b0|b15 b14 b13 b12 b11 b10 b9 b8|...
         """
 
         # Create a temporary bit array from this bit array, but guaranteed to have multiple-of-8 number of bits
-        # with each 8-bit field flipped to account for the xmit reversal done in the XuLA firmware.
+        # with each 8-bit field flipped to account for the xmit reversal done in the XESS firmware.
         
         bytes = self.tobytes() # Eight-bit bytes with 0 bits padded after the MS bit position.
         bytes = bytes[::-1] # Reverse the order of the bytes so last byte to send comes first.
@@ -75,29 +73,19 @@ class XsBitArray(BitArray):
            XsBitArray order:      b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 ...
         """
         
-        bits = XsBitArray(bytes=usb_buffer)
-        bits.reverse()
-        bits.byteswap()
+        # Create a bit array from the USB bytes and then reverse the bit order of each byte.
+        # Then truncate to the desired length starting from the most-significant bits.
+        bits = XsBitArray(bytes=usb_buffer) # Create a bit string from the USB bytes.
+        bits.reverse() # Reverse the entire string of bits so the first received bits are near the end.
+        bits.byteswap() # Reverse the bytes so the first received bits are now at the start.
+        # At this point, the original bytes in the USB buffer have each been reversed in place.
+        # Now, truncate any unwanted bits from the last-received end of the bit string.
         if num_bits > 0:
             del bits[num_bits:]
-        logging.debug('bitstring_from_usb_buffer => %s', bits)
         return bits
-
-    # def __setattr__(self, name, val):
-        # """Set the bit array from an integer, unsigned integer or string."""
-
-        # if name == 'unsigned' or name == 'int' or name == 'integer':
-            # self = XsBitArray.from_int(val, len(self))
-        # elif name == 'string':
-            # self = XsBitArray(val)
-        # else:
-            # super(XsBitArray, self).__setattr__(name, val)
-        # return val
 
     def __getattr__(self, name):
         """Return the unsigned, integer or string representation of a bit array."""
-
-        logging.debug('Using XsBitArray attribute %s', name)
 
         if name == 'int' or name == 'integer':
             bits = self[:]
@@ -113,6 +101,3 @@ class XsBitArray(BitArray):
             return getattr(super(XsBitArray, bits), 'bin')[2:]
         else:
             return getattr(super(XsBitArray, bits), name)
-
-
-Bitvec = XsBitArray  # Associate old Bitvec class with new XsBitArray class.

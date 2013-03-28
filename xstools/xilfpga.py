@@ -59,8 +59,8 @@ class XilinxFpga:
         # Don't check the last four bits: these are chip version bits.
 
         if not self.is_connected():
-            raise XsMinorError("FPGA IDCODE doesn't match the expected value (%s)."
-                                % self.get_idcode())
+            raise XsMinorError("FPGA IDCODE %s doesn't match the expected value %s."
+                                % (self.get_idcode(), self._IDCODE))
 
         self.download_bitstream(bitstream)
 
@@ -81,7 +81,7 @@ class XilinxFpga:
                 
     def is_connected(self):
         """Is this FPGA actually connected to the port?"""
-        return self.get_idcode()[:-4] == self._IDCODE[:-4]
+        return self.get_idcode()[:28] == self._IDCODE[:28]
 
 
 class Xc2s(XilinxFpga):
@@ -90,18 +90,18 @@ class Xc2s(XilinxFpga):
 
     # Spartan-2 JTAG instruction opcodes.
 
-    _SAMPLE_INSTR   = XsBitArray(bin='00001'[::-1])
-    _INTEST_INSTR   = XsBitArray(bin='00111'[::-1])
-    _USERCODE_INSTR = XsBitArray(bin='01000'[::-1])
-    _IDCODE_INSTR   = XsBitArray(bin='01001'[::-1])
-    _HIGHZ_INSTR    = XsBitArray(bin='01010'[::-1])
-    _JSTART_INSTR   = XsBitArray(bin='01100'[::-1])
-    _CFG_OUT_INSTR  = XsBitArray(bin='00100'[::-1])
-    _CFG_IN_INSTR   = XsBitArray(bin='00101'[::-1])
-    _USER1_INSTR    = XsBitArray(bin='00010'[::-1])
-    _USER2_INSTR    = XsBitArray(bin='00011'[::-1])
-    _EXTEST_INSTR   = XsBitArray(bin='00000'[::-1])
-    _BYPASS_INSTR   = XsBitArray(bin='11111'[::-1])
+    _SAMPLE_INSTR   = XsBitArray('0b00001', reverse=True)
+    _INTEST_INSTR   = XsBitArray('0b00111', reverse=True)
+    _USERCODE_INSTR = XsBitArray('0b01000', reverse=True)
+    _IDCODE_INSTR   = XsBitArray('0b01001', reverse=True)
+    _HIGHZ_INSTR    = XsBitArray('0b01010', reverse=True)
+    _JSTART_INSTR   = XsBitArray('0b01100', reverse=True)
+    _CFG_OUT_INSTR  = XsBitArray('0b00100', reverse=True)
+    _CFG_IN_INSTR   = XsBitArray('0b00101', reverse=True)
+    _USER1_INSTR    = XsBitArray('0b00010', reverse=True)
+    _USER2_INSTR    = XsBitArray('0b00011', reverse=True)
+    _EXTEST_INSTR   = XsBitArray('0b00000', reverse=True)
+    _BYPASS_INSTR   = XsBitArray('0b11111', reverse=True)
 
     def __init__(self, xsjtag=None):
         XilinxFpga.__init__(self, xsjtag=xsjtag)
@@ -139,13 +139,12 @@ class Xc2s(XilinxFpga):
         # Now download the bitstream.
 
         check_status_cmd = \
-            XsBitArray(bin='0010100000000000111000000000000100000000000000000000000000000000'[::-1])
+            XsBitArray(bin='0010100000000000111000000000000100000000000000000000000000000000', reverse=True)
         self.xsjtag.load_ir_then_dr(instruction=self._CFG_IN_INSTR, data=check_status_cmd)
 
         # Now read the 32 bits from the status register.
 
-        status_bits = \
-            self.xsjtag.load_ir_then_dr(instruction=self._CFG_OUT_INSTR, num_return_bits=32)
+        status_bits = self.xsjtag.load_ir_then_dr(instruction=self._CFG_OUT_INSTR, num_return_bits=32)
         status = {
             'DONE': status_bits[14],
             'INIT': status_bits[13],
@@ -166,7 +165,7 @@ class Xc2s50tq144(Xc2s):
     """50 Kgate Spartan-2 FPGA in VQ144 package."""
 
     _DEVICE_TYPE = '2s50tq144'
-    _IDCODE = XsBitArray(bin='00000000011000010000000010010011'[::-1])
+    _IDCODE = XsBitArray('0b00000000011000010000000010010011', reverse=True)
 
     def __init__(self, xsjtag=None):
         Xc2s.__init__(self, xsjtag=xsjtag)
@@ -177,7 +176,7 @@ class Xc2s100tq144(Xc2s):
     """100 Kgate Spartan-2 FPGA in VQ144 package."""
 
     _DEVICE_TYPE = '2s100tq144'
-    _IDCODE = XsBitArray(bin='00000000011000010100000010010011'[::-1])
+    _IDCODE = XsBitArray('0b00000000011000010100000010010011', reverse=True)
 
     def __init__(self, xsjtag=None):
         Xc2s.__init__(self, xsjtag=xsjtag)
@@ -188,7 +187,7 @@ class Xc2s200fg256(Xc2s):
     """200 Kgate Spartan-2 FPGA in a 256-ball BGA package."""
 
     _DEVICE_TYPE = '2s200fg256'
-    _IDCODE = XsBitArray(bin='00000000011000011100000010010011'[::-1])
+    _IDCODE = XsBitArray('0b00000000011000011100000010010011', reverse=True)
 
     def __init__(self, xsjtag=None):
         Xc2s.__init__(self, xsjtag=xsjtag)
@@ -200,26 +199,26 @@ class Xc3s(XilinxFpga):
 
     # Spartan-3A JTAG instruction opcodes.
 
-    _EXTEST_INSTR      = XsBitArray(bin='000000'[::-1])
-    _SAMPLE_INSTR      = XsBitArray(bin='000001'[::-1])
-    _USER1_INSTR       = XsBitArray(bin='000010'[::-1])
-    _USER2_INSTR       = XsBitArray(bin='000011'[::-1])
-    _CFG_OUT_INSTR     = XsBitArray(bin='000100'[::-1])
-    _CFG_IN_INSTR      = XsBitArray(bin='000101'[::-1])
-    _INTEST_INSTR      = XsBitArray(bin='000111'[::-1])
-    _USERCODE_INSTR    = XsBitArray(bin='001000'[::-1])
-    _IDCODE_INSTR      = XsBitArray(bin='001001'[::-1])
-    _HIGHZ_INSTR       = XsBitArray(bin='001010'[::-1])
-    _JPROGRAM_INSTR    = XsBitArray(bin='001011'[::-1])
-    _JSTART_INSTR      = XsBitArray(bin='001100'[::-1])
-    _JSHUTDOWN_INSTR   = XsBitArray(bin='001101'[::-1])
-    _BYPASS_INSTR      = XsBitArray(bin='111111'[::-1])
-    _ISC_ENABLE_INSTR  = XsBitArray(bin='010000'[::-1])
-    _ISC_PROGRAM_INSTR = XsBitArray(bin='010001'[::-1])
-    _ISC_NOOP_INSTR    = XsBitArray(bin='010100'[::-1])
-    _ISC_READ_INSTR    = XsBitArray(bin='010101'[::-1])
-    _ISC_DISABLE_INSTR = XsBitArray(bin='010110'[::-1])
-    _ISC_DNA_INSTR     = XsBitArray(bin='110001'[::-1])
+    _EXTEST_INSTR      = XsBitArray('0b000000', reverse=True)
+    _SAMPLE_INSTR      = XsBitArray('0b000001', reverse=True)
+    _USER1_INSTR       = XsBitArray('0b000010', reverse=True)
+    _USER2_INSTR       = XsBitArray('0b000011', reverse=True)
+    _CFG_OUT_INSTR     = XsBitArray('0b000100', reverse=True)
+    _CFG_IN_INSTR      = XsBitArray('0b000101', reverse=True)
+    _INTEST_INSTR      = XsBitArray('0b000111', reverse=True)
+    _USERCODE_INSTR    = XsBitArray('0b001000', reverse=True)
+    _IDCODE_INSTR      = XsBitArray('0b001001', reverse=True)
+    _HIGHZ_INSTR       = XsBitArray('0b001010', reverse=True)
+    _JPROGRAM_INSTR    = XsBitArray('0b001011', reverse=True)
+    _JSTART_INSTR      = XsBitArray('0b001100', reverse=True)
+    _JSHUTDOWN_INSTR   = XsBitArray('0b001101', reverse=True)
+    _BYPASS_INSTR      = XsBitArray('0b111111', reverse=True)
+    _ISC_ENABLE_INSTR  = XsBitArray('0b010000', reverse=True)
+    _ISC_PROGRAM_INSTR = XsBitArray('0b010001', reverse=True)
+    _ISC_NOOP_INSTR    = XsBitArray('0b010100', reverse=True)
+    _ISC_READ_INSTR    = XsBitArray('0b010101', reverse=True)
+    _ISC_DISABLE_INSTR = XsBitArray('0b010110', reverse=True)
+    _ISC_DNA_INSTR     = XsBitArray('0b110001', reverse=True)
 
     def __init__(self, xsjtag=None):
         XilinxFpga.__init__(self, xsjtag=xsjtag)
@@ -260,16 +259,17 @@ class Xc3s(XilinxFpga):
 
         # This is the command for reading the status register from UG332, pg 340.
         # These stringfs are output MSbit first, so don't reverse them.
-        command = XsBitArray(bin='1010101010011001')  # 0xaa99
-        command.append(XsBitArray(bin='0010000000000000'))  # 0x2000 - NOP
-        command.append(XsBitArray(bin='0010100100000001'))  # 0x2901 - Read status register @ 0x08
-        command.append(XsBitArray(bin='0010000000000000'))  # 0x2000 - NOP
-        command.append(XsBitArray(bin='0010000000000000'))  # 0x2000 - NOP
+        command = XsBitArray(bin= 
+            '1010101010011001' +  # 0xaa99
+            '0010000000000000' +  # 0x2000 - NOP
+            '0010100100000001' +  # 0x2901 - Read status register @ 0x08
+            '0010000000000000' +  # 0x2000 - NOP
+            '0010000000000000'    # 0x2000 - NOP
+            )
         self.xsjtag.load_ir_then_dr(instruction=self._CFG_IN_INSTR, data=command)
 
         # Now read the 32 bits from the status register as defined on UG332, pg 327.
-        status_bits = \
-            self.xsjtag.load_ir_then_dr(instruction=self._CFG_OUT_INSTR, num_return_bits=32)
+        status_bits = self.xsjtag.load_ir_then_dr(instruction=self._CFG_OUT_INSTR, num_return_bits=32)
         status = {
             'SYNC_TIMEOUT': status_bits[15],
             'SEU_ERR'     : status_bits[14],
@@ -292,7 +292,7 @@ class Xc3s1000ft256(Xc3s):
     """1 Mgate Spartan-2 FPGA in 256-ball BGA package."""
 
     _DEVICE_TYPE = '3s1000ft256'
-    _IDCODE = XsBitArray(bin='00000001010000101000000010010011'[::-1])
+    _IDCODE = XsBitArray('0b00000001010000101000000010010011', reverse=True)
 
     def __init__(self, xsjtag=None):
         Xc3s.__init__(self, xsjtag=xsjtag)
@@ -304,8 +304,8 @@ class Xc3sa(Xc3s):
 
     # Spartan-3A JTAG instruction opcodes (over and above those found in the Spartan-3).
 
-    _EXTEST_INSTR = XsBitArray(bin='001111'[::-1])
-    _ISC_DNA_INSTR = XsBitArray(bin='110001'[::-1])
+    _EXTEST_INSTR  = XsBitArray('0b001111', Reverse=True)
+    _ISC_DNA_INSTR = XsBitArray('0b110001', Reverse=True)
 
 
 class Xc3s50avq100(Xc3sa):
@@ -313,7 +313,7 @@ class Xc3s50avq100(Xc3sa):
     """50 Kgate Spartan-3A FPGA in VQ100 package."""
 
     _DEVICE_TYPE = '3s50avq100'
-    _IDCODE = XsBitArray(bin='00000010001000010000000010010011'[::-1])
+    _IDCODE = XsBitArray('0b00000010001000010000000010010011', reverse=True)
 
     def __init__(self, xsjtag=None):
         Xc3sa.__init__(self, xsjtag=xsjtag)
@@ -324,7 +324,7 @@ class Xc3s200avq100(Xc3sa):
     """200 Kgate Spartan-3A FPGA in VQ100 package."""
 
     _DEVICE_TYPE = '3s200avq100'
-    _IDCODE = XsBitArray(bin='00000010001000011000000010010011'[::-1])
+    _IDCODE = XsBitArray('0b00000010001000011000000010010011', reverse=True)
 
     def __init__(self, xsjtag=None):
         Xc3sa.__init__(self, xsjtag=xsjtag)
@@ -336,28 +336,28 @@ class Xc6s(XilinxFpga):
 
     # Spartan-3A JTAG instruction opcodes.
 
-    _SAMPLE_INSTR      = XsBitArray(bin='000001'[::-1])
-    _USER1_INSTR       = XsBitArray(bin='000010'[::-1])
-    _USER2_INSTR       = XsBitArray(bin='000011'[::-1])
-    _USER3_INSTR       = XsBitArray(bin='011010'[::-1])
-    _USER4_INSTR       = XsBitArray(bin='011011'[::-1])
-    _CFG_OUT_INSTR     = XsBitArray(bin='000100'[::-1])
-    _CFG_IN_INSTR      = XsBitArray(bin='000101'[::-1])
-    _INTEST_INSTR      = XsBitArray(bin='000111'[::-1])
-    _USERCODE_INSTR    = XsBitArray(bin='001000'[::-1])
-    _IDCODE_INSTR      = XsBitArray(bin='001001'[::-1])
-    _HIGHZ_INSTR       = XsBitArray(bin='001010'[::-1])
-    _JPROGRAM_INSTR    = XsBitArray(bin='001011'[::-1])
-    _JSTART_INSTR      = XsBitArray(bin='001100'[::-1])
-    _JSHUTDOWN_INSTR   = XsBitArray(bin='001101'[::-1])
-    _EXTEST_INSTR      = XsBitArray(bin='001111'[::-1])
-    _ISC_ENABLE_INSTR  = XsBitArray(bin='010000'[::-1])
-    _ISC_PROGRAM_INSTR = XsBitArray(bin='010001'[::-1])
-    _ISC_NOOP_INSTR    = XsBitArray(bin='010100'[::-1])
-    _ISC_READ_INSTR    = XsBitArray(bin='010101'[::-1])
-    _ISC_DISABLE_INSTR = XsBitArray(bin='010110'[::-1])
-    _ISC_DNA_INSTR     = XsBitArray(bin='110000'[::-1])
-    _BYPASS_INSTR      = XsBitArray(bin='111111'[::-1])
+    _SAMPLE_INSTR      = XsBitArray('0b000001', reverse=True)
+    _USER1_INSTR       = XsBitArray('0b000010', reverse=True)
+    _USER2_INSTR       = XsBitArray('0b000011', reverse=True)
+    _USER3_INSTR       = XsBitArray('0b011010', reverse=True)
+    _USER4_INSTR       = XsBitArray('0b011011', reverse=True)
+    _CFG_OUT_INSTR     = XsBitArray('0b000100', reverse=True)
+    _CFG_IN_INSTR      = XsBitArray('0b000101', reverse=True)
+    _INTEST_INSTR      = XsBitArray('0b000111', reverse=True)
+    _USERCODE_INSTR    = XsBitArray('0b001000', reverse=True)
+    _IDCODE_INSTR      = XsBitArray('0b001001', reverse=True)
+    _HIGHZ_INSTR       = XsBitArray('0b001010', reverse=True)
+    _JPROGRAM_INSTR    = XsBitArray('0b001011', reverse=True)
+    _JSTART_INSTR      = XsBitArray('0b001100', reverse=True)
+    _JSHUTDOWN_INSTR   = XsBitArray('0b001101', reverse=True)
+    _EXTEST_INSTR      = XsBitArray('0b001111', reverse=True)
+    _ISC_ENABLE_INSTR  = XsBitArray('0b010000', reverse=True)
+    _ISC_PROGRAM_INSTR = XsBitArray('0b010001', reverse=True)
+    _ISC_NOOP_INSTR    = XsBitArray('0b010100', reverse=True)
+    _ISC_READ_INSTR    = XsBitArray('0b010101', reverse=True)
+    _ISC_DISABLE_INSTR = XsBitArray('0b010110', reverse=True)
+    _ISC_DNA_INSTR     = XsBitArray('0b110000', reverse=True)
+    _BYPASS_INSTR      = XsBitArray('0b111111', reverse=True)
 
     def __init__(self, xsjtag=None):
         XilinxFpga.__init__(self, xsjtag=xsjtag)
@@ -387,27 +387,28 @@ class Xc6s(XilinxFpga):
     def get_status(self):
         """Return dict containing the Spartan-6 FPGA's status register bits."""
 
-        # This is the command for reading the status register from UG380, pg 109.
+        # This is the command for reading the status register from UG380, pg 113.
         # These stringfs are output MSbit first, so don't reverse them.
-        command = XsBitArray()
-        command.append(XsBitArray(bin='1111111111111111'[::-1]))  # 0xffff
-        command.append(XsBitArray(bin='1111111111111111'[::-1]))  # 0xffff
-        command.append(XsBitArray(bin='1010101010011001'[::-1]))  # 0xaa99
-        command.append(XsBitArray(bin='0101010101100110'[::-1]))  # 0x5566
-        command.append(XsBitArray(bin='0010000000000000'[::-1]))  # 0x2000 - NOP
-        command.append(XsBitArray(bin='0010100100000001'[::-1]))  # 0x2901 - Read status register @ 0x08
-        command.append(XsBitArray(bin='0010000000000000'[::-1]))  # 0x2000 - NOP
-        command.append(XsBitArray(bin='0010000000000000'[::-1]))  # 0x2000 - NOP
-        command.append(XsBitArray(bin='0010000000000000'[::-1]))  # 0x2000 - NOP
-        command.append(XsBitArray(bin='0010000000000000'[::-1]))  # 0x2000 - NOP
+        command = XsBitArray(bin = 
+            '1111111111111111' +  # 0xffff
+            '1111111111111111' +  # 0xffff
+            '1010101010011001' +  # 0xaa99
+            '0101010101100110' +  # 0x5566
+            '0010000000000000' +  # 0x2000 - NOP
+            '0010100100000001' +  # 0x2901 - Read status register @ 0x08
+            '0010000000000000' +  # 0x2000 - NOP
+            '0010000000000000' +  # 0x2000 - NOP
+            '0010000000000000' +  # 0x2000 - NOP
+            '0010000000000000'    # 0x2000 - NOP
+            )
 
         self.xsjtag.reset_tap()
         self.xsjtag.load_ir_then_dr(instruction=self._CFG_IN_INSTR,
                                     data=command)
 
         # Now read the 32 bits from the status register as defined on UG380, pg 95.
-        status_bits = \
-            self.xsjtag.load_ir_then_dr(instruction=self._CFG_OUT_INSTR, num_return_bits=16)
+        status_bits = self.xsjtag.load_ir_then_dr(instruction=self._CFG_OUT_INSTR, num_return_bits=32)
+        print "status_bits = %s" % status_bits.bin
         status = {
             'SWWD_Strikeout': status_bits[15],
             'IN_PWRDN'      : status_bits[14],
@@ -432,7 +433,7 @@ class Xc6slx25ftg256(Xc6s):
     """LX25 Spartan-6 FPGA in 256-pin BGA package."""
 
     _DEVICE_TYPE = '6slx25ftg256'
-    _IDCODE = XsBitArray(bin='00000100000000000100000010010011'[::-1])
+    _IDCODE = XsBitArray('0b00000100000000000100000010010011', reverse=True)
 
     def __init__(self, xsjtag=None):
         Xc6s.__init__(self, xsjtag=xsjtag)
@@ -445,7 +446,7 @@ if __name__ == '__main__':
     xsusb = XsUsb()
     xsjtag = XsJtag(xsusb)
     fpga = Xc3s200avq100(xsjtag)
-    #fpga = Xc6slx25ftg256(xsjtag)
+    # fpga = Xc6slx25ftg256(xsjtag)
     print fpga.get_idcode()
     if fpga.get_idcode() != fpga._IDCODE:
         print 'ERROR'
@@ -465,7 +466,7 @@ if __name__ == '__main__':
     print 'Status =', fpga.get_status()
     t = time.clock()
     fpga.configure(bitstream='test_board_jtag-200.bit')
-    #fpga.configure(bitstream='test_board_jtag-lx25.bit')
+    # fpga.configure(bitstream='test_board_jtag-lx25.bit')
     t = time.clock() - t
     print 'Time to download bitstream = %fs' % t
     print 'Status =', fpga.get_status()
