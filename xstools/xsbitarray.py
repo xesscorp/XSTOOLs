@@ -31,73 +31,116 @@ from bitstring import Bits, BitArray, BitStream, ConstBitStream
 
 class XsBitArray(BitArray):
 
-    """Class for storing and manipulating bit vectors.
+    """Class for storing and manipulating bit vectors."""
 
-    The main difference from the BitArray class is that XsBitArray
-    objects store their least-significant bits in bit position 0.
-    However, the BitArray constructor is used to make XsBitArray
-    objects, so things like integers and binary strings are stored
-    with their most-significant bits first. Therefore, the bits in
-    these objects need to be reversed after they are created.
-    """
-    
-    def __init__(self, *args, **kwargs):
-        reverse = kwargs.pop('reverse',False)
-        super(XsBitArray, self).__init__(*args, **kwargs)
-        if reverse:
-            self.reverse()
+    # The underlying bitstring class stores a bitstring such as 0b110010 with the
+    # most-significant bit (1 in this case) in index position 0, and the least-significant
+    # bit (0 in this case) in the highest index position (5 in this case).
+    #
+    # The bitstrings for the XESS boards typically contain strings of JTAG TDI and TMS
+    # bits which are transmitted starting with the least-significant bit. This creates a
+    # problem if a bitstring like 0b110010 is to be transmitted and followed by another
+    # bitstring like 0b101011. Concatenating the bitstrings gives 0b110010101011, but the
+    # actual transmission order should be 010011110101. It would be easier if the bitstrings
+    # were concatenated in the reverse order as 101011110010 and then transmitted starting
+    # from the highest bit index and proceeding down to index 0. To do this while expressing
+    # the bit string concatenations in their more natural left-to-right order, the +, +=
+    # and append operations were redefined to do their operations in the reverse order.
+    # So a + b with XsBitArrays gives the same result as b + a with BitArrays.
 
-    def to_usb_buffer(self):
+    def append(self, bits):
+        """Append the contents of a bitstring to this one, but in reverse order."""
+
+        return super(XsBitArray, self).prepend(bits)
+
+    def prepend(self, bits):
+        """Prepend the contents of a bitstring to this one, but in reverse order."""
+
+        return super(XsBitArray, self).append(bits)
+
+    def __add__(self, bits):
+        """Concatenate the contents of two bitstrings, but in the opposite order."""
+
+        b = self._copy()
+        b.append(bits)
+        return b
+
+    def __radd__(self, bits):
+        """Concatenate the contents of two bitstrings, but in the opposite order."""
+
+        b = self._copy()
+        b.prepend(bits)
+        return b
+
+    def __iadd__(self, bits):
+        """Append the contents of a bitstring to this one, but in reverse order."""
+
+        self = self + bits
+        return self
+
+    def head(self, length=1):
+        """Return the first set of transmitted or received bits from a bitstring."""
+
+        return self[self.len - length:]
+
+    def tail(self, length=1):
+        """Return the last set of transmitted or received bits from a bitstring."""
+
+        return self[:length]
+
+    def pop_field(self, length):
+        """Remove the first set of transmitted or received bits from a bitstring and return it."""
+
+        field = self.head(length)  # Get the bits in the field.
+        del self[self.len - length:]  # Remove the field from the bit string.
+        return field
+
+    def to_usb(self):
         """Convert a bitstring into a byte array with the bits in each byte
            ordered correctly for transmission over USB to an XESS board.
-           XsBitArray order:      b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 ...
-           USB buffer bit order: |b7 b6 b5 b4 b3 b2 b1 b0|b15 b14 b13 b12 b11 b10 b9 b8|...
         """
 
-        # Create a temporary bit array from this bit array, but guaranteed to have multiple-of-8 number of bits
-        # with each 8-bit field flipped to account for the xmit reversal done in the XESS firmware.
-        
-        bytes = self.tobytes() # Eight-bit bytes with 0 bits padded after the MS bit position.
-        bytes = bytes[::-1] # Reverse the order of the bytes so last byte to send comes first.
-        bits = XsBitArray(bytes=bytes) # Create a bit string from the bytes.
-        bits.reverse() # Now reverse the order of the entire bit string.
-        # At this point, the original bit string has been extended to a multiple of eight bits
-        # and the order of each eight-bit field has been flipped.
-        return bits.tobytes() # Return a byte array for sending over USB link.
-        
+        # The bit strings are stored with the first transmitted bit at the highest index like so:
+        #       XsBitArray order: | b15 b14 b13 b12 b11 b10 b9 b8 | b7 b6 b5 b4 b3 b2 b1 b0 |
+        # But the XESS board expects to get a USB packet with bytes where the least-significant bit
+        # of the first byte is the first bit to transmit:
+        #       USB buffer bit order: | b7 b6 b5 b4 b3 b2 b1 b0 | b15 b14 b13 b12 b11 b10 b9 b8 |
+        # So this function pads the bit string so it consists of complete bytes, converts
+        # the bitstring into bytes, and finally reverses the order of the bytes.
+        bits = self + XsBitArray((8 - self.len % 8) % 8)  # Pad the bitstring to make complete bytes.
+        return bits.tobytes()[::-1]  # Convert bit string to bytes and reverse their order.
+
     @staticmethod
-    def from_usb_buffer(usb_buffer, num_bits=0):
+    def from_usb(usb_bytes, length=0):
         """Create a bitstring from a byte array received over USB
            so that the bit ordering of the bytes is correct.
-           USB buffer bit order: |b7 b6 b5 b4 b3 b2 b1 b0|b15 b14 b13 b12 b11 b10 b9 b8|...
-           XsBitArray order:      b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 ...
         """
-        
-        # Create a bit array from the USB bytes and then reverse the bit order of each byte.
-        # Then truncate to the desired length starting from the most-significant bits.
-        bits = XsBitArray(bytes=usb_buffer) # Create a bit string from the USB bytes.
-        bits.reverse() # Reverse the entire string of bits so the first received bits are near the end.
-        bits.byteswap() # Reverse the bytes so the first received bits are now at the start.
-        # At this point, the original bytes in the USB buffer have each been reversed in place.
-        # Now, truncate any unwanted bits from the last-received end of the bit string.
-        if num_bits > 0:
-            del bits[num_bits:]
-        return bits
+
+        # The bytes sent by XESS boards contain the first received bit in the least-significant bit
+        # of the first byte as follows:
+        #       USB buffer bit order: | b7 b6 b5 b4 b3 b2 b1 b0 | b15 b14 b13 b12 b11 b10 b9 b8 |
+        # This has to be converted into a bit string with the first received bit at the highest index like so:
+        #       XsBitArray order: | b15 b14 b13 b12 b11 b10 b9 b8 | b7 b6 b5 b4 b3 b2 b1 b0 |
+        # So this function reverses the byte order, creates a bit string, and then cuts it to length.
+        bits = XsBitArray(bytes=usb_bytes[::-1])  # Create a bit string from the reversed USB bytes.
+        return bits[-length:]
 
     def __getattr__(self, name):
         """Return the unsigned, integer or string representation of a bit array."""
 
-        if name == 'int' or name == 'integer':
-            bits = self[:]
-            bits.reverse()
-            return getattr(super(XsBitArray, bits), 'int')
+        if name == 'integer':
+            name = 'int'
         elif name == 'unsigned':
-            bits = self[:]
-            bits.reverse()
-            return getattr(super(XsBitArray, bits), 'uint')
+            name = 'uint'
         elif name == 'string':
-            bits = self[:]
-            bits.reverse()
-            return getattr(super(XsBitArray, bits), 'bin')[2:]
-        else:
-            return getattr(super(XsBitArray, bits), name)
+            name = 'bin'
+        return getattr(super(XsBitArray, self), name)
+
+
+if __name__ == '__main__':
+    logging.root.setLevel(logging.DEBUG)
+    a = XsBitArray('0b00010')
+    b = XsBitArray('0b1111001')
+    c = a + b
+    print a, b, c
+    print repr(c.to_usb())

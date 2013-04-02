@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+
 # **********************************************************************
 #   This program is free software; you can redistribute it and/or
 #   modify it under the terms of the GNU General Public License
@@ -34,8 +35,8 @@ class XsHostIo:
 
     """Base object for performing USB I/O between XESS board and host PC."""
 
-    USER1_INSTR = XsBitArray('0b000010', reverse=True)
-    USER2_INSTR = XsBitArray('0b000011', reverse=True)
+    USER1_INSTR = XsBitArray('0b000010')
+    USER2_INSTR = XsBitArray('0b000011')
 
     def __init__(
         self,
@@ -63,15 +64,15 @@ class XsHostIo:
 
         assert self.xsjtag != None
         self.xsjtag.reset_tap()  # Reset TAP FSM to test-logic-reset state.
+
         # Send TAP FSM to the shift-ir state.
-        self.xsjtag.go_thru_tap_states('Run-Test/Idle', 'Select-DR-Scan'
-                , 'Select-IR-Scan', 'Capture-IR', 'Shift-IR')
+        self.xsjtag.go_thru_tap_states('Run-Test/Idle', 'Select-DR-Scan', 'Select-IR-Scan', 'Capture-IR', 'Shift-IR')
+
         # Now enter the USER1 JTAG instruction into the IR and go to the update-ir state.
         self.xsjtag.shift_tdi(tdi=self.user_instr, do_exit_shift=True)
-        # USER instruction is now active, so transfer to the shift-dr state where
-        # data transfers will occur.
-        self.xsjtag.go_thru_tap_states('Update-IR', 'Select-DR-Scan',
-                'Capture-DR', 'Shift-DR')
+
+        # USER instruction is now active, so transfer to the shift-dr state where data transfers will occur.
+        self.xsjtag.go_thru_tap_states('Update-IR', 'Select-DR-Scan', 'Capture-DR', 'Shift-DR')
         self.xsjtag.flush()
 
     def reset(self):
@@ -82,20 +83,12 @@ class XsHostIo:
     def send_rcv(self, payload, num_result_bits):
         """Send a bit array payload and then return a results bit array with num_result_bits."""
 
-        logging.debug('Send ' + str(payload.len) + ' bits. Receive '
-                       + str(num_result_bits) + ' bits.')
+        logging.debug('Send ' + str(payload.len) + ' bits. Receive ' + str(num_result_bits) + ' bits.')
 
         # Create the TDI bit array by concatenating the module ID, number of bits in the payload, and the payload bits.
-        # tdi_bits = self.module_id[:]
-        # num_payload_bits = XsBitArray(uint = payload.len + num_result_bits, length=32)
-        # tdi_bits.append(num_payload_bits)
-        # payload_bits = XsBitArray(payload[:])
-        # tdi_bits.append(payload_bits)
-        tdi_bits = payload + XsBitArray(uintbe = payload.len + num_result_bits, length=32) + self.module_id
-        tdi_bits.reverse()
+        tdi_bits = self.module_id + XsBitArray(uint=payload.len + num_result_bits, length=32) + payload
 
         logging.debug('Module ID = ' + repr(self.module_id))
-        #logging.debug('# payload bits = ' + repr(num_payload_bits))
         logging.debug('payload = ' + repr(payload))
         logging.debug('# TDI bits = ' + str(tdi_bits.len))
         logging.debug('TDI = ' + repr(tdi_bits))

@@ -32,10 +32,10 @@ class XsDutIo(XsHostIo):
     """Object for forcing inputs and reading outputs from a device-under-test (DUT)."""
 
     # DUT opcodes.
-    _NOP_OPCODE   = XsBitArray(bin='00')
-    _READ_OPCODE  = XsBitArray(bin='11')  # Read DUT outputs.
-    _WRITE_OPCODE = XsBitArray(bin='10')  # Write to DUT inputs.
-    _SIZE_OPCODE  = XsBitArray(bin='01')  # Get number of inputs and outputs of DUT.
+    _NOP_OPCODE   = XsBitArray('0b00')
+    _READ_OPCODE  = XsBitArray('0b11')  # Read DUT outputs.
+    _WRITE_OPCODE = XsBitArray('0b10')  # Write to DUT inputs.
+    _SIZE_OPCODE  = XsBitArray('0b01')  # Get number of inputs and outputs of DUT.
     _SIZE_RESULT_LENGTH = 16  # Length of _SIZE_OPCODE result.
 
     def __init__(
@@ -109,27 +109,31 @@ class XsDutIo(XsHostIo):
         """Return the (total_dut_input_width, total_dut_output_width) of the DUT."""
 
         SKIP_CYCLES = 1  # Skip cycles between issuing command and reading back result.
+
         # Send the opcode and then read back the bits with the DUT's #inputs and #outputs.
         params = self.send_rcv(payload=self._SIZE_OPCODE,
                                num_result_bits=self._SIZE_RESULT_LENGTH + SKIP_CYCLES)
-        params = params[SKIP_CYCLES:]  # Remove the skipped cycles.
+        params.pop_field(SKIP_CYCLES)  # Remove the skipped cycles.
+
         # The number of DUT inputs is in the first half of the bit array.
-        total_dut_input_width = params[:self._SIZE_RESULT_LENGTH / 2].unsigned
+        total_dut_input_width = params.pop_field(self._SIZE_RESULT_LENGTH / 2).unsigned
+
         # The number of DUT outputs is in the last half of the bit array.
-        total_dut_output_width = params[self._SIZE_RESULT_LENGTH / 2:].unsigned
+        total_dut_output_width = params.pop_field(self._SIZE_RESULT_LENGTH / 2).unsigned
         return (total_dut_input_width, total_dut_output_width)
 
     def read(self):
         """Return a list of bit arrays for the DUT output fields."""
 
         SKIP_CYCLES = 1  # Skip cycles between issuing command and reading back result.
+
         # Send the READ_OPCODE and then read back the bits with the DUT's output values.
         result = self.send_rcv(payload=self._READ_OPCODE,
                                num_result_bits=self.total_dut_output_width + SKIP_CYCLES)
-        result = result[SKIP_CYCLES:]  # Remove the skipped cycles.
-        result.reverse()
+        result.pop_field(SKIP_CYCLES)  # Remove the skipped cycles.
         assert result.len == self.total_dut_output_width
         logging.debug('Read result = ' + repr(result))
+
         if len(self._dut_output_widths) == 1:
             # Return the result bit array if there's only a single output field.
             return result
@@ -137,8 +141,7 @@ class XsDutIo(XsHostIo):
             # Otherwise, partition the result bit array into the given output field widths.
             outputs = []
             for w in self._dut_output_widths:
-                outputs.append(result[-w:])
-                result = result[:-w]
+                outputs.append(result.pop_field(w))
             return outputs
 
     Read = read  # Associate the old Read() method with the new read() method.
@@ -148,18 +151,20 @@ class XsDutIo(XsHostIo):
 
         # You need as many input bit arrays as there are input fields.
         assert len(inputs) == len(self._dut_input_widths)
+
         # Start the payload with the WRITE_OPCODE.
         payload = XsBitArray(self._WRITE_OPCODE[:])
+
         # Concatenate the DUT input field bit arrays to the payload.
         for (inp, width) in zip(inputs, self._dut_input_widths):
             if isinstance(inp, (int, bool)):
                 # Convert the integer to a bit array and concatenate it.
-                payload = XsBitArray(uintbe=inp, length=width) + payload
-                #payload.append(XsBitArray(uint=inp, length=width))
+                payload += XsBitArray(uint=inp, length=width)
             else:
                 # Assume it's a bit array, so just concatenate it.
-                payload = inp + payload
+                payload += inp
         assert payload.len > self._WRITE_OPCODE.len
+
         # Send the payload to force the bit arrays onto the DUT inputs.
         self.send_rcv(payload=payload, num_result_bits=0)
 

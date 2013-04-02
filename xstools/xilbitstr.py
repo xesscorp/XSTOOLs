@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+
 # **********************************************************************
 #   This program is free software; you can redistribute it and/or
 #   modify it under the terms of the GNU General Public License
@@ -20,7 +21,7 @@
 # **********************************************************************
 
 """
-Xilinx bitstream object.
+Xilinx FPGA configuration bitstream object.
 """
 
 import os
@@ -44,7 +45,7 @@ class XilinxBitstream:
             self.from_file(filename=self.filename)
 
     def from_file(self, filename):
-        """Load object from .bit file."""
+        """Load a bitstream from .bit file."""
 
         try:
             bitfile = ConstBitStream(filename=filename)
@@ -63,10 +64,11 @@ class XilinxBitstream:
         COMPILE_DATE_FC = 0x63
         COMPILE_TIME_FC = 0x64
         BITSTREAM_FC = 0x65
+
         # Extract the fields from the bitstream file.
         while True:
             if bitfile.pos == bitfile.len:
-                break   # EOF
+                break  # EOF
             field_code = bitfile.read(8).uint
             if field_code == DESIGN_NAME_FC:
                 field_length = bitfile.read(16).uint * 8
@@ -87,13 +89,12 @@ class XilinxBitstream:
             elif field_code == BITSTREAM_FC:
                 field_length = bitfile.read(32).uint * 8
                 self.bits = XsBitArray(bitfile.read(field_length))
+                self.bits.reverse()  # Reverse the config bits so the 1st bit to transmit is at the highest bit index.
             else:
-                raise XsMajorError("Unknown field %d at position %d in bit file '%s'."
-                                   % (field_code, bitfile.pos-8, self.filename))
+                raise XsMajorError("Unknown field %d at position %d in bit file '%s'." % (field_code, bitfile.pos - 8, self.filename))
 
         logging.debug(
-            'Bitstream file %s with design %s was compiled for %s at %s on %s into a bitstream of length %d'
-                ,
+            'Bitstream file %s with design %s was compiled for %s at %s on %s into a bitstream of length %d',
             self.filename,
             self.design_name,
             self.device_type,
