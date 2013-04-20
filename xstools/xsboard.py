@@ -42,18 +42,28 @@ class XsBoard:
     install_dir = os.path.dirname(__file__)
     
     @classmethod
-    def get_xsboard(cls, xsusb_id=0):
+    def get_xsboard(cls, xsusb_id=0, xsboard_name=None):
         """Detect which type of XESS board is connected to a USB port."""
+        
+        if xsboard_name == 'xula-50':
+            return Xula50(xsusb_id)
+        elif xsboard_name == 'xula-200':
+            return Xula200(xsusb_id)
+        elif xsboard_name == 'xula2-lx25':
+            return Xula2lx25(xsusb_id)
         
         xsboard = Xula50(xsusb_id)
         if xsboard.is_connected():
             return xsboard
+    
         xsboard = Xula200(xsusb_id)
         if xsboard.is_connected():
             return xsboard
+    
         xsboard = Xula2lx25(xsusb_id)
         if xsboard.is_connected():
             return xsboard
+
         return None
 
     def __init__(self, xsusb_id=0):
@@ -116,12 +126,14 @@ class XsBoard:
         except Exception as e:
             raise(e)
 
-    def update_firmware(self, hexfile):
+    def update_firmware(self, hexfile=None):
         """Re-flash microcontroller with new firmware from hex file."""
 
         try:
             PUBSUB.sendMessage("Progress.Phase", msg="Updating firmware")
             self.xsusb.enter_reflash_mode()
+            if hexfile == None:
+                hexfile = self.firmware
             self.micro.program_flash(hexfile)
             self.xsusb.enter_user_mode()
             PUBSUB.sendMessage("Xsboard.Progress.Phase", msg="Firmware update done")
@@ -132,6 +144,8 @@ class XsBoard:
         """Compare the microcontroller firmware to the contents of a hex file."""
         
         self.xsusb.enter_reflash_mode()
+        if hexfile == None:
+            hexfile = self.firmware
         self.micro.verify_flash(hexfile)
         self.xsusb.enter_user_mode()
         
@@ -174,6 +188,7 @@ class Xula(XsBoard):
     
     name = "XuLA"
     dir = os.path.join(XsBoard.install_dir ,"xula/")
+    firmware = os.path.join(dir, "Firmware/XuLA_jtag.hex")
 
     def set_flags(self, boot, jtag):
         """Set nonvolatile flags controlling the XuLA behavior."""
@@ -213,6 +228,7 @@ class Xula2(XsBoard):
     
     name = "XuLA2"
     dir = os.path.join(XsBoard.install_dir ,"xula2/")
+    firmware = os.path.join(dir, "Firmware/XuLA_jtag.hex")
 
     def set_flags(self, boot, jtag):
         """Set nonvolatile flags controlling the XuLA behavior."""

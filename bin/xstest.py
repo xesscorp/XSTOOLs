@@ -42,8 +42,7 @@ import string
 from argparse import ArgumentParser
 import xstools.xsboard as XSBOARD
 import xstools.xserror as XSERROR
-
-VERSION = '6.0.2'
+from xstools_defs import *
 
 p = ArgumentParser(description='Run self-test on an XESS board.')
     

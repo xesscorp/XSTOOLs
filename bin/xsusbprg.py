@@ -46,17 +46,16 @@ import string
 from argparse import ArgumentParser
 import xstools.xsboard as XSBOARD
 import xstools.xserror as XSERROR
-
-VERSION = '6.0.2'
+from xstools_defs import *
 
 p = ArgumentParser(description='Program a firmware hex file into the microcontroller on an XESS board.')
     
-p.add_argument('-f', '--filename', type=str, required=True,
+p.add_argument('-f', '--filename', type=str, default=None,
                help='The name of the firmware hex file.')
 p.add_argument('-u', '--usb', type=int, default=0,
                help='The USB port number for the XESS board. If you only have one board, then use 0.')
 p.add_argument('-b', '--board', type=str, default='xula-200',
-               help='***DEPRECATED*** The XESS board type (e.g., xula-200)')
+               help='The XESS board type (e.g., xula-200)')
 p.add_argument('-m', '--multiple', action='store_const', const=True,
                default=False, help='Program multiple boards each time a board is detected on the USB port.')
 p.add_argument('--verify', action='store_const', const=True, default=False,
@@ -71,7 +70,7 @@ while(True):
     num_boards = XSBOARD.XsUsb.get_num_xsusb()
     if num_boards > 0:
         if 0 <= args.usb < num_boards:
-            xs_board = XSBOARD.XsBoard.get_xsboard(args.usb)
+            xs_board = XSBOARD.XsBoard.get_xsboard(args.usb, args.board)
             try:
                 if args.verify == True:
                     print 'Verifying microcontroller firmware against %s.' % args.filename

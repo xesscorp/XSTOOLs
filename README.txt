@@ -10,16 +10,14 @@ utilities that use these classes to perform operations on
 XESS boards.
 
 Install steps for Ubuntu/Debian
+===================================
+#. ``sudo apt-get install python-pip``
+#. ``sudo pip install xstools``
+
+Install steps for Windows
 ==========================
-sudo apt-get install python-setuptools
-git clone git://github.com/xesscorp/XSTOOLs.git
-cd XSTOOLs
-python setup.py build
-sudo python setup.py install
-
-cd
-xsload.py --help
-
+#. Install some version of python (e.g., www.activestate.com).
+#. ``easy_install xstools``
 
 Contributors
 ==========================
