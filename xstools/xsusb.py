@@ -25,9 +25,16 @@ USB interface class for XESS FPGA boards.
 
 import time
 import logging
+import sys
+import os
+import fcntl
+import struct
 import usb.core
 import usb.util
 from xserror import *
+
+
+
 
 
 class XsUsb:
@@ -91,6 +98,45 @@ class XsUsb:
     
     # This array will store the currently-active XESS USB devices.
     _xsusb_devs = []
+    old_xsusb_devs = []
+
+    # Linux ioctl numbers made easy!
+    # WDIOC_GETSUPPORT = _IOR(ord('W'), 0, "=II32s")
+
+    # constant for linux portability
+    _IOC_NRBITS = 8
+    _IOC_TYPEBITS = 8
+
+    # architecture specific
+    _IOC_SIZEBITS = 14
+    _IOC_DIRBITS = 2
+
+    _IOC_NRMASK = (1 << _IOC_NRBITS) - 1
+    _IOC_TYPEMASK = (1 << _IOC_TYPEBITS) - 1
+    _IOC_SIZEMASK = (1 << _IOC_SIZEBITS) - 1
+    _IOC_DIRMASK = (1 << _IOC_DIRBITS) - 1
+
+    _IOC_NRSHIFT = 0
+    _IOC_TYPESHIFT = _IOC_NRSHIFT + _IOC_NRBITS
+    _IOC_SIZESHIFT = _IOC_TYPESHIFT + _IOC_TYPEBITS
+    _IOC_DIRSHIFT = _IOC_SIZESHIFT + _IOC_SIZEBITS
+
+    _IOC_NONE = 0
+    _IOC_WRITE = 1
+    _IOC_READ = 2
+
+    def _IOC(dir, type, nr, size):
+        if isinstance(size, str) or isinstance(size, unicode):
+            size = struct.calcsize(size)
+        return dir  << _IOC_DIRSHIFT  | \
+               type << _IOC_TYPESHIFT | \
+               nr   << _IOC_NRSHIFT   | \
+               size << _IOC_SIZESHIFT
+
+    def _IO(type, nr): return _IOC(_IOC_NONE, type, nr, 0)
+    def _IOR(type, nr, size): return _IOC(_IOC_READ, type, nr, size)
+    def _IOW(type, nr, size): return _IOC(_IOC_WRITE, type, nr, size)
+    def _IOWR(type, nr, size): return _IOC(_IOC_READ | _IOC_WRITE, type, nr, size)
 
     @classmethod
     def get_xsusb_ports(cls):
@@ -179,20 +225,85 @@ class XsUsb:
         self.write(cmd)
         
     def disconnect(self):
-        """Disconnect the XESS board from the USB link."""
+        """Disconnect the XESS Board from the USB link."""
         if self._dev != None:
             usb.util.dispose_resources(self._dev)
-        self._dev = None
+            self._dev.__del__()
+            self._dev = None
+        
+    def _is_connected(self):
+        """Determine if the XsUsb object's USB connection is still present."""
+        
+        # Store previous XSUSB devices.
+        self.old_xsusb_devs = self._xsusb_devs[:]
 
+        # Get all active XsUsb devices.
+        devs = XsUsb.get_xsusb_ports()
+
+        # Look for one with the same address and bus as this one.
+        for i in range(len(devs)):
+            if devs[i].bus == self._bus and devs[i].address == self._address:
+                #sys.stderr.write('Connected at same bus/address\n')
+                self._dev = devs[i]
+                return True # This device is connected.
+
+        # Look for a different port that wasn't there before.
+        for i in range(len(devs)):
+            found = False
+            for j in range(len(self.old_xsusb_devs)):
+                if devs[i]._bus == self.old_xsusb_devs[j]._bus and devs[i]._address == self.old_xsusb_devs[j]._address:
+                    found = True
+                    break
+            if not found:
+                # Assume this newly-discovered port is the one connected to this XESS board.
+                self._dev = devs[i]
+                self._address = devs[i].address
+                self._bus = devs[i].bus
+                #sys.stderr.write('Connected at *different* bus/address\n')
+                return True
+        
+        #sys.stderr.write('Not connected\n')
+        self._dev = None
+        return False # This device is not connected.
+        
     def reset(self):
         """Reset the XESS board."""
-
+        
+        # Reset the XESS board.
         cmd = bytearray([self.RESET_CMD])
         self.write(cmd)
-        self.disconnect()
-        time.sleep(2)
-        self.__init__(self._xsusb_id, self._endpoint)
-
+        
+        # Reset the USB connection to the board.
+        if os.name == 'nt':
+            self._dev.reset()
+        else:
+            # Use ioctl to do a USB reset. 
+            # usb_device_filename = os.path.join('/dev/bus/usb', '%03d' % self._bus, '%03d' % self._address)
+            # fd = open(usb_device_filename, 'a+b')
+            # fcntl.ioctl(fd, _IO(ord('U'), 20))
+            # self.disconnect()
+            # linux doesn't re-enumerate the USB port when reset(), so disconnect/reconnect handles that.
+            print 'Please disconnect your XESS board...',
+            sys.stdout.flush()
+        
+        # Wait for the USB connection to disappear.
+        while self._is_connected():
+            pass
+            
+        if os.name != 'nt':
+            print 'thanks!'
+            print 'Please reconnect your XESS board...',
+            sys.stdout.flush()
+            
+        # # Wait for the USB connection to re-establish itself.
+        while not self._is_connected():
+            pass
+            
+        # Let's be polite to our linux friends.
+        if os.name != 'nt':
+            print 'thanks!'
+            sys.stdout.flush()
+            
     def get_info(self):
         """Return the info string stored in the XESS board."""
 
@@ -284,6 +395,7 @@ class XsUsb:
     def enter_reflash_mode(self):
         """Set EEDATA mode flag and reset microcontroller into flash programming mode."""
 
+        sys.stderr.write('Entering Boot Mode...\n')
         self.write_eedata(self.BOOT_SELECT_FLAG_ADDR,
                           self.BOOT_INTO_REFLASH_MODE)
         self.reset()
@@ -291,6 +403,7 @@ class XsUsb:
     def enter_user_mode(self):
         """Set EEDATA mode flag and reset microcontroller into user mode."""
 
+        sys.stderr.write('Entering User Mode...\n')
         self.write_eedata(self.BOOT_SELECT_FLAG_ADDR,
                           self.BOOT_INTO_USER_MODE)
         self.reset()
@@ -312,5 +425,8 @@ if __name__ == '__main__':
     print '#XSUSB = %d' % XsUsb.get_num_xsusb()
     # Create a link for talking over USB to an XESS USB device.
     xsusb = XsUsb()
+    xsusb.reset()
+    xsusb.reset()
+    xsusb.reset()
     # Just write something to the device and see if it responds (i.e., its LED blinks).
-    xsusb.write([0x01, 0x02, 0x03, 0x04])
+    #xsusb.write([0x01, 0x02, 0x03, 0x04])
