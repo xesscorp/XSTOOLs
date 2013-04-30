@@ -1,3 +1,7 @@
+v0.1.6, 04/30/2013 -- Fixed xsusbprg.py so it works under linux.
+                      Fixed USB read/write timeouts so they are dependent upon the amount of data transferred.
+                      Replaced exit() with sys.exit() in scripts.
+
 v0.1.5, 04/19/2013 -- Added XuLA firmware .hex files for use with xsusbprg.py.
                       Fixed xsusbprg.py so it would upgrade XuLA board firmware by default.
                       All user-accessible scripts now use xstools_defs.py to get a unified version #.
