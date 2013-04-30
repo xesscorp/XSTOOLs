@@ -27,15 +27,12 @@ import time
 import logging
 import sys
 import os
-import fcntl
+import math
+#import fcntl
 import struct
 import usb.core
 import usb.util
 from xserror import *
-
-
-
-
 
 class XsUsb:
 
@@ -44,7 +41,8 @@ class XsUsb:
     _VENDOR_ID = 0x04d8
     _PRODUCT_ID = 0xff8c
     _DEFAULT_ENDPOINT = 0x01
-    _USB_XFER_TIMEOUT = 1000  # USB read/write transfer timeout in milliseconds.
+    _BIT_RATE = 1.0e6 # USB bit-rate of 1 Mbps.
+    _MIN_TIME_OUT = 500 # Smallest timeout for USB read or write operation.
 
     #  Commands understood by XESS FPGA boards.
     READ_VERSION_CMD = 0x00  # Read the product version information.
@@ -98,7 +96,7 @@ class XsUsb:
     
     # This array will store the currently-active XESS USB devices.
     _xsusb_devs = []
-    old_xsusb_devs = []
+    _usb_discard_pile = []
 
     # Linux ioctl numbers made easy!
     # WDIOC_GETSUPPORT = _IOR(ord('W'), 0, "=II32s")
@@ -143,9 +141,18 @@ class XsUsb:
         """Return the device descriptors for all XESS boards attached to USB ports."""
 
         # Get the currently-active XESS USB devices.
-        devs = usb.core.find(idVendor=cls._VENDOR_ID,
-                   idProduct=cls._PRODUCT_ID, find_all=True)
-                   
+        # The find() routine throws exceptions under linux when XESS boards are
+        # connected/reconnected, so catch the exceptions.
+        while(True):
+            try:
+                devs = usb.core.find(idVendor=cls._VENDOR_ID,
+                       idProduct=cls._PRODUCT_ID, find_all=True)
+            except usb.core.USBError:
+                # Keep trying until the exceptions stop.
+                continue
+            # Exit the loop once find() completes without an exception.
+            break
+            
         # Compare them to the previous set of active XESS USB devices.
         for i in range(len(devs)):
             for d in cls._xsusb_devs:
@@ -164,15 +171,11 @@ class XsUsb:
 
         return len(cls.get_xsusb_ports())
         
-    def get_hash(self):
-        return 256 * self._bus + self._address
-        
     def get_xsusb_id(self):
-        hash = self.get_hash()
         devs = XsUsb.get_xsusb_ports()
         indexed_devs = zip(range(0,len(devs)), devs)
         for index, dev in indexed_devs:
-            if hash == 256 * dev.bus + dev.address:
+            if (self._dev.bus, self._dev.address) == (dev.bus, dev.address):
                 return index
         return None
 
@@ -184,10 +187,12 @@ class XsUsb:
             raise XsMinorError('XESS USB device could not be found.')
         self._xsusb_id = xsusb_id
         self._dev = devs[xsusb_id]
-        self._address = devs[xsusb_id].address
-        self._bus = devs[xsusb_id].bus
         self._endpoint = endpoint
         self.terminate = False
+        
+    def calc_time_out(self,num_bytes):
+        """Calculate USB transaction interval (in milliseconds) for a given bit-rate."""
+        return max(int(math.ceil(num_bytes * 8 / self._BIT_RATE * 1000)), self._MIN_TIME_OUT)
 
     def write(self, bytes):
         """Write a byte array to an XESS board."""
@@ -197,20 +202,22 @@ class XsUsb:
             raise XsTerminate()
 
         logging.debug('OUT => (%d) %s', len(bytes), str([bin(x | 0x100)[3:] for x in bytes]))
+        time_out = self.calc_time_out(len(bytes))
         if self._dev.write(usb.util.ENDPOINT_OUT | self._endpoint,
-                           bytes, 0, self._USB_XFER_TIMEOUT) \
+                           bytes, 0, time_out) \
             != len(bytes):
             raise XsMajorError('Failed to write required number of bytes over the USB link')
 
-    def read(self, num_bytes=0x00):
+    def read(self, num_bytes=0):
         """Return a byte array read from an XESS board."""
 
         if self.terminate:
             self.terminate = False
             raise XsTerminate()
 
+        time_out = self.calc_time_out(num_bytes)
         bytes = self._dev.read(usb.util.ENDPOINT_IN | self._endpoint,
-                               num_bytes, 0, self._USB_XFER_TIMEOUT)
+                               num_bytes, 0, time_out)
         if len(bytes) != num_bytes:
             raise XsMajorError('Failed to read required number of bytes over the USB link'
                                )
@@ -228,42 +235,42 @@ class XsUsb:
         """Disconnect the XESS Board from the USB link."""
         if self._dev != None:
             usb.util.dispose_resources(self._dev)
-            self._dev.__del__()
+            # linux has a hard time when deleting USB ports that no longer exist,
+            # so keep the USB devices on a discard pile so they won't get cleaned.
+#            self._usb_discard_pile.append(self._dev)
             self._dev = None
         
     def _is_connected(self):
         """Determine if the XsUsb object's USB connection is still present."""
         
         # Store previous XSUSB devices.
-        self.old_xsusb_devs = self._xsusb_devs[:]
+        prev_devs = self._xsusb_devs[:]
 
         # Get all active XsUsb devices.
         devs = XsUsb.get_xsusb_ports()
 
         # Look for one with the same address and bus as this one.
         for i in range(len(devs)):
-            if devs[i].bus == self._bus and devs[i].address == self._address:
-                #sys.stderr.write('Connected at same bus/address\n')
+            if devs[i].bus == self._dev.bus and devs[i].address == self._dev.address:
                 self._dev = devs[i]
                 return True # This device is connected.
 
         # Look for a different port that wasn't there before.
         for i in range(len(devs)):
-            found = False
-            for j in range(len(self.old_xsusb_devs)):
-                if devs[i]._bus == self.old_xsusb_devs[j]._bus and devs[i]._address == self.old_xsusb_devs[j]._address:
-                    found = True
+            new_port = True
+            for j in range(len(prev_devs)):
+                if devs[i].bus == prev_devs[j].bus and devs[i].address == prev_devs[j].address:
+                    new_port = False
                     break
-            if not found:
+            if new_port:
                 # Assume this newly-discovered port is the one connected to this XESS board.
+                # linux throws exceptions when deleting USB ports that no longer exist,
+                # so keep the USB devices on a discard pile so they won't get cleaned.
+#                self._usb_discard_pile.append(self._dev)
                 self._dev = devs[i]
-                self._address = devs[i].address
-                self._bus = devs[i].bus
-                #sys.stderr.write('Connected at *different* bus/address\n')
                 return True
         
-        #sys.stderr.write('Not connected\n')
-        self._dev = None
+        #self._dev = None
         return False # This device is not connected.
         
     def reset(self):
@@ -275,15 +282,16 @@ class XsUsb:
         
         # Reset the USB connection to the board.
         if os.name == 'nt':
+            # On Windows, this re-enumerates the USB devices.
             self._dev.reset()
+            time.sleep(2)
         else:
-            # Use ioctl to do a USB reset. 
-            # usb_device_filename = os.path.join('/dev/bus/usb', '%03d' % self._bus, '%03d' % self._address)
+            # Use ioctl to do a USB reset. *** THIS DID NOT WORK! ***
+            # usb_device_filename = os.path.join('/dev/bus/usb', '%03d' % self._dev.bus, '%03d' % self._dev.address)
             # fd = open(usb_device_filename, 'a+b')
             # fcntl.ioctl(fd, _IO(ord('U'), 20))
-            # self.disconnect()
-            # linux doesn't re-enumerate the USB port when reset(), so disconnect/reconnect handles that.
-            print 'Please disconnect your XESS board...',
+            # linux doesn't re-enumerate the USB port when reset(), so a manual disconnect/reconnect handles that.
+            print 'Please disconnect your XESS board ...',
             sys.stdout.flush()
         
         # Wait for the USB connection to disappear.
@@ -292,7 +300,7 @@ class XsUsb:
             
         if os.name != 'nt':
             print 'thanks!'
-            print 'Please reconnect your XESS board...',
+            print 'Please reconnect your XESS board ...',
             sys.stdout.flush()
             
         # # Wait for the USB connection to re-establish itself.
@@ -395,7 +403,6 @@ class XsUsb:
     def enter_reflash_mode(self):
         """Set EEDATA mode flag and reset microcontroller into flash programming mode."""
 
-        sys.stderr.write('Entering Boot Mode...\n')
         self.write_eedata(self.BOOT_SELECT_FLAG_ADDR,
                           self.BOOT_INTO_REFLASH_MODE)
         self.reset()
@@ -403,7 +410,6 @@ class XsUsb:
     def enter_user_mode(self):
         """Set EEDATA mode flag and reset microcontroller into user mode."""
 
-        sys.stderr.write('Entering User Mode...\n')
         self.write_eedata(self.BOOT_SELECT_FLAG_ADDR,
                           self.BOOT_INTO_USER_MODE)
         self.reset()
@@ -422,7 +428,15 @@ class XsUsb:
 
 if __name__ == '__main__':
     # Get the number of XESS USB devices out there.
-    print '#XSUSB = %d' % XsUsb.get_num_xsusb()
+    while(True):
+        sys.stdout.write('Plug it in...\n')
+        while XsUsb.get_num_xsusb() == 0:
+            pass
+        xsusb = XsUsb()
+        sys.stdout.write('Pull it out...\n')
+        while XsUsb.get_num_xsusb() != 0:
+            pass
+            
     # Create a link for talking over USB to an XESS USB device.
     xsusb = XsUsb()
     xsusb.reset()
