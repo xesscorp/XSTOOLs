@@ -28,7 +28,6 @@ import logging
 import sys
 import os
 import math
-#import fcntl
 import struct
 import usb.core
 import usb.util
@@ -96,6 +95,7 @@ class XsUsb:
     
     # This array will store the currently-active XESS USB devices.
     _xsusb_devs = []
+    # This array stores discarded USB devices so their __del__ method doesn't kick in.
     _usb_discard_pile = []
 
     # Linux ioctl numbers made easy!
@@ -147,11 +147,9 @@ class XsUsb:
             try:
                 devs = usb.core.find(idVendor=cls._VENDOR_ID,
                        idProduct=cls._PRODUCT_ID, find_all=True)
+                break # Exit the loop once find() completes without an exception.
             except usb.core.USBError:
-                # Keep trying until the exceptions stop.
-                continue
-            # Exit the loop once find() completes without an exception.
-            break
+                pass # Keep trying until no exceptions occur.
             
         # Compare them to the previous set of active XESS USB devices.
         for i in range(len(devs)):
@@ -237,7 +235,7 @@ class XsUsb:
             usb.util.dispose_resources(self._dev)
             # linux has a hard time when deleting USB ports that no longer exist,
             # so keep the USB devices on a discard pile so they won't get cleaned.
-#            self._usb_discard_pile.append(self._dev)
+            self._usb_discard_pile.append(self._dev)
             self._dev = None
         
     def _is_connected(self):
@@ -263,14 +261,14 @@ class XsUsb:
                     new_port = False
                     break
             if new_port:
-                # Assume this newly-discovered port is the one connected to this XESS board.
                 # linux throws exceptions when deleting USB ports that no longer exist,
                 # so keep the USB devices on a discard pile so they won't get cleaned.
-#                self._usb_discard_pile.append(self._dev)
+                self._usb_discard_pile.append(self._dev)
+                # Assume this newly-discovered port is the one connected to this XESS board.
                 self._dev = devs[i]
                 return True
         
-        #self._dev = None
+        # Keep the USB device around to remember the bus & address where it was connected.
         return False # This device is not connected.
         
     def reset(self):
@@ -284,9 +282,9 @@ class XsUsb:
         if os.name == 'nt':
             # On Windows, this re-enumerates the USB devices.
             self._dev.reset()
-            time.sleep(2)
         else:
             # Use ioctl to do a USB reset. *** THIS DID NOT WORK! ***
+            # import fcntl
             # usb_device_filename = os.path.join('/dev/bus/usb', '%03d' % self._dev.bus, '%03d' % self._dev.address)
             # fd = open(usb_device_filename, 'a+b')
             # fcntl.ioctl(fd, _IO(ord('U'), 20))
@@ -303,7 +301,7 @@ class XsUsb:
             print 'Please reconnect your XESS board ...',
             sys.stdout.flush()
             
-        # # Wait for the USB connection to re-establish itself.
+        # Wait for the USB connection to re-establish itself.
         while not self._is_connected():
             pass
             
