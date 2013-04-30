@@ -41,6 +41,7 @@ Dave took ideas and bits of Hector's code and integrated them
 into this program and the XSTOOLs classes and methods.
 """
 
+import sys
 import string
 from argparse import ArgumentParser
 import xstools.xsboard as XSBOARD
@@ -69,13 +70,13 @@ if num_boards > 0:
             xs_board.configure(args.filename)
         except XSERROR.XsError as e:
             xs_board.xsusb.disconnect()
-            exit()
+            sys.exit()
         print "Success: Bitstream", args.filename, "downloaded into", xs_board.name, "!"
         xs_board.xsusb.disconnect()
-        exit()
+        sys.exit()
     else:
         XSERROR.XsFatalError( "%d is not within USB port range [0,%d]" % (args.usb, num_boards-1))
-        exit()
+        sys.exit()
 else:
     XSERROR.XsFatalError("No XESS Boards found!")
-    exit()
+    sys.exit()

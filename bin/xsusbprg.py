@@ -42,6 +42,8 @@ try:
 except ImportError:
     pass
 
+import sys    
+import os
 import string
 from argparse import ArgumentParser
 import xstools.xsboard as XSBOARD
@@ -79,7 +81,7 @@ while(True):
                 else:
                     print 'Programming microcontroller firmware with %s.' % args.filename
                     xs_board.update_firmware(args.filename)
-                    print 'Programming complete!'
+                    print 'Programming completed!'
             except XSERROR.XsError as e:
                 try:
                     winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
@@ -91,7 +93,10 @@ while(True):
                         pass
                     continue
                 else:
-                    exit()
+                    # Under linux, the creation and destruction of USB ports while programming the PIC's flash
+                    # leaves unconnected ports lieing around that throw errors when they are deleted.
+                    # Therefore, exit this program without cleaning-up to avoid these error messages.
+                    os._exit(0)
             try:
                 winsound.MessageBeep()
             except:
@@ -102,11 +107,14 @@ while(True):
                     pass
                 continue
             else:
-                exit()
+                # Under linux, the creation and destruction of USB ports while programming the PIC's flash
+                # leaves unconnected ports lieing around that throw errors when they are deleted.
+                # Therefore, exit this program without cleaning-up to avoid these error messages.
+                os._exit(0)
         else:
             XSERROR.XsFatalError( "%d is not within USB port range [0,%d]" % (args.usb, num_boards-1))
-            exit()
+            sys.exit()
     elif not args.multiple:
         XSERROR.XsFatalError("No XESS Boards found!")
-        exit()
-exit()
+        sys.exit()
+sys.exit()

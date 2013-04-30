@@ -38,6 +38,7 @@ try:
 except ImportError:
     pass
 
+import sys
 import string
 from argparse import ArgumentParser
 import xstools.xsboard as XSBOARD
@@ -76,7 +77,7 @@ while(True):
                         pass
                     continue
                 else:
-                    exit()
+                    sys.exit()
             print "Success:", xs_board.name, "passed diagnostic test!"
             try:
                 winsound.MessageBeep()
@@ -88,11 +89,11 @@ while(True):
                     pass
                 continue
             else:
-                exit()
+                sys.exit()
         else:
             XSERROR.XsFatalError( "%d is not within USB port range [0,%d]" % (args.usb, num_boards-1))
-            exit()
+            sys.exit()
     elif not args.multiple:
         XSERROR.XsFatalError("No XESS Boards found!")
-        exit()
-exit()
+        sys.exit()
+sys.exit()
