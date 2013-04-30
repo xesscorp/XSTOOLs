@@ -2,10 +2,11 @@ from setuptools import setup
 import sys
 import os
 import shutil
+import subprocess
 
 setup(
     name='XsTools',
-    version='0.1.5',
+    version='0.1.6',
     author='XESS Corp.',
     author_email='info@xess.com',
     packages=['xstools'],
@@ -20,13 +21,17 @@ setup(
     )
 
 if 'install' in sys.argv or 'install_data' in sys.argv:
-    try:
-        shutil.copy('xstools/81-xstools-usb.rules', '/etc/udev/rules.d')
-    except IOError:
-        pass
+    if os.name != 'nt':
+        try:
+            shutil.copy('xstools/81-xstools-usb.rules', '/etc/udev/rules.d')
+            subprocess.call(['udevadm', 'control', '--reload_rules'])
+            subprocess.call(['udevadm', 'trigger'])
+        except IOError:
+            pass
         
 if 'uninstall' in sys.argv:
-    try:
-        os.remove('/etc/udev/rules.d/81-xstools-usb.rules')
-    except OSError:
-        pass
+    if os.name != 'nt':
+        try:
+            os.remove('/etc/udev/rules.d/81-xstools-usb.rules')
+        except OSError:
+            pass
