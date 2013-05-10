@@ -52,7 +52,7 @@ class XsDutIo(XsHostIo):
         module_id = The ID for the DUT I/O module in the FPGA.
         dut_output_widths = A list of widths of the DUT output fields.
         dut_input_widths = A list of widths of the DUT input fields.
-        xsjtag = The Xsjtag USB port object. (Use this if not using xsusb_id.)
+        xsjtag = The XsJtag USB port object. (Use this if not using xsusb_id.)
         """
 
         # Setup the super-class object.

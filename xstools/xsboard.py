@@ -51,7 +51,7 @@ class XsBoard:
             if xsboard_name.lower() == c.name.lower():
                 return c(xsusb_id)
         
-        for c in board.classes:
+        for c in board_classes:
             xsboard = c(xsusb_id)
             if xsboard.is_connected():
                 return xsboard
@@ -127,7 +127,8 @@ class XsBoard:
             PUBSUB.sendMessage("Progress.Phase", msg="Downloading diagostic bitstream")
             self.configure(test_bitstream, silent=True)
             # Create a channel to query the results of the board test.
-            dut = XsDutIo(xsjtag=self.xsjtag, dut_output_widths=[2,1,32], dut_input_widths=1)
+            dut = XsDutIo(xsjtag=self.xsjtag, module_id=self._TEST_MODULE_ID,
+                          dut_output_widths=[2,1,32], dut_input_widths=1)
             # Assert and release the reset for the testing circuit.
             dut.write(1)
             dut.write(0)
@@ -154,6 +155,10 @@ class XsBoard:
 class XulaBase(XsBoard):
 
     """Base class for all XuLA-type boards."""
+    
+    _TEST_MODULE_ID = 0x01
+    _CFG_FLASH_MODULE_ID = 0x02
+    _SDRAM_MODULE_ID = 0x03
 
     def update_firmware(self, hexfile=None):
         """Re-flash microcontroller with new firmware from hex file."""
@@ -180,7 +185,7 @@ class XulaBase(XsBoard):
         
     def create_cfg_flash(self):
         """Create the serial configuration flash for this board."""
-        return W25X(module_id=0xf0, xsjtag=self.xsjtag)
+        return W25X(module_id=self._CFG_FLASH_MODULE_ID, xsjtag=self.xsjtag)
         
     def read_cfg_flash(self, bottom, top):
         self.configure(self.cfg_flash_bitstream, silent=True)
@@ -272,7 +277,9 @@ class Xula2lx25(Xula2):
 
 if __name__ == '__main__':
     import sys
-    xula = Xula200(0)
+#    xula = Xula50(0)
+#    xula = Xula200(0)
+    xula = Xula2lx25(0)
     board_info = xula.get_board_info()
     print repr(board_info)
 
@@ -280,7 +287,7 @@ if __name__ == '__main__':
 
     wr_data = IntelHex()
     for i in range(0x100):
-        wr_data[i] = i 
+        wr_data[i] = (i*75) & 0xff 
     wr_data.write_hex_file(sys.stdout)
 
     print 'Write flash...'

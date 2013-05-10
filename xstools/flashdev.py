@@ -99,7 +99,7 @@ class FlashDevice:
                                     % (hexfile, self.device_name))
 
         (bottom, top) = self._set_blk_bounds(bottom, top, self._WRITE_BLK_SZ)
-        flash = self.read_flash(bottom, top)
+        flash = self.read(bottom, top)
         errors = [(a, flash[a], hexfile[a]) for a in
                   sorted(hexfile.todict().keys()) if flash[a]
                   != hexfile[a] and bottom <= a < top]
@@ -127,6 +127,7 @@ class W25X(FlashDevice):
         0x3012:{'size':2**21, 'name':'20'}, 
         0x3013:{'size':2**22, 'name':'40'}, 
         0x3014:{'size':2**23, 'name':'80'},
+        0x4014:{'size':2**23, 'name':'80'}, # This is actually for a W25Q80 serial flash.
         }
 
     _START_ADDR = 0x00000
