@@ -28,8 +28,8 @@ from pubsub import pub as PUBSUB
 from xserror import *
 from xilfpga import *
 from xsdutio import *
+from flashdev import *
 from picmicro import *
-
 
 class XsBoard:
 
@@ -42,27 +42,19 @@ class XsBoard:
     install_dir = os.path.dirname(__file__)
     
     @classmethod
-    def get_xsboard(cls, xsusb_id=0, xsboard_name=None):
+    def get_xsboard(cls, xsusb_id=0, xsboard_name=''):
         """Detect which type of XESS board is connected to a USB port."""
         
-        if xsboard_name == 'xula-50':
-            return Xula50(xsusb_id)
-        elif xsboard_name == 'xula-200':
-            return Xula200(xsusb_id)
-        elif xsboard_name == 'xula2-lx25':
-            return Xula2lx25(xsusb_id)
+        board_classes = (Xula50, Xula200, Xula2lx25)      
+
+        for c in board_classes:
+            if xsboard_name.lower() == c.name.lower():
+                return c(xsusb_id)
         
-        xsboard = Xula50(xsusb_id)
-        if xsboard.is_connected():
-            return xsboard
-    
-        xsboard = Xula200(xsusb_id)
-        if xsboard.is_connected():
-            return xsboard
-    
-        xsboard = Xula2lx25(xsusb_id)
-        if xsboard.is_connected():
-            return xsboard
+        for c in board.classes:
+            xsboard = c(xsusb_id)
+            if xsboard.is_connected():
+                return xsboard
 
         return None
 
@@ -75,7 +67,7 @@ class XsBoard:
     def reset(self):
         """Reset the XESS board."""
 
-        xsusb.reset()
+        self.xsusb.reset()
 
     def get_board_info(self):
         """Return version information stored in the XESS board as a dictionary."""
@@ -125,32 +117,9 @@ class XsBoard:
             PUBSUB.sendMessage("Progress.Phase", msg="Download complete")
         except Exception as e:
             raise(e)
-
-    def update_firmware(self, hexfile=None):
-        """Re-flash microcontroller with new firmware from hex file."""
-
-        try:
-            PUBSUB.sendMessage("Progress.Phase", msg="Updating firmware")
-            self.xsusb.enter_reflash_mode()
-            if hexfile == None:
-                hexfile = self.firmware
-            self.micro.program_flash(hexfile)
-            self.xsusb.enter_user_mode()
-            PUBSUB.sendMessage("Xsboard.Progress.Phase", msg="Firmware update done")
-        except Exception as e:
-            raise(e)
-
-    def verify_firmware(self, hexfile):
-        """Compare the microcontroller firmware to the contents of a hex file."""
-        
-        self.xsusb.enter_reflash_mode()
-        if hexfile == None:
-            hexfile = self.firmware
-        self.micro.verify_flash(hexfile)
-        self.xsusb.enter_user_mode()
         
     def do_self_test(self, test_bitstream=None):
-        """Load the FPGA with a bitstream to test the board and return true if the board passes."""
+        """Load the FPGA with a bitstream to test the board."""
 
         try:
             if test_bitstream == None:
@@ -158,7 +127,7 @@ class XsBoard:
             PUBSUB.sendMessage("Progress.Phase", msg="Downloading diagostic bitstream")
             self.configure(test_bitstream, silent=True)
             # Create a channel to query the results of the board test.
-            dut = XsDutIo( dut_output_widths=[2,1,32], dut_input_widths=1, xsjtag=self.xsjtag)
+            dut = XsDutIo(xsjtag=self.xsjtag, dut_output_widths=[2,1,32], dut_input_widths=1)
             # Assert and release the reset for the testing circuit.
             dut.write(1)
             dut.write(0)
@@ -182,18 +151,72 @@ class XsBoard:
             raise(e)
         
         
-class Xula(XsBoard):
+class XulaBase(XsBoard):
+
+    """Base class for all XuLA-type boards."""
+
+    def update_firmware(self, hexfile=None):
+        """Re-flash microcontroller with new firmware from hex file."""
+
+        try:
+            PUBSUB.sendMessage("Progress.Phase", msg="Updating firmware")
+            if hexfile == None:
+                hexfile = self.firmware
+            self.micro.enter_reflash_mode()
+            self.micro.program(hexfile)
+            self.micro.enter_user_mode()
+            PUBSUB.sendMessage("Xsboard.Progress.Phase", msg="Firmware update done")
+        except XsError as e:
+            raise(e)
+
+    def verify_firmware(self, hexfile):
+        """Compare the microcontroller firmware to the contents of a hex file."""
+        
+        if hexfile == None:
+            hexfile = self.firmware
+        self.micro.enter_reflash_mode()
+        self.micro.verify(hexfile)
+        self.micro.enter_user_mode()
+        
+    def create_cfg_flash(self):
+        """Create the serial configuration flash for this board."""
+        return W25X(module_id=0xf0, xsjtag=self.xsjtag)
+        
+    def read_cfg_flash(self, bottom, top):
+        self.configure(self.cfg_flash_bitstream, silent=True)
+        cfg_flash = self.create_cfg_flash()
+        return cfg_flash.read(bottom, top)
+        
+    def write_cfg_flash(self, hexfile, bottom, top):
+        self.configure(self.cfg_flash_bitstream, silent=True)
+        cfg_flash = self.create_cfg_flash()
+        cfg_flash.erase()
+        cfg_flash.write(hexfile, bottom, top)
+        
+class Xula(XulaBase):
 
     """Class for a generic XuLA board."""
     
     name = "XuLA"
     dir = os.path.join(XsBoard.install_dir ,"xula/")
     firmware = os.path.join(dir, "Firmware/XuLA_jtag.hex")
-
-    def set_flags(self, boot, jtag):
-        """Set nonvolatile flags controlling the XuLA behavior."""
-
-        pass
+    
+    def __init__(self, xsusb_id=0):
+        XulaBase.__init__(self, xsusb_id)
+        self.micro = Pic18f14k50(xsusb=self.xsusb)
+        
+    def read_cfg_flash(self, bottom, top):
+        cfg_flash_flag = self.micro.get_cfg_flash_flag()
+        self.micro.enable_cfg_flash()
+        data = XulaBase.read_cfg_flash(self,bottom, top)
+        self.micro.set_cfg_flash_flag(cfg_flash_flag)
+        return data
+        
+    def write_cfg_flash(self, hexfile, bottom, top):
+        cfg_flash_flag = self.micro.get_cfg_flash_flag()
+        self.micro.enable_cfg_flash()
+        XulaBase.write_cfg_flash(self, hexfile, bottom, top)
+        self.micro.set_cfg_flash_flag(cfg_flash_flag)
         
 class Xula50(Xula):
 
@@ -202,12 +225,12 @@ class Xula50(Xula):
     name = Xula.name + "-50"
     dir = os.path.join(Xula.dir, "50/usb/")
     test_bitstream = os.path.join(dir, "test_board_jtag.bit")
+    cfg_flash_bitstream = os.path.join(dir, "fintf_jtag.bit")
+    sdram_bitstream = os.path.join(dir, "ramintfc_jtag.bit")
 
     def __init__(self, xsusb_id=0):
         Xula.__init__(self, xsusb_id)
         self.fpga = Xc3s50avq100(self.xsjtag)
-        self.micro = Pic18f14k50(self.xsusb)
-
 
 class Xula200(Xula):
 
@@ -216,13 +239,14 @@ class Xula200(Xula):
     name = Xula.name + "-200"
     dir = os.path.join(Xula.dir, "200/usb/")
     test_bitstream = os.path.join(dir, "test_board_jtag.bit")
+    cfg_flash_bitstream = os.path.join(dir, "fintf_jtag.bit")
+    sdram_bitstream = os.path.join(dir, "ramintfc_jtag.bit")
 
     def __init__(self, xsusb_id=0):
         Xula.__init__(self, xsusb_id)
         self.fpga = Xc3s200avq100(self.xsjtag)
-        self.micro = Pic18f14k50(self.xsusb)
 
-class Xula2(XsBoard):
+class Xula2(XulaBase):
     
     """Class for a generic XuLA2 board."""
     
@@ -230,11 +254,6 @@ class Xula2(XsBoard):
     dir = os.path.join(XsBoard.install_dir ,"xula2/")
     firmware = os.path.join(dir, "Firmware/XuLA_jtag.hex")
 
-    def set_flags(self, boot, jtag):
-        """Set nonvolatile flags controlling the XuLA behavior."""
-
-        pass
-    
 class Xula2lx25(Xula2):
     
     """Class for a XuLA2 board with an XC6SLX25 FPGA."""
@@ -242,16 +261,32 @@ class Xula2lx25(Xula2):
     name = Xula2.name + "-LX25"
     dir = os.path.join(Xula2.dir, "lx25/usb/")
     test_bitstream = os.path.join(dir, "test_board_jtag.bit")
+    cfg_flash_bitstream = os.path.join(dir, "fintf_jtag.bit")
+    sdram_bitstream = os.path.join(dir, "ramintfc_jtag.bit")
     
     def __init__(self, xsusb_id=0):
         Xula2.__init__(self, xsusb_id)
         self.fpga = Xc6slx25ftg256(self.xsjtag)
-        self.micro = Pic18f14k50(self.xsusb)
 
 
 
 if __name__ == '__main__':
+    import sys
     xula = Xula200(0)
     board_info = xula.get_board_info()
     print repr(board_info)
-    xula.configure('test_board_jtag.bit')
+
+    xula.do_self_test()
+
+    wr_data = IntelHex()
+    for i in range(0x100):
+        wr_data[i] = i 
+    wr_data.write_hex_file(sys.stdout)
+
+    print 'Write flash...'
+    xula.write_cfg_flash(wr_data, 0, 0x100)
+
+    print 'Read flash...'
+    rd_data = xula.read_cfg_flash(0, 0x100)
+
+    rd_data.write_hex_file(sys.stdout)

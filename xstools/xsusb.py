@@ -188,7 +188,7 @@ class XsUsb:
         self._endpoint = endpoint
         self.terminate = False
         
-    def calc_time_out(self,num_bytes):
+    def _calc_time_out(self,num_bytes):
         """Calculate USB transaction interval (in milliseconds) for a given bit-rate."""
         return max(int(math.ceil(num_bytes * 8 / self._BIT_RATE * 1000)), self._MIN_TIME_OUT)
 
@@ -200,7 +200,7 @@ class XsUsb:
             raise XsTerminate()
 
         logging.debug('OUT => (%d) %s', len(bytes), str([bin(x | 0x100)[3:] for x in bytes]))
-        time_out = self.calc_time_out(len(bytes))
+        time_out = self._calc_time_out(len(bytes))
         if self._dev.write(usb.util.ENDPOINT_OUT | self._endpoint,
                            bytes, 0, time_out) \
             != len(bytes):
@@ -213,7 +213,7 @@ class XsUsb:
             self.terminate = False
             raise XsTerminate()
 
-        time_out = self.calc_time_out(num_bytes)
+        time_out = self._calc_time_out(num_bytes)
         bytes = self._dev.read(usb.util.ENDPOINT_IN | self._endpoint,
                                num_bytes, 0, time_out)
         if len(bytes) != num_bytes:
@@ -332,96 +332,6 @@ class XsUsb:
         self.write(cmd)
         v = self.read(3)
         return (v[1]*256 + v[2]) / 1023.0 * 2.048
-
-    def erase_flash(self, address):
-        """Erase a block of flash in the microcontroller."""
-
-        num_blocks = 1
-        cmd = bytearray([self.ERASE_FLASH_CMD, num_blocks])
-        cmd.extend(bytearray([address & 0xff, address >> 8 & 0xff,
-                   address >> 16 & 0xff]))
-        self.write(cmd)
-        response = self.read(num_bytes=1)
-        if response[0] != self.ERASE_FLASH_CMD:
-            raise XsMajorError("Incorrect command echo in 'erase_flash'."
-                               )
-
-    def write_flash(self, address, bytes):
-        """Write data to a block of flash in the microcontroller."""
-
-        cmd = bytearray([self.WRITE_FLASH_CMD, len(bytes)])
-        cmd.extend(bytearray([address & 0xff, address >> 8 & 0xff,
-                   address >> 16 & 0xff]))
-        cmd.extend(bytearray(bytes))
-        self.write(cmd)
-        response = self.read(num_bytes=1)
-        if response[0] != self.WRITE_FLASH_CMD:
-            raise XsMajorError("Incorrect command echo in 'write_flash'."
-                               )
-
-    def read_flash(self, address, num_bytes=0):
-        """Read data from the flash in the microcontroller."""
-
-        cmd = bytearray([self.READ_FLASH_CMD, num_bytes])
-        cmd.extend(bytearray([address & 0xff, address >> 8 & 0xff,
-                   address >> 16 & 0xff]))
-        self.write(cmd)
-        response = self.read(num_bytes=num_bytes + len(cmd))
-        if response[0] != self.READ_FLASH_CMD:
-            raise XsMajorError("Incorrect command echo in 'read_flash'."
-                               )
-        return response[5:]
-
-    def read_eedata(self, address):
-        """Return a byte read from the microcontroller EEDATA."""
-
-        cmd = bytearray([self.READ_EEDATA_CMD, 1])
-        cmd.extend(bytearray([address & 0xff, address >> 8 & 0xff,
-                   address >> 16 & 0xff]))
-        self.write(cmd)
-        response = self.read(num_bytes=6)
-        if response[0] != self.READ_EEDATA_CMD:
-            raise XsMajorError("Incorrect command echo in 'read_eedata'."
-                               )
-        return response[5]
-
-    def write_eedata(self, address, byte):
-        """Write a byte to the microcontroller EEDATA."""
-
-        cmd = bytearray([self.WRITE_EEDATA_CMD, 1])
-        cmd.extend(bytearray([address & 0xff, address >> 8 & 0xff,
-                   address >> 16 & 0xff]))
-        cmd.extend(bytearray([byte]))
-        self.write(cmd)
-        response = self.read(num_bytes=1)
-        if response[0] != self.WRITE_EEDATA_CMD:
-            raise XsMajorError("Incorrect command echo in 'write_eedata'."
-                               )
-
-    def enter_reflash_mode(self):
-        """Set EEDATA mode flag and reset microcontroller into flash programming mode."""
-
-        self.write_eedata(self.BOOT_SELECT_FLAG_ADDR,
-                          self.BOOT_INTO_REFLASH_MODE)
-        self.reset()
-
-    def enter_user_mode(self):
-        """Set EEDATA mode flag and reset microcontroller into user mode."""
-
-        self.write_eedata(self.BOOT_SELECT_FLAG_ADDR,
-                          self.BOOT_INTO_USER_MODE)
-        self.reset()
-
-    def enable_jtag_cable(self):
-        """Set EEDATA flag to enable JTAG cable interface."""
-
-        self.write_eedata(self.JTAG_DISABLE_FLAG_ADDR, 0)
-
-    def disable_jtag_cable(self):
-        """Set EEDATA flag to disable JTAG cable interface."""
-
-        self.write_eedata(self.JTAG_DISABLE_FLAG_ADDR,
-                          self.DISABLE_JTAG)
 
 
 if __name__ == '__main__':

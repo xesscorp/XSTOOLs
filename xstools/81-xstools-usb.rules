@@ -1,0 +1,2 @@
+# XSTOOLs USB rules for all users.
+SUBSYSTEM=="usb", ATTR{idVendor}=="04d8", ATTR{idProduct}=="ff8c", MODE="0666"

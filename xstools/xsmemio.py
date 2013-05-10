@@ -130,7 +130,7 @@ class XsMemIo(XsHostIo):
                 payload += d
             else:
                 # Convert integers to bit arrays.
-                payload += XsBitArray(int=d, length=self.data_width)
+                payload += XsBitArray(uint=d, length=self.data_width)
         assert payload.len > self._WRITE_OPCODE.len
 
         # Send the payload to write the data to memory.

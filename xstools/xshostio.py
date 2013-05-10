@@ -68,7 +68,7 @@ class XsHostIo:
         # Send TAP FSM to the shift-ir state.
         self.xsjtag.go_thru_tap_states('Run-Test/Idle', 'Select-DR-Scan', 'Select-IR-Scan', 'Capture-IR', 'Shift-IR')
 
-        # Now enter the USER1 JTAG instruction into the IR and go to the update-ir state.
+        # Now enter the USER1 JTAG instruction into the IR and go to the exit1-ir state.
         self.xsjtag.shift_tdi(tdi=self.user_instr, do_exit_shift=True)
 
         # USER instruction is now active, so transfer to the shift-dr state where data transfers will occur.
