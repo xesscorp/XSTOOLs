@@ -192,7 +192,7 @@ class XulaBase(XsBoard):
         cfg_flash = self.create_cfg_flash()
         return cfg_flash.read(bottom, top)
         
-    def write_cfg_flash(self, hexfile, bottom, top):
+    def write_cfg_flash(self, hexfile, bottom=None, top=None):
         self.configure(self.cfg_flash_bitstream, silent=True)
         cfg_flash = self.create_cfg_flash()
         cfg_flash.erase()
@@ -217,7 +217,7 @@ class Xula(XulaBase):
         self.micro.set_cfg_flash_flag(cfg_flash_flag)
         return data
         
-    def write_cfg_flash(self, hexfile, bottom, top):
+    def write_cfg_flash(self, hexfile, bottom=None, top=None):
         cfg_flash_flag = self.micro.get_cfg_flash_flag()
         self.micro.enable_cfg_flash()
         XulaBase.write_cfg_flash(self, hexfile, bottom, top)

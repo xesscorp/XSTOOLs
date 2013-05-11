@@ -41,7 +41,7 @@ class XsSpi:
         self,
         xsusb_id=DEFAULT_XSUSB_ID,
         module_id=DEFAULT_MODULE_ID,
-        xsjtag=None,
+        xsjtag=None
         ):
         """Setup an I2C I/O object.
         
@@ -51,7 +51,7 @@ class XsSpi:
         """
 
         # Setup the interface to the SPI module registers.
-        self._memio = XsMemIo(xsusb_id, module_id, xsjtag)
+        self._memio = XsMemIo(xsusb_id=xsusb_id, module_id=module_id, xsjtag=xsjtag)
         logging.debug('address width = '
                       + str(self._memio.address_width))
         logging.debug('data width = ' + str(self._memio.data_width))

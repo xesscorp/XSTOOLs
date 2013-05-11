@@ -50,9 +50,15 @@ from xstools_defs import *
 
 p = ArgumentParser(description='Program a bitstream file into the FPGA on an XESS board.')
 
-p.add_argument('-f', '--filename', type=str, required=True,
-               help='The name of the bitstream file.')
-p.add_argument('-u', '--usb', type=int, default=0,
+p.add_argument('--fpga', type=str, 
+               help='The name of the bitstream file to load into the FPGA.')
+p.add_argument('--flash', type=str, 
+               help='The name of the file to down/upload to/from the serial configuration flash.')
+p.add_argument('--ram', type=str, 
+               help='The name of the file to down/upload to/from the RAM.')
+p.add_argument('-u', '--upload', nargs=2, type=int, default=0,
+               help='Upload from RAM or flash the data between the lower and upper addresses.')
+p.add_argument('--usb', type=int, default=0,
                help='The USB port number for the XESS board. If you only have one board, then use 0.')
 p.add_argument('-b', '--board', type=str, default='xula-200',
                help='***DEPRECATED*** The XESS board type (e.g., xula-200)')
@@ -66,12 +72,22 @@ num_boards = XSBOARD.XsUsb.get_num_xsusb()
 if num_boards > 0:
     if 0 <= args.usb < num_boards:
         xs_board = XSBOARD.XsBoard.get_xsboard(args.usb)
-        try:
-            xs_board.configure(args.filename)
-        except XSERROR.XsError as e:
-            xs_board.xsusb.disconnect()
-            sys.exit()
-        print "Success: Bitstream", args.filename, "downloaded into", xs_board.name, "!"
+            
+        if args.flash:
+            if args.upload:
+                hexfile_data = xs_board.read_cfg_flash(bottom=args.upload[0], top=args.upload[1])
+                hexfile_data.tofile(args.flash, format='hex')
+            else:
+                xs_board.write_cfg_flash(args.flash)
+
+        if args.fpga:
+            try:
+                xs_board.configure(args.filename)
+            except XSERROR.XsError as e:
+                xs_board.xsusb.disconnect()
+                sys.exit()
+            print "Success: Bitstream", args.filename, "downloaded into", xs_board.name, "!"
+                
         xs_board.xsusb.disconnect()
         sys.exit()
     else:

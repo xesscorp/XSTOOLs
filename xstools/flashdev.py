@@ -65,11 +65,16 @@ class FlashDevice:
             try:
                 hexfile_data = IntelHex(hexfile)
                 hexfile = hexfile_data
+                if bottom == None:
+                    bottom = hexfile.minaddr()
+                if top == None:
+                    top = hexfile.maxaddr()
             except:
                 raise XsMajorError('Unable to open hex file %s for writing to %s flash.'
                                     % (hexfile, self.device_name))
 
         (bottom, top) = self._set_blk_bounds(bottom, top, self._WRITE_BLK_SZ)
+        print 'bottom=%x top=%x' % (bottom, top)
         for addr in range(bottom, top, self._WRITE_BLK_SZ):
             # The tobinarray() method fills unused array locations with 0xFF so the flash at those
             # addresses will stay unprogrammed.
@@ -148,7 +153,7 @@ class W25X(FlashDevice):
         self,
         xsusb_id=DEFAULT_XSUSB_ID,
         module_id=DEFAULT_MODULE_ID,
-        xsjtag=None,
+        xsjtag=None
         ):
         self._spi = XsSpi(xsjtag=xsjtag, module_id=module_id)
         mfg_id, jedec_id = self.get_chip_id()

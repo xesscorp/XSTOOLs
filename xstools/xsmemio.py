@@ -45,7 +45,7 @@ class XsMemIo(XsHostIo):
         self,
         xsusb_id=DEFAULT_XSUSB_ID,
         module_id=DEFAULT_MODULE_ID,
-        xsjtag=None,
+        xsjtag=None
         ):
         """Setup a DUT I/O object.
         
