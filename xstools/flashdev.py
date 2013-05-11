@@ -58,7 +58,9 @@ class FlashDevice:
             self.erase_blk(addr)
 
     def write(self, hexfile, bottom=None, top=None):
-        """Download a hexfile into a section of the flash."""
+        """Download a hexfile into a section of the flash.
+        THE FLASH MUST ALREADY BE ERASED FOR THIS TO WORK CORRECTLY!
+        """
 
         # If the argument is not already a hex data object, then it must be a file name, so read the hex data from it.
         if not isinstance(hexfile, IntelHex):
@@ -69,12 +71,14 @@ class FlashDevice:
                     bottom = hexfile.minaddr()
                 if top == None:
                     top = hexfile.maxaddr()
+                # hex data must be empty if min and/or max address is undefined.
+                if bottom == None or top == None:
+                    bottom, top = (0,0)
             except:
                 raise XsMajorError('Unable to open hex file %s for writing to %s flash.'
                                     % (hexfile, self.device_name))
 
         (bottom, top) = self._set_blk_bounds(bottom, top, self._WRITE_BLK_SZ)
-        print 'bottom=%x top=%x' % (bottom, top)
         for addr in range(bottom, top, self._WRITE_BLK_SZ):
             # The tobinarray() method fills unused array locations with 0xFF so the flash at those
             # addresses will stay unprogrammed.

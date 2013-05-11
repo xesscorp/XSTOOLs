@@ -105,51 +105,45 @@ class XsBoard:
     def configure(self, bitstream, silent=False):
         """Configure the FPGA on the board with a bitstream."""
 
-        try:
-            PUBSUB.sendMessage("Progress.Phase", msg="Downloading bitstream")
-            # Clear any configuration already in the FPGA.
-            self.xsusb.set_prog(1)
-            self.xsusb.set_prog(0)
-            self.xsusb.set_prog(1)
-            time.sleep(0.03)  # Wait for FPGA to clear.
-            # Configure the FPGA with the bitstream.
-            self.fpga.configure(bitstream)
-            PUBSUB.sendMessage("Progress.Phase", msg="Download complete")
-        except Exception as e:
-            raise(e)
+        PUBSUB.sendMessage("Progress.Phase", msg="Downloading bitstream")
+        # Clear any configuration already in the FPGA.
+        self.xsusb.set_prog(1)
+        self.xsusb.set_prog(0)
+        self.xsusb.set_prog(1)
+        time.sleep(0.03)  # Wait for FPGA to clear.
+        # Configure the FPGA with the bitstream.
+        self.fpga.configure(bitstream)
+        PUBSUB.sendMessage("Progress.Phase", msg="Download complete")
         
     def do_self_test(self, test_bitstream=None):
         """Load the FPGA with a bitstream to test the board."""
 
-        try:
-            if test_bitstream == None:
-                test_bitstream = self.test_bitstream
-            PUBSUB.sendMessage("Progress.Phase", msg="Downloading diagostic bitstream")
-            self.configure(test_bitstream, silent=True)
-            # Create a channel to query the results of the board test.
-            dut = XsDutIo(xsjtag=self.xsjtag, module_id=self._TEST_MODULE_ID,
-                          dut_output_widths=[2,1,32], dut_input_widths=1)
-            # Assert and release the reset for the testing circuit.
-            dut.write(1)
-            dut.write(0)
-            PUBSUB.sendMessage("Progress.Phase", msg="Writing SDRAM")
-            prev_progress = XsBoard.TEST_START
-            while True:
-                [progress, failed, signature] = dut.read()
-                if signature.unsigned != XsBoard.SELF_TEST_SIGNATURE:
-                    raise XsMajorError(self.name + "FPGA is not configured with diagnostic bitstream.")
-                if progress.unsigned != prev_progress:
-                    if progress.unsigned == XsBoard.TEST_READ:
-                        PUBSUB.sendMessage("Progress.Phase", msg="Reading SDRAM")
-                    if failed.unsigned == 1:
-                        PUBSUB.sendMessage("Xsboard.Progress.Phase", msg="Test Done")
-                        raise XsMinorError(self.name + " failed diagnostic test.")
-                    elif progress.unsigned == XsBoard.TEST_DONE:
-                        PUBSUB.sendMessage("Xsboard.Progress.Phase", msg="Test Done")
-                        return # Test passed!
-                prev_progress = progress.unsigned
-        except Exception as e:
-            raise(e)
+        if test_bitstream == None:
+            test_bitstream = self.test_bitstream
+        PUBSUB.sendMessage("Progress.Phase", msg="Downloading diagostic bitstream")
+        self.configure(test_bitstream, silent=True)
+        # Create a channel to query the results of the board test.
+        dut = XsDutIo(xsjtag=self.xsjtag, module_id=self._TEST_MODULE_ID,
+                      dut_output_widths=[2,1,32], dut_input_widths=1)
+        # Assert and release the reset for the testing circuit.
+        dut.write(1)
+        dut.write(0)
+        PUBSUB.sendMessage("Progress.Phase", msg="Writing SDRAM")
+        prev_progress = XsBoard.TEST_START
+        while True:
+            [progress, failed, signature] = dut.read()
+            if signature.unsigned != XsBoard.SELF_TEST_SIGNATURE:
+                raise XsMajorError(self.name + "FPGA is not configured with diagnostic bitstream.")
+            if progress.unsigned != prev_progress:
+                if progress.unsigned == XsBoard.TEST_READ:
+                    PUBSUB.sendMessage("Progress.Phase", msg="Reading SDRAM")
+                if failed.unsigned == 1:
+                    PUBSUB.sendMessage("Xsboard.Progress.Phase", msg="Test Done")
+                    raise XsMinorError(self.name + " failed diagnostic test.")
+                elif progress.unsigned == XsBoard.TEST_DONE:
+                    PUBSUB.sendMessage("Xsboard.Progress.Phase", msg="Test Done")
+                    return # Test passed!
+            prev_progress = progress.unsigned
         
         
 class XulaBase(XsBoard):
@@ -163,16 +157,13 @@ class XulaBase(XsBoard):
     def update_firmware(self, hexfile=None):
         """Re-flash microcontroller with new firmware from hex file."""
 
-        try:
-            PUBSUB.sendMessage("Progress.Phase", msg="Updating firmware")
-            if hexfile == None:
-                hexfile = self.firmware
-            self.micro.enter_reflash_mode()
-            self.micro.program(hexfile)
-            self.micro.enter_user_mode()
-            PUBSUB.sendMessage("Xsboard.Progress.Phase", msg="Firmware update done")
-        except XsError as e:
-            raise(e)
+        PUBSUB.sendMessage("Progress.Phase", msg="Updating firmware")
+        if hexfile == None:
+            hexfile = self.firmware
+        self.micro.enter_reflash_mode()
+        self.micro.program(hexfile)
+        self.micro.enter_user_mode()
+        PUBSUB.sendMessage("Xsboard.Progress.Phase", msg="Firmware update done")
 
     def verify_firmware(self, hexfile):
         """Compare the microcontroller firmware to the contents of a hex file."""

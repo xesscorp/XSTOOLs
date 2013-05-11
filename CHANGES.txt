@@ -1,3 +1,8 @@
+v0.1.7, 05/11/2013 -- Added FlashDevice class for reading/writing flash memory devices.
+                      Made Pic18f14k50 class inherit from the FlashDevice class for flash read/write operations.
+                      Added routines for reading/writing serial configuration flash on the XuLA and XuLA2 boards.
+                      Extended xsload.py to enable serial flash uploading and downloading.
+
 v0.1.6, 04/30/2013 -- Fixed xsusbprg.py so it works under linux.
                       Fixed USB read/write timeouts so they are dependent upon the amount of data transferred.
                       Replaced exit() with sys.exit() in scripts.
