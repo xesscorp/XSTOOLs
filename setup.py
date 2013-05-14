@@ -6,7 +6,7 @@ import subprocess
 
 setup(
     name='XsTools',
-    version='0.1.7',
+    version='0.1.8',
     author='XESS Corp.',
     author_email='info@xess.com',
     packages=['xstools'],
