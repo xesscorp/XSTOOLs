@@ -1,3 +1,5 @@
+v0.1.8, 05/14/2013 -- Fixed FlashDev class so address bounds could not go outside the min/max addresses for the device.
+
 v0.1.7, 05/11/2013 -- Added FlashDevice class for reading/writing flash memory devices.
                       Made Pic18f14k50 class inherit from the FlashDevice class for flash read/write operations.
                       Added routines for reading/writing serial configuration flash on the XuLA and XuLA2 boards.

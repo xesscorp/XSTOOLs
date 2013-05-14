@@ -44,8 +44,8 @@ class FlashDevice:
         return ((addr + blk_sz - 1) // blk_sz) * blk_sz
         
     def _set_blk_bounds(self, bottom, top, blk_sz):
-        bottom = self._START_ADDR if bottom == None else self._floor_blk_addr(bottom, blk_sz)
-        top = self._END_ADDR if top == None else self._ceil_blk_addr(top, blk_sz)
+        bottom = self._START_ADDR if (bottom == None or bottom < self._START_ADDR) else self._floor_blk_addr(bottom, blk_sz)
+        top = self._END_ADDR if (top == None or top >= self._END_ADDR) else self._ceil_blk_addr(top, blk_sz)
         if bottom > top:
             raise XsMinorError('Bottom address is greater than the top address.')
         return (bottom, top)
@@ -82,7 +82,10 @@ class FlashDevice:
         for addr in range(bottom, top, self._WRITE_BLK_SZ):
             # The tobinarray() method fills unused array locations with 0xFF so the flash at those
             # addresses will stay unprogrammed.
-            self.write_blk(addr, bytearray(hexfile.tobinarray(start=addr, size=self._WRITE_BLK_SZ)))
+            data_blk = bytearray(hexfile.tobinarray(start=addr, size=self._WRITE_BLK_SZ))
+            # Don't write data blocks that only contain the value 0xFF (erased value of flash).
+            if data_blk.count(chr(0xff)) != self._WRITE_BLK_SZ:
+                self.write_blk(addr, data_blk)
 
     def read(self, bottom=None, top=None):
         """Return the hex data stored in a section of the flash."""
