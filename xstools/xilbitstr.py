@@ -105,6 +105,15 @@ class XilinxBitstream:
         logging.debug('Bitstream start = %s', self.bits[0:1024])
 
         return True
+        
+    def to_intel_hex(self):
+        """Generate Intel hex object from bitstream."""
+        
+        PREAMBLE_LENGTH = 16
+        preamble = XsBitArray(bytes=b'\xff' * PREAMBLE_LENGTH, length = 8 * PREAMBLE_LENGTH)
+        bits = preamble + self.bits[:]
+        bits.reverse()
+        return bits.to_intel_hex()
 
 
 if __name__ == '__main__':

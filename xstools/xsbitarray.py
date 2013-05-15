@@ -27,6 +27,7 @@ XESS extensions to the BitArray class of the bitstring module.
 import logging
 from xserror import *
 from bitstring import Bits, BitArray, BitStream, ConstBitStream
+from intelhex import IntelHex
 
 
 class XsBitArray(BitArray):
@@ -124,6 +125,14 @@ class XsBitArray(BitArray):
         # So this function reverses the byte order, creates a bit string, and then cuts it to length.
         bits = XsBitArray(bytes=usb_bytes[::-1])  # Create a bit string from the reversed USB bytes.
         return bits[-length:]
+        
+    def to_intel_hex(self):
+        """Create an IntelHex object from a bitstring."""
+        
+        ih = IntelHex()
+        ih.frombytes([ord(b) for b in self.tobytes()])
+        return ih
+        
 
     def __getattr__(self, name):
         """Return the unsigned, integer or string representation of a bit array."""

@@ -82,11 +82,11 @@ if num_boards > 0:
 
         if args.fpga:
             try:
-                xs_board.configure(args.filename)
+                xs_board.configure(args.fpga)
             except XSERROR.XsError as e:
                 xs_board.xsusb.disconnect()
                 sys.exit()
-            print "Success: Bitstream", args.filename, "downloaded into", xs_board.name, "!"
+            print "Success: Bitstream", args.fpga, "downloaded into", xs_board.name, "!"
                 
         xs_board.xsusb.disconnect()
         sys.exit()

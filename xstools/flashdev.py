@@ -26,7 +26,8 @@ Classes for devices containing flash memory.
 import logging
 from intelhex import IntelHex
 from xserror import *
-from xsspi import *        
+from xsspi import *
+from xilbitstr import *      
 
 
 class FlashDevice:
@@ -67,16 +68,22 @@ class FlashDevice:
             try:
                 hexfile_data = IntelHex(hexfile)
                 hexfile = hexfile_data
-                if bottom == None:
-                    bottom = hexfile.minaddr()
-                if top == None:
-                    top = hexfile.maxaddr()
-                # hex data must be empty if min and/or max address is undefined.
-                if bottom == None or top == None:
-                    bottom, top = (0,0)
             except:
-                raise XsMajorError('Unable to open hex file %s for writing to %s flash.'
+                # OK, didn't read as an Intel hex file, so try reading it as a Xilinx bitstream file.
+                try:
+                    bitstream_data = XilinxBitstream(hexfile)
+                    hexfile = bitstream_data.to_intel_hex()
+                except:
+                    # Error: neither an Intel hex or Xilinx bitstream file.
+                    raise XsMajorError('Unable to convert file %s for writing to %s flash.'
                                     % (hexfile, self.device_name))
+            if bottom == None:
+                bottom = hexfile.minaddr()
+            if top == None:
+                top = hexfile.maxaddr()
+            # hex data must be empty if min and/or max address is undefined.
+            if bottom == None or top == None:
+                bottom, top = (0,0)
 
         (bottom, top) = self._set_blk_bounds(bottom, top, self._WRITE_BLK_SZ)
         for addr in range(bottom, top, self._WRITE_BLK_SZ):
@@ -186,7 +193,7 @@ class W25X(FlashDevice):
         return status & (1<<self._BUSY_BIT) != 0
         
     def _addr_bytes(self, addr):
-        return [addr & 0xff, addr >> 8 & 0xff, addr >> 16 & 0xff]
+        return [addr >> 16 & 0xff, addr >> 8 & 0xff, addr & 0xff]
 
     def erase_blk(self, addr):
         self._spi.send(self._WRITE_ENABLE_CMD, stop=True)
