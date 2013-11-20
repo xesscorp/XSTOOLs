@@ -45,7 +45,7 @@ class XsBoard:
     def get_xsboard(cls, xsusb_id=0, xsboard_name=''):
         """Detect which type of XESS board is connected to a USB port."""
         
-        board_classes = (Xula50, Xula200, Xula2lx25)      
+        board_classes = (Xula50, Xula200, Xula2lx25, Xula2lx9)      
 
         for c in board_classes:
             if xsboard_name.lower() == c.name.lower():
@@ -263,6 +263,20 @@ class Xula2lx25(Xula2):
     def __init__(self, xsusb_id=0):
         Xula2.__init__(self, xsusb_id)
         self.fpga = Xc6slx25ftg256(self.xsjtag)
+
+class Xula2lx9(Xula2):
+    
+    """Class for a XuLA2 board with an XC6SLX9 FPGA."""
+
+    name = Xula2.name + "-LX9"
+    dir = os.path.join(Xula2.dir, "lx9/usb/")
+    test_bitstream = os.path.join(dir, "test_board_jtag.bit")
+    cfg_flash_bitstream = os.path.join(dir, "fintf_jtag.bit")
+    sdram_bitstream = os.path.join(dir, "ramintfc_jtag.bit")
+    
+    def __init__(self, xsusb_id=0):
+        Xula2.__init__(self, xsusb_id)
+        self.fpga = Xc6slx9ftg256(self.xsjtag)
 
 
 

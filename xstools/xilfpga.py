@@ -308,7 +308,7 @@ class Xc6s(XilinxFpga):
 
     """Generic Xilinx Spartan-6 FPGA object."""
 
-    # Spartan-3A JTAG instruction opcodes.
+    # Spartan-6 JTAG instruction opcodes.
     _SAMPLE_INSTR = XsBitArray('0b000001')
     _USER1_INSTR = XsBitArray('0b000010')
     _USER2_INSTR = XsBitArray('0b000011')
@@ -394,6 +394,17 @@ class Xc6slx25ftg256(Xc6s):
 
     _DEVICE_TYPE = '6slx25ftg256'
     _IDCODE = XsBitArray('0b00000100000000000100000010010011')
+
+    def __init__(self, xsjtag=None):
+        Xc6s.__init__(self, xsjtag=xsjtag)
+
+
+class Xc6slx9ftg256(Xc6s):
+
+    """LX9 Spartan-6 FPGA in 256-pin BGA package."""
+
+    _DEVICE_TYPE = '6slx9ftg256'
+    _IDCODE = XsBitArray('0b00000100000000000001000010010011')
 
     def __init__(self, xsjtag=None):
         Xc6s.__init__(self, xsjtag=xsjtag)
