@@ -105,11 +105,11 @@ class XsI2c:
 
         # Wait while the transfer is in-progress on the I2C bus.
         sr = self._memio.read(_SR)
-        while sr[_SR_TIP] == 1:
+        while sr[7-_SR_TIP] == 1:
             sr = self._memio.read(_SR)
 
         # Bus transaction complete, so see if it was acknowledged.
-        if sr[_SR_RXACK] == _NACK:
+        if sr[7-_SR_RXACK] == _NACK:
             raise XsMinorError('%x: I2C NACK' % self._i2c_address)
 
     def _send_i2c_address(self, op):
@@ -167,7 +167,7 @@ class XsI2c:
                           << _CR_STO])
 
         # Wait while byte transfer is in-progress.
-        while self._memio.read(_SR)[_SR_TIP] == 1:
+        while self._memio.read(_SR)[7-_SR_TIP] == 1:
             pass
 
         # Return byte read from slave.
