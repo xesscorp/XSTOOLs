@@ -77,13 +77,14 @@ class FlashDevice:
                     # Error: neither an Intel hex or Xilinx bitstream file.
                     raise XsMajorError('Unable to convert file %s for writing to %s flash.'
                                     % (hexfile, self.device_name))
-            if bottom == None:
-                bottom = hexfile.minaddr()
-            if top == None:
-                top = hexfile.maxaddr()
-            # hex data must be empty if min and/or max address is undefined.
-            if bottom == None or top == None:
-                bottom, top = (0,0)
+                                    
+        if bottom == None:
+            bottom = hexfile.minaddr()
+        if top == None:
+            top = hexfile.maxaddr()
+        # hex data must be empty if min and/or max address is undefined.
+        if bottom == None or top == None:
+            bottom, top = (0,0)
 
         (bottom, top) = self._set_blk_bounds(bottom, top, self._WRITE_BLK_SZ)
         for addr in range(bottom, top, self._WRITE_BLK_SZ):
