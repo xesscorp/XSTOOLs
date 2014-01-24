@@ -27,10 +27,11 @@ import sys
 from xsusb import *
 from flashdev import *
 
-    
+
 class Pic18f14k50(FlashDevice):
+
     """PIC18F14K50 microcontroller."""
-    
+
     device_name = 'PIC 18F14K50'
 
     _START_ADDR = 0x0800
@@ -44,7 +45,7 @@ class Pic18f14k50(FlashDevice):
 
     def _addr_bytes(self, addr):
         return bytearray([addr & 0xff, addr >> 8 & 0xff, addr >> 16 & 0xff])
-        
+
     def erase_blk(self, addr):
         """Erase a block of flash in the microcontroller."""
 
