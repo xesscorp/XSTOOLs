@@ -24,11 +24,13 @@ Classes for types of XESS FPGA boards.
 """
 
 import time
+import xstools
 from pubsub import pub as PUBSUB
 from xserror import *
 from xilfpga import *
 from xsdutio import *
 from flashdev import *
+from ramdev import *
 from picmicro import *
 
 class XsBoard:
@@ -38,8 +40,6 @@ class XsBoard:
     BASE_SIGNATURE = 0xA50000A5
     SELF_TEST_SIGNATURE = BASE_SIGNATURE | (1<<8)
     (TEST_START, TEST_WRITE, TEST_READ, TEST_DONE) = range(0,4)
-    
-    install_dir = os.path.dirname(__file__)
     
     @classmethod
     def get_xsboard(cls, xsusb_id=0, xsboard_name=''):
@@ -105,7 +105,7 @@ class XsBoard:
     def configure(self, bitstream, silent=False):
         """Configure the FPGA on the board with a bitstream."""
 
-        PUBSUB.sendMessage("Progress.Phase", msg="Downloading bitstream")
+        PUBSUB.sendMessage("Progress.Phase", phase="Downloading bitstream")
         # Clear any configuration already in the FPGA.
         self.xsusb.set_prog(1)
         self.xsusb.set_prog(0)
@@ -113,14 +113,14 @@ class XsBoard:
         time.sleep(0.03)  # Wait for FPGA to clear.
         # Configure the FPGA with the bitstream.
         self.fpga.configure(bitstream)
-        PUBSUB.sendMessage("Progress.Phase", msg="Download complete")
+        PUBSUB.sendMessage("Progress.Phase", phase="Download complete")
         
     def do_self_test(self, test_bitstream=None):
         """Load the FPGA with a bitstream to test the board."""
 
         if test_bitstream == None:
             test_bitstream = self.test_bitstream
-        PUBSUB.sendMessage("Progress.Phase", msg="Downloading diagostic bitstream")
+        PUBSUB.sendMessage("Progress.Phase", phase="Downloading diagostic bitstream")
         self.configure(test_bitstream, silent=True)
         # Create a channel to query the results of the board test.
         dut = XsDutIo(xsjtag=self.xsjtag, module_id=self._TEST_MODULE_ID,
@@ -128,7 +128,7 @@ class XsBoard:
         # Assert and release the reset for the testing circuit.
         dut.write(1)
         dut.write(0)
-        PUBSUB.sendMessage("Progress.Phase", msg="Writing SDRAM")
+        PUBSUB.sendMessage("Progress.Phase", phase="Writing SDRAM")
         prev_progress = XsBoard.TEST_START
         while True:
             [progress, failed, signature] = dut.read()
@@ -136,12 +136,12 @@ class XsBoard:
                 raise XsMajorError(self.name + "FPGA is not configured with diagnostic bitstream.")
             if progress.unsigned != prev_progress:
                 if progress.unsigned == XsBoard.TEST_READ:
-                    PUBSUB.sendMessage("Progress.Phase", msg="Reading SDRAM")
+                    PUBSUB.sendMessage("Progress.Phase", phase="Reading SDRAM")
                 if failed.unsigned == 1:
-                    PUBSUB.sendMessage("Xsboard.Progress.Phase", msg="Test Done")
+                    PUBSUB.sendMessage("Progress.Phase", phase="Test Done")
                     raise XsMinorError(self.name + " failed diagnostic test.")
                 elif progress.unsigned == XsBoard.TEST_DONE:
-                    PUBSUB.sendMessage("Xsboard.Progress.Phase", msg="Test Done")
+                    PUBSUB.sendMessage("Progress.Phase", phase="Test Done")
                     return # Test passed!
             prev_progress = progress.unsigned
         
@@ -157,49 +157,110 @@ class XulaBase(XsBoard):
     def update_firmware(self, hexfile=None):
         """Re-flash microcontroller with new firmware from hex file."""
 
-        PUBSUB.sendMessage("Progress.Phase", msg="Updating firmware")
+        PUBSUB.sendMessage("Progress.Phase", phase="Updating firmware")
         if hexfile == None:
             hexfile = self.firmware
         self.micro.enter_reflash_mode()
         self.micro.program(hexfile)
         self.micro.enter_user_mode()
-        PUBSUB.sendMessage("Xsboard.Progress.Phase", msg="Firmware update done")
+        PUBSUB.sendMessage("Progress.Phase", phase="Firmware update done")
 
     def verify_firmware(self, hexfile):
         """Compare the microcontroller firmware to the contents of a hex file."""
         
+        PUBSUB.sendMessage("Progress.Phase", phase="Verifying firmware")
         if hexfile == None:
             hexfile = self.firmware
         self.micro.enter_reflash_mode()
         self.micro.verify(hexfile)
         self.micro.enter_user_mode()
-        
-    def create_cfg_flash(self):
-        """Create the serial configuration flash for this board."""
-        return W25X(module_id=self._CFG_FLASH_MODULE_ID, xsjtag=self.xsjtag)
+        PUBSUB.sendMessage("Progress.Phase", phase="Firmware verification done")
         
     def read_cfg_flash(self, bottom, top):
+        PUBSUB.sendMessage("Progress.Phase", phase="Configuring FPGA for reading configuration flash")
         self.configure(self.cfg_flash_bitstream, silent=True)
+        PUBSUB.sendMessage("Progress.Phase", phase="Reading configuration flash")
         cfg_flash = self.create_cfg_flash()
-        return cfg_flash.read(bottom, top)
+        hex_data = cfg_flash.read(bottom, top)
+        PUBSUB.sendMessage("Progress.Phase", phase="Configuration flash read done")
+        return hex_data
         
     def write_cfg_flash(self, hexfile, bottom=None, top=None):
+        PUBSUB.sendMessage("Progress.Phase", phase="Configuring FPGA for writing configuration flash")
         self.configure(self.cfg_flash_bitstream, silent=True)
+        PUBSUB.sendMessage("Progress.Phase", phase="Erasing configuration flash")
         cfg_flash = self.create_cfg_flash()
         cfg_flash.erase()
+        PUBSUB.sendMessage("Progress.Phase", phase="Writing configuration flash")
         cfg_flash.write(hexfile, bottom, top)
+        PUBSUB.sendMessage("Progress.Phase", phase="Configuration flash write done")
+        
+    def erase_cfg_flash(self, bottom, top):
+        PUBSUB.sendMessage("Progress.Phase", phase="Configuring FPGA for erasing configuration flash")
+        self.configure(self.cfg_flash_bitstream, silent=True)
+        PUBSUB.sendMessage("Progress.Phase", phase="Erasing configuration flash")
+        cfg_flash = self.create_cfg_flash()
+        cfg_flash.erase()
+        PUBSUB.sendMessage("Progress.Phase", phase="Configuration flash erase done")
+        
+    def read_sdram(self, bottom, top):
+        PUBSUB.sendMessage("Progress.Phase", phase="Configuring FPGA for reading SDRAM")
+        self.configure(self.sdram_bitstream, silent=True)
+        PUBSUB.sendMessage("Progress.Phase", phase="Reading SDRAM")
+        sdram = self.create_sdram()
+        hex_data = sdram.read(bottom, top)
+        PUBSUB.sendMessage("Progress.Phase", phase="SDRAM read done")
+        return hex_data
+    
+    def write_sdram(self, hexfile, bottom=None, top=None):
+        PUBSUB.sendMessage("Progress.Phase", phase="Configuring FPGA for writing SDRAM")
+        self.configure(self.sdram_bitstream, silent=True)
+        PUBSUB.sendMessage("Progress.Phase", phase="Writing SDRAM")
+        sdram = self.create_sdram()
+        sdram.write(hexfile, bottom, top)
+        PUBSUB.sendMessage("Progress.Phase", phase="SDRAM write done")
+        
+    def erase_sdram(self, bottom, top):
+        PUBSUB.sendMessage("Progress.Phase", phase="Configuring FPGA for erasing SDRAM")
+        self.configure(self.sdram_bitstream, silent=True)
+        PUBSUB.sendMessage("Progress.Phase", phase="Erasing SDRAM")
+        sdram = self.create_sdram()
+        hex_data = sdram.erase(bottom, top)
+        PUBSUB.sendMessage("Progress.Phase", phase="SDRAM erase done")
+        return
+        
+    def set_aux_jtag_flag(self, flag):
+        if not flag:
+            self.micro.disable_jtag_cable()
+            return False
+        else:
+            self.micro.enable_jtag_cable()
+            return True
+        
+    def get_aux_jtag_flag(self):
+        return self.micro.get_jtag_cable_flag() != 0
+        
+    def toggle_aux_jtag_flag(self):
+        return self.set_aux_jtag_flag(not self.get_aux_jtag_flag())
+        
+    def toggle_flash_flag(self):
+        return self.set_flash_flag(not self.get_flash_flag())
         
 class Xula(XulaBase):
 
     """Class for a generic XuLA board."""
     
     name = "XuLA"
-    dir = os.path.join(XsBoard.install_dir ,"xula/")
+    dir = os.path.join(xstools.install_dir ,"xula/")
     firmware = os.path.join(dir, "Firmware/XuLA_jtag.hex")
     
     def __init__(self, xsusb_id=0):
         XulaBase.__init__(self, xsusb_id)
         self.micro = Pic18f14k50(xsusb=self.xsusb)
+        
+    def create_cfg_flash(self):
+        """Create the serial configuration flash for this board."""
+        return W25X(module_id=self._CFG_FLASH_MODULE_ID, xsjtag=self.xsjtag)
         
     def read_cfg_flash(self, bottom, top):
         cfg_flash_flag = self.micro.get_cfg_flash_flag()
@@ -213,6 +274,27 @@ class Xula(XulaBase):
         self.micro.enable_cfg_flash()
         XulaBase.write_cfg_flash(self, hexfile, bottom, top)
         self.micro.set_cfg_flash_flag(cfg_flash_flag)
+        
+    def erase_cfg_flash(self, bottom=None, top=None):
+        cfg_flash_flag = self.micro.get_cfg_flash_flag()
+        self.micro.enable_cfg_flash()
+        XulaBase.erase_cfg_flash(self, bottom, top)
+        self.micro.set_cfg_flash_flag(cfg_flash_flag)
+        
+    def create_sdram(self):
+        """Create the SDRAM for this board."""
+        return Sdram_8MB(module_id=self._SDRAM_MODULE_ID, xsjtag=self.xsjtag)
+        
+    def set_flash_flag(self, flag):
+        if not flag:
+            self.micro.disable_cfg_flash()
+            return False
+        else:
+            self.micro.enable_cfg_flash()
+            return True
+        
+    def get_flash_flag(self):
+        return self.micro.get_cfg_flash_flag() != 0
         
 class Xula50(Xula):
 
@@ -247,8 +329,26 @@ class Xula2(XulaBase):
     """Class for a generic XuLA2 board."""
     
     name = "XuLA2"
-    dir = os.path.join(XsBoard.install_dir ,"xula2/")
+    dir = os.path.join(xstools.install_dir ,"xula2/")
     firmware = os.path.join(dir, "Firmware/XuLA_jtag.hex")
+    
+    def __init__(self, xsusb_id=0):
+        XulaBase.__init__(self, xsusb_id)
+        self.micro = Pic18f14k50(xsusb=self.xsusb)
+        
+    def create_cfg_flash(self):
+        """Create the serial configuration flash for this board."""
+        return W25X(module_id=self._CFG_FLASH_MODULE_ID, xsjtag=self.xsjtag)
+        
+    def create_sdram(self):
+        """Create the SDRAM for this board."""
+        return Sdram_32MB(module_id=self._SDRAM_MODULE_ID, xsjtag=self.xsjtag)
+        
+    def set_flash_flag(self, flag):
+        return True
+        
+    def get_flash_flag(self):
+        return True # Flash is always enabled for XuLA2.
 
 class Xula2lx25(Xula2):
     
