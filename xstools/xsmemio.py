@@ -81,11 +81,12 @@ class XsMemIo(XsHostIo):
         data_width = params.pop_field(self._SIZE_RESULT_LENGTH / 2).unsigned
         return (address_width, data_width)
 
-    def read(self, begin_address, num_of_reads=1):
+    def read(self, begin_address, num_of_reads=1, return_type=XsBitArray()):
         """Return a list of bit arrays read from memory.
         
         begin_address = memory address of first read.
         num_of_reads = number of memory reads to perform.
+        return_type = instance of the type of data to return.
         """
 
         # Start the payload with the READ_OPCODE.
@@ -99,16 +100,20 @@ class XsMemIo(XsHostIo):
         # returned is crap since the memory isn't ready to respond.
         result = self.send_rcv(payload=payload,
                                num_result_bits=self.data_width * (num_of_reads + 1))
-        result.pop_field(self.data_width)  # Remove the first data value which is crap.
 
-        if num_of_reads == 1:
-            # Return the result bit array if there's only a single read.
-            return result
-        else:
-            # Otherwise, return a list of bit arrays with data_width bits by partitioning the result bit array.
-            results = []
-            while result.len > 0:
-                results.append(result.pop_field(self.data_width))
+        if num_of_reads == 1: # Return the result bit array if there's only a single read.
+            result.pop_field(self.data_width)  # Remove the first data value which is crap.
+            if isinstance(return_type, XsBitArray):
+                return result
+            else:
+                return result.unsigned
+        else: # Otherwise, return a list of bit arrays with data_width bits by partitioning the result bit array.
+            w = self.data_width
+            l = result.length
+            # Start from the far end, skip the first data value which is crap, and then proceed to the beginning.
+            results = [result[i:i+w] for i in range(l-2*w,-w,-w)]
+            if not isinstance(return_type, XsBitArray): # Convert bit arrays into integers.
+                results = [d.unsigned for d in results]
             return results
 
     def write(self, begin_address, data):
