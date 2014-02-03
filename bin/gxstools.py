@@ -20,9 +20,14 @@
 # **********************************************************************
 
 import sys
+
+# Uncomment this path when using local development version of xstools.
+sys.path.insert(0, r'C:\xesscorp\products\xstools')
+
 import os
 import xstools
 import xstools.xsboard as XSBOARD
+import xstools.xsusb as XSUSB
 import xstools.xserror as XSERROR
 import xstools_defs
 import wx
@@ -31,11 +36,12 @@ import wx.lib.intctrl as INTCTRL
 import wx.lib.flatnotebook as FNB
 import wx.lib.platebtn as PBTN
 import wx.html
-from pubsub import pub as PUBSUB
+from pubsub import pub
 from threading import Thread
 
 
 # ********************* Globals ***********************************
+active_port_id = None
 active_board = None
 icon_dir = os.path.join(xstools.install_dir, 'icons')
 
@@ -58,12 +64,12 @@ class GxsHtmlWindow(wx.html.HtmlWindow):
 class GxsAboutBox(wx.Dialog):
 
     def __init__(self):
-        super(GxsAboutBox, self).__init__(None, -1, 'About <<project>>',
+        super(GxsAboutBox, self).__init__(None, -1, 'About GXSTOOLs',
                                           style=wx.DEFAULT_DIALOG_STYLE | wx.THICK_FRAME
                                           | wx.RESIZE_BORDER | wx.TAB_TRAVERSAL)
         hwin = GxsHtmlWindow(self, -1, size=(400, 200))
         aboutText = \
-            """<p>Graphical XESS Tools Utility Version %s</p>"""
+            """<p>Graphical XSTOOLs Utilities Version %s</p>"""
         hwin.SetPage(aboutText % xstools_defs.VERSION)
         btn = hwin.FindWindowById(wx.ID_OK)
         irep = hwin.GetInternalRepresentation()
@@ -81,9 +87,9 @@ class GxsTimer(wx.Timer):
 
     def __init__(self, *args, **kwargs):
         super(GxsTimer, self).__init__(*args, **kwargs)
-        PUBSUB.subscribe(self.start, "Timer.Start")
-        PUBSUB.subscribe(self.stop, "Timer.Stop")
-        PUBSUB.sendMessage("Timer.Start")
+        pub.subscribe(self.start, "Timer.Start")
+        pub.subscribe(self.stop, "Timer.Stop")
+        pub.sendMessage("Timer.Start")
         self.Start(milliseconds=100, oneShot=False)
 
     def start(self):
@@ -93,8 +99,8 @@ class GxsTimer(wx.Timer):
         self.Stop()
 
     def Notify(self):
-        PUBSUB.sendMessage("Port.Update")
-        PUBSUB.sendMessage("Progress.Pulse")
+        pub.sendMessage("Port.Check", force_check=False)
+        pub.sendMessage("Progress.Pulse")
 
 
 # ===============================================================
@@ -107,17 +113,17 @@ class GxsStatusBar(wx.StatusBar):
     def __init__(self, *args, **kwargs):
         super(GxsStatusBar, self).__init__(*args, **kwargs)
         self.SetFieldsCount(len(self.fields))
-        PUBSUB.subscribe(self.on_port_change, "Status.Port")
-        PUBSUB.subscribe(self.on_board_change, "Status.Board")
+        pub.subscribe(self.on_port_change, "Status.Port")
+        pub.subscribe(self.on_board_change, "Status.Board")
 
     def on_port_change(self, port):
         self.change_status_bar(self.fields[0], port)
 
     def on_board_change(self, board):
         self.change_status_bar(self.fields[1], board)
-        
+
     def change_status_bar(self, label, value):
-        self.SetStatusText("%s: %s" % (label,value), self.fields.index(label))
+        self.SetStatusText("%s: %s" % (label, value), self.fields.index(label))
 
 
 # ===============================================================
@@ -134,15 +140,15 @@ class GxsProgressDialog(wx.ProgressDialog):
             kwargs['message'] = " " * 80  # This sets the width of the progress window.
         if 'maximum' not in kwargs:
             kwargs['maximum'] = 100
-        PUBSUB.subscribe(self.on_phase_change, "Progress.Phase")
-        PUBSUB.subscribe(self.on_progress_change, "Progress.Pct")
-        PUBSUB.subscribe(self.on_pulse, "Progress.Pulse")
+        pub.subscribe(self.on_phase_change, "Progress.Phase")
+        pub.subscribe(self.on_progress_change, "Progress.Pct")
+        pub.subscribe(self.on_pulse, "Progress.Pulse")
         super(GxsProgressDialog, self).__init__(*args, **kwargs)
 
     def Destroy(self, *args, **kwargs):
-        PUBSUB.unsubscribe(self.on_phase_change, "Progress.Phase")
-        PUBSUB.unsubscribe(self.on_progress_change, "Progress.Pct")
-        PUBSUB.unsubscribe(self.on_pulse, "Progress.Pulse")
+        pub.unsubscribe(self.on_phase_change, "Progress.Phase")
+        pub.unsubscribe(self.on_progress_change, "Progress.Pct")
+        pub.unsubscribe(self.on_pulse, "Progress.Pulse")
         wx.ProgressDialog.Destroy(self)
 
     def on_phase_change(self, phase):
@@ -157,7 +163,7 @@ class GxsProgressDialog(wx.ProgressDialog):
     def on_pulse(self):
         if not self.Pulse()[0]:
             self.close()
-            
+
     def close(self):
         active_board.xsusb.terminate = True
         self.Destroy()
@@ -172,13 +178,15 @@ class GxsPortPanel(wx.Panel):
     def __init__(self, *args, **kwargs):
         super(GxsPortPanel, self).__init__(*args, **kwargs)
 
+        global active_port_id
         global active_board
+        active_port_id = None
         active_board = None
 
         self.SetToolTipString("Use this tab to select the port your XESS board is attached to.")
 
         self._port_list = wx.Choice(self)
-        self._port_list.SetSelection(0)
+        #self._port_list.SetSelection(0)
         self._port_list.SetToolTipString('Select a port with an attached XESS board')
         self._port_list.Bind(wx.EVT_CHOICE, self.on_port_change)
 
@@ -189,8 +197,7 @@ class GxsPortPanel(wx.Panel):
 
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
         hsizer.AddSpacer(5)
-        hsizer.Add(wx.StaticText(self, label='Port:'), 0,
-                   wx.ALIGN_CENTER_VERTICAL)
+        hsizer.Add(wx.StaticText(self, label='Port: '), 0, wx.ALIGN_CENTER_VERTICAL)
         hsizer.Add(self._port_list, 0, wx.ALIGN_CENTER_VERTICAL)
         hsizer.AddSpacer(5)
         hsizer.Add(self._blink_button, 0, wx.ALIGN_CENTER_VERTICAL)
@@ -203,28 +210,33 @@ class GxsPortPanel(wx.Panel):
 
         self.SetSizer(vsizer)
 
-        PUBSUB.subscribe(self.update_port_connections, "Port.Update")
+        pub.subscribe(self.check_port_connections, "Port.Check")
 
-    def update_port_connections(self):
+    def check_port_connections(self, force_check):
+        """Handles connections/disconnections of boards to/from USB ports"""
+        
         global active_board
-        xsusb_ports = XSBOARD.XsUsb.get_xsusb_ports()
+        
+        xsusb_ports = XSUSB.XsUsb.get_xsusb_ports()
         num_boards = len(xsusb_ports)
-        #print "# boards = %d" % num_boards
-        if num_boards != self._port_list.GetCount():
+        # print "# boards = %d" % num_boards
+        
+        if num_boards != self._port_list.GetCount() or force_check:
+            # A board has been connected or disconnected from a USB port, or a check of
+            # connected boards is being forced to occur.
             if num_boards == 0:
                 # print "active board = ", str(active_board)
                 # if active_board is not None:
                     # active_board.xsusb.disconnect()
                 self._port_list.Clear()
-                active_board = None
+                if active_board is not None: active_board = None 
                 wx.PostEvent(self._port_list, wx.PyCommandEvent(wx.EVT_CHOICE.typeId, wx.ID_ANY))
             else:
-                ports = []
-                for i in range(0, num_boards):
-                    ports.append('USB%d' % i)
                 self._port_list.Clear()
-                self._port_list.AppendItems(ports)
+                for i in range(0, num_boards):
+                    self._port_list.Append('USB%d' % i)
                 if active_board is None:
+                    # The active board must have been disconnected, so make the first remaining board in the list active.
                     self._port_list.SetSelection(0)
                 else:
                     xsusb_id = active_board.get_xsusb_id()
@@ -236,20 +248,29 @@ class GxsPortPanel(wx.Panel):
                 wx.PostEvent(self._port_list, wx.PyCommandEvent(wx.EVT_CHOICE.typeId, wx.ID_ANY))
 
     def on_port_change(self, event):
+        global active_port_id
         global active_board
+        
         port_id = self._port_list.GetSelection()
         if port_id != wx.NOT_FOUND:
-            self._active_port_name = "USB%d" % port_id
-            active_board = XSBOARD.XsBoard.get_xsboard(port_id)
-            self._active_board_name = active_board.name
+            active_port_id = port_id
+            active_port_name = 'USB%d' % active_port_id
+            active_board = XSBOARD.XsBoard.get_xsboard(active_port_id)
+            if active_board is None:
+                # This happens when the board has its auxiliary JTAG port enabled.
+                active_board_name = ''
+            else:
+                active_board_name = active_board.name
             self._blink_button.Enable()
         else:
-            self._active_port_name = ""
-            self._active_board_name = ""
-            self._blink_button.Disable()
+            active_port_id = None
+            active_port_name = ""
             active_board = None
-        PUBSUB.sendMessage("Status.Port", port=self._active_port_name)
-        PUBSUB.sendMessage("Status.Board", board=self._active_board_name)
+            active_board_name = ""
+            self._blink_button.Disable()
+        pub.sendMessage("Status.Port", port=active_port_name)
+        pub.sendMessage("Status.Board", board=active_board_name)
+        pub.sendMessage("Status.Change", dummy=None)
 
     def on_blink(self, event):
         port_id = self._port_list.GetSelection()
@@ -267,45 +288,53 @@ class GxsFlashPanel(wx.Panel):
         super(GxsFlashPanel, self).__init__(*args, **kwargs)
 
         mem_type = 'Flash'
-        
+
         self.SetToolTipString('Use this tab to transfer data to/from the %s on your XESS board.' % mem_type)
 
         #file_wildcard = 'Intel Hex (*.hex)|*.hex|Motorola EXO (*.exo)|*.exo|XESS (*.xes)|*.xes'
         file_wildcard = 'Intel Hex (*.hex)|*.hex'
 
         self._dnld_file_picker = wx.FilePickerCtrl(self, wildcard=file_wildcard,
-                                                   style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST | wx.FLP_USE_TEXTCTRL)
+                                                   style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
         self._dnld_file_picker.SetToolTipString('File to download to %s' % mem_type)
-        self.Bind(wx.EVT_FILEPICKER_CHANGED, self.set_download_file, self._dnld_file_picker)
+        self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_download_button, self._dnld_file_picker)
         self._upld_file_picker = wx.FilePickerCtrl(self, wildcard=file_wildcard,
-                                                   style=wx.FLP_SAVE | wx.FLP_OVERWRITE_PROMPT | wx.FLP_USE_TEXTCTRL)
+                                                   style=wx.FLP_SAVE | wx.FLP_OVERWRITE_PROMPT | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
         self._upld_file_picker.SetToolTipString('File to upload from %s' % mem_type)
-        self.Bind(wx.EVT_FILEPICKER_CHANGED, self.set_upload_file, self._upld_file_picker)
+        self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_upload_button, self._upld_file_picker)
 
-        down_arrow_bmp = wx.Bitmap(os.path.join(icon_dir,'down_arrow.png'), wx.BITMAP_TYPE_PNG)
-        down_arrow_disabled_bmp = wx.Bitmap(os.path.join(icon_dir,'down_arrow_disabled.png'), wx.BITMAP_TYPE_PNG)
+        stop_logging = wx.LogNull()    # This stops warnings about the color profile of the PNG files.
+        down_arrow_bmp = wx.Bitmap(os.path.join(icon_dir, 'down_arrow.png'), wx.BITMAP_TYPE_PNG)
+        down_arrow_disabled_bmp = wx.Bitmap(os.path.join(icon_dir, 'down_arrow_disabled.png'), wx.BITMAP_TYPE_PNG)
+        del stop_logging
+
         self._dnld_button = PBTN.PlateButton(self)
         self._dnld_button.SetBitmap(down_arrow_bmp)
         self._dnld_button.SetBitmapDisabled(down_arrow_disabled_bmp)
         self._dnld_button.SetToolTipString('Start download to %s' % mem_type)
-        self._dnld_button.Disable()
         self.Bind(wx.EVT_BUTTON, self.on_download, self._dnld_button)
+        pub.subscribe(self.handle_download_button, "Status.Change")
+        self.handle_download_button(dummy=None)
+
         self._upld_button = PBTN.PlateButton(self)
         self._upld_button.SetBitmap(down_arrow_bmp)
         self._upld_button.SetBitmapDisabled(down_arrow_disabled_bmp)
         self._upld_button.SetToolTipString('Start upload from %s' % mem_type)
-        self._upld_button.Disable()
         self.Bind(wx.EVT_BUTTON, self.on_upload, self._upld_button)
+        pub.subscribe(self.handle_upload_button, "Status.Change")
+        self.handle_upload_button(dummy=None)
 
         self._erase_button = wx.Button(self, label='Erase')
         self._erase_button.SetToolTipString('Click to erase %s between the upper and lower addresses' % mem_type)
         self._erase_button.Bind(wx.EVT_BUTTON, self.on_erase)
-        self._erase_button.Enable()
+        pub.subscribe(self.handle_erase_button, "Status.Change")
+        self.handle_erase_button(dummy=None)
 
         self._hi_addr_ctrl = INTCTRL.IntCtrl(self)
         self._hi_addr_ctrl.SetToolTipString('Enter upper %s address here' % mem_type)
         self._lo_addr_ctrl = INTCTRL.IntCtrl(self)
         self._lo_addr_ctrl.SetToolTipString('Enter lower %s address here' % mem_type)
+
         addr_vsizer = wx.BoxSizer(wx.VERTICAL)
         addr_vsizer.Add(self._hi_addr_ctrl)
         addr_vsizer.Add(wx.StaticText(self, label='Upper Address'), 0, wx.CENTER)
@@ -316,9 +345,13 @@ class GxsFlashPanel(wx.Panel):
         addr_vsizer.AddStretchSpacer()
         addr_vsizer.Add(wx.StaticText(self, label='Lower Address'), 0, wx.CENTER)
         addr_vsizer.Add(self._lo_addr_ctrl)
-        chip_hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        flash_bmp = wx.Bitmap(os.path.join(icon_dir,'serial_flash.png'), wx.BITMAP_TYPE_PNG)
+
+        stop_logging = wx.LogNull()    # This stops warnings about the color profile of the PNG files.
+        flash_bmp = wx.Bitmap(os.path.join(icon_dir, 'serial_flash.png'), wx.BITMAP_TYPE_PNG)
         flash_stbmp = wx.StaticBitmap(self, bitmap=flash_bmp)
+        del stop_logging
+
+        chip_hsizer = wx.BoxSizer(wx.HORIZONTAL)
         chip_hsizer.Add(flash_stbmp)
         chip_hsizer.AddSpacer(5)
         chip_hsizer.Add(addr_vsizer, 1, wx.ALIGN_CENTER)
@@ -341,14 +374,14 @@ class GxsFlashPanel(wx.Panel):
 
         self.SetSizer(hsizer)
 
-    def set_download_file(self, event):
-        if event.GetEventObject().GetPath():
+    def handle_download_button(self, dummy):
+        if self._dnld_file_picker.GetPath() and active_board is not None:
             self._dnld_button.Enable()
         else:
             self._dnld_button.Disable()
 
     def on_download(self, event):
-        PUBSUB.subscribe(self.cleanup, "Flash.Cleanup")
+        pub.subscribe(self.cleanup, "Flash.Cleanup")
         self._progress = GxsProgressDialog(title="Downloading to Flash", parent=self)
         GxsFlashDownloadThread(self._dnld_file_picker.GetPath())
 
@@ -358,18 +391,30 @@ class GxsFlashPanel(wx.Panel):
         else:
             self._upld_button.Disable()
 
+    def handle_upload_button(self, dummy):
+        if self._upld_file_picker.GetPath() and active_board is not None:
+            self._upld_button.Enable()
+        else:
+            self._upld_button.Disable()
+
     def on_upload(self, event):
-        PUBSUB.subscribe(self.cleanup, "Flash.Cleanup")
+        pub.subscribe(self.cleanup, "Flash.Cleanup")
         self._progress = GxsProgressDialog(title="Uploading from Flash", parent=self)
         GxsFlashUploadThread(self._upld_file_picker.GetPath(), self._lo_addr_ctrl.GetValue(), self._hi_addr_ctrl.GetValue())
-        
+
+    def handle_erase_button(self, dummy):
+        if active_board is not None:
+            self._erase_button.Enable()
+        else:
+            self._erase_button.Disable()
+
     def on_erase(self, event):
-        PUBSUB.subscribe(self.cleanup, "Flash.Cleanup")
+        pub.subscribe(self.cleanup, "Flash.Cleanup")
         self._progress = GxsProgressDialog(title="Erasing Flash", parent=self)
         GxsFlashEraseThread(self._lo_addr_ctrl.GetValue(), self._hi_addr_ctrl.GetValue())
 
     def cleanup(self):
-        PUBSUB.unsubscribe(self.cleanup, "Flash.Cleanup")
+        pub.unsubscribe(self.cleanup, "Flash.Cleanup")
         self._progress.Destroy()
 
 
@@ -388,14 +433,14 @@ class GxsFlashDownloadThread(Thread):
         try:
             active_board.write_cfg_flash(self._dnld_file)
         except XSERROR.XsTerminate as e:
-            PUBSUB.sendMessage("Flash.Cleanup")
+            pub.sendMessage("Flash.Cleanup")
             wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
             return
         except XSERROR.XsError as e:
-            PUBSUB.sendMessage("Flash.Cleanup")
+            pub.sendMessage("Flash.Cleanup")
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
             return
-        PUBSUB.sendMessage("Flash.Cleanup")
+        pub.sendMessage("Flash.Cleanup")
         wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
 
 
@@ -416,14 +461,14 @@ class GxsFlashUploadThread(Thread):
         try:
             active_board.read_cfg_flash(self._low_addr, self._high_addr).tofile(self._upld_file, format='hex')
         except XSERROR.XsTerminate as e:
-            PUBSUB.sendMessage("Flash.Cleanup")
+            pub.sendMessage("Flash.Cleanup")
             wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
             return
         except XSERROR.XsError as e:
-            PUBSUB.sendMessage("Flash.Cleanup")
+            pub.sendMessage("Flash.Cleanup")
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
             return
-        PUBSUB.sendMessage("Flash.Cleanup")
+        pub.sendMessage("Flash.Cleanup")
         wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
 
 
@@ -443,14 +488,14 @@ class GxsFlashEraseThread(Thread):
         try:
             active_board.erase_cfg_flash(self._low_addr, self._high_addr)
         except XSERROR.XsTerminate as e:
-            PUBSUB.sendMessage("Flash.Cleanup")
+            pub.sendMessage("Flash.Cleanup")
             wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
             return
         except XSERROR.XsError as e:
-            PUBSUB.sendMessage("Flash.Cleanup")
+            pub.sendMessage("Flash.Cleanup")
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
             return
-        PUBSUB.sendMessage("Flash.Cleanup")
+        pub.sendMessage("Flash.Cleanup")
         wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
 
 
@@ -464,56 +509,68 @@ class GxsSdramPanel(wx.Panel):
         super(GxsSdramPanel, self).__init__(*args, **kwargs)
 
         mem_type = 'SDRAM'
-        
+
         self.SetToolTipString('Use this tab to transfer data to/from the %s on your XESS board.' % mem_type)
 
         #file_wildcard = 'Intel Hex (*.hex)|*.hex|Motorola EXO (*.exo)|*.exo|XESS (*.xes)|*.xes'
         file_wildcard = 'Intel Hex (*.hex)|*.hex'
 
         self._dnld_file_picker = wx.FilePickerCtrl(self, wildcard=file_wildcard,
-                                                   style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST | wx.FLP_USE_TEXTCTRL)
+                                                   style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
         self._dnld_file_picker.SetToolTipString('File to download to %s' % mem_type)
-        self.Bind(wx.EVT_FILEPICKER_CHANGED, self.set_download_file, self._dnld_file_picker)
+        self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_download_button, self._dnld_file_picker)
         self._upld_file_picker = wx.FilePickerCtrl(self, wildcard=file_wildcard,
-                                                   style=wx.FLP_SAVE | wx.FLP_OVERWRITE_PROMPT | wx.FLP_USE_TEXTCTRL)
+                                                   style=wx.FLP_SAVE | wx.FLP_OVERWRITE_PROMPT | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
         self._upld_file_picker.SetToolTipString('File to upload from %s' % mem_type)
-        self.Bind(wx.EVT_FILEPICKER_CHANGED, self.set_upload_file, self._upld_file_picker)
+        self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_upload_button, self._upld_file_picker)
 
-        down_arrow_bmp = wx.Bitmap(os.path.join(icon_dir,'down_arrow.png'), wx.BITMAP_TYPE_PNG)
-        down_arrow_disabled_bmp = wx.Bitmap(os.path.join(icon_dir,'down_arrow_disabled.png'), wx.BITMAP_TYPE_PNG)
+        stop_logging = wx.LogNull()    # This stops warnings about the color profile of the PNG files.
+        down_arrow_bmp = wx.Bitmap(os.path.join(icon_dir, 'down_arrow.png'), wx.BITMAP_TYPE_PNG)
+        down_arrow_disabled_bmp = wx.Bitmap(os.path.join(icon_dir, 'down_arrow_disabled.png'), wx.BITMAP_TYPE_PNG)
+        del stop_logging
+        
         self._dnld_button = PBTN.PlateButton(self)
         self._dnld_button.SetBitmap(down_arrow_bmp)
         self._dnld_button.SetBitmapDisabled(down_arrow_disabled_bmp)
         self._dnld_button.SetToolTipString('Start download to %s' % mem_type)
-        self._dnld_button.Disable()
         self.Bind(wx.EVT_BUTTON, self.on_download, self._dnld_button)
+        pub.subscribe(self.handle_download_button, "Status.Change")
+        self.handle_download_button(dummy=None)
+
         self._upld_button = PBTN.PlateButton(self)
         self._upld_button.SetBitmap(down_arrow_bmp)
         self._upld_button.SetBitmapDisabled(down_arrow_disabled_bmp)
         self._upld_button.SetToolTipString('Start upload from %s' % mem_type)
-        self._upld_button.Disable()
         self.Bind(wx.EVT_BUTTON, self.on_upload, self._upld_button)
+        pub.subscribe(self.handle_upload_button, "Status.Change")
+        self.handle_upload_button(dummy=None)
 
         # self._erase_button = wx.Button(self, label='Erase')
         # self._erase_button.SetToolTipString('Click to erase memory between the upper and lower addresses')
         # self._erase_button.Bind(wx.EVT_BUTTON, self.on_erase)
-        # self._erase_button.Enable()
+        # pub.subscribe(self.handle_erase_button, "Status.Change")
+        # self.handle_erase_button(dummy=None)
 
         self._hi_addr_ctrl = INTCTRL.IntCtrl(self)
         self._hi_addr_ctrl.SetToolTipString('Enter upper %s address here' % mem_type)
         self._lo_addr_ctrl = INTCTRL.IntCtrl(self)
         self._lo_addr_ctrl.SetToolTipString('Enter lower %s address here' % mem_type)
+
         addr_vsizer = wx.BoxSizer(wx.VERTICAL)
         addr_vsizer.Add(self._hi_addr_ctrl)
         addr_vsizer.Add(wx.StaticText(self, label='Upper Address'), 0, wx.CENTER)
-        #addr_vsizer.AddStretchSpacer()
-        #addr_vsizer.Add(self._erase_button)
+        # addr_vsizer.AddStretchSpacer()
+        # addr_vsizer.Add(self._erase_button)
         addr_vsizer.AddStretchSpacer()
         addr_vsizer.Add(wx.StaticText(self, label='Lower Address'), 0, wx.CENTER)
         addr_vsizer.Add(self._lo_addr_ctrl)
-        chip_hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        sdram_bmp = wx.Bitmap(os.path.join(icon_dir,'sdram.png'), wx.BITMAP_TYPE_PNG)
+
+        stop_logging = wx.LogNull()    # This stops warnings about the color profile of the PNG files.
+        sdram_bmp = wx.Bitmap(os.path.join(icon_dir, 'sdram.png'), wx.BITMAP_TYPE_PNG)
         sdram_stbmp = wx.StaticBitmap(self, bitmap=sdram_bmp)
+        del stop_logging 
+        
+        chip_hsizer = wx.BoxSizer(wx.HORIZONTAL)
         chip_hsizer.Add(sdram_stbmp)
         chip_hsizer.AddSpacer(5)
         chip_hsizer.Add(addr_vsizer, 1, wx.GROW)
@@ -536,35 +593,41 @@ class GxsSdramPanel(wx.Panel):
 
         self.SetSizer(hsizer)
 
-    def set_download_file(self, event):
-        if event.GetEventObject().GetPath():
+    def handle_download_button(self, dummy):
+        if self._dnld_file_picker.GetPath() and active_board is not None:
             self._dnld_button.Enable()
         else:
             self._dnld_button.Disable()
 
     def on_download(self, event):
-        PUBSUB.subscribe(self.cleanup, "Sdram.Cleanup")
+        pub.subscribe(self.cleanup, "Sdram.Cleanup")
         self._progress = GxsProgressDialog(title="Downloading to SDRAM", parent=self)
         GxsSdramDownloadThread(self._dnld_file_picker.GetPath())
 
-    def set_upload_file(self, event):
-        if event.GetEventObject().GetPath():
+    def handle_upload_button(self, dummy):
+        if self._upld_file_picker.GetPath() and active_board is not None:
             self._upld_button.Enable()
         else:
             self._upld_button.Disable()
 
     def on_upload(self, event):
-        PUBSUB.subscribe(self.cleanup, "Sdram.Cleanup")
+        pub.subscribe(self.cleanup, "Sdram.Cleanup")
         self._progress = GxsProgressDialog(title="Uploading from SDRAM", parent=self)
         GxsSdramUploadThread(self._upld_file_picker.GetPath(), self._lo_addr_ctrl.GetValue(), self._hi_addr_ctrl.GetValue())
-        
+
+    def handle_erase_button(self, dummy):
+        if active_board is not None:
+            self._erase_button.Enable()
+        else:
+            self._erase_button.Disable()
+
     def on_erase(self, event):
-        PUBSUB.subscribe(self.cleanup, "Sdram.Cleanup")
+        pub.subscribe(self.cleanup, "Sdram.Cleanup")
         self._progress = GxsProgressDialog(title="Erasing SDRAM", parent=self)
         GxsSdramEraseThread(self._lo_addr_ctrl.GetValue(), self._hi_addr_ctrl.GetValue())
 
     def cleanup(self):
-        PUBSUB.unsubscribe(self.cleanup, "Sdram.Cleanup")
+        pub.unsubscribe(self.cleanup, "Sdram.Cleanup")
         self._progress.Destroy()
 
 
@@ -583,14 +646,14 @@ class GxsSdramDownloadThread(Thread):
         try:
             active_board.write_sdram(self._dnld_file)
         except XSERROR.XsTerminate as e:
-            PUBSUB.sendMessage("Sdram.Cleanup")
+            pub.sendMessage("Sdram.Cleanup")
             wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
             return
         except XSERROR.XsError as e:
-            PUBSUB.sendMessage("Sdram.Cleanup")
+            pub.sendMessage("Sdram.Cleanup")
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
             return
-        PUBSUB.sendMessage("Sdram.Cleanup")
+        pub.sendMessage("Sdram.Cleanup")
         wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
 
 
@@ -611,14 +674,14 @@ class GxsSdramUploadThread(Thread):
         try:
             active_board.read_sdram(self._low_addr, self._high_addr).tofile(self._upld_file, format='hex')
         except XSERROR.XsTerminate as e:
-            PUBSUB.sendMessage("Sdram.Cleanup")
+            pub.sendMessage("Sdram.Cleanup")
             wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
             return
         except XSERROR.XsError as e:
-            PUBSUB.sendMessage("Sdram.Cleanup")
+            pub.sendMessage("Sdram.Cleanup")
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
             return
-        PUBSUB.sendMessage("Sdram.Cleanup")
+        pub.sendMessage("Sdram.Cleanup")
         wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
 
 
@@ -638,14 +701,14 @@ class GxsSdramEraseThread(Thread):
         try:
             active_board.erase_sdram(self._low_addr, self._high_addr)
         except XSERROR.XsTerminate as e:
-            PUBSUB.sendMessage("Sdram.Cleanup")
+            pub.sendMessage("Sdram.Cleanup")
             wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
             return
         except XSERROR.XsError as e:
-            PUBSUB.sendMessage("Sdram.Cleanup")
+            pub.sendMessage("Sdram.Cleanup")
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
             return
-        PUBSUB.sendMessage("Sdram.Cleanup")
+        pub.sendMessage("Sdram.Cleanup")
         wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
 
 
@@ -662,26 +725,33 @@ class GxsFpgaConfigPanel(wx.Panel):
 
         file_wildcard = 'Xilinx bitstreams (*.bit)|*.bit'
 
-        self._bit_file_picker = wx.FilePickerCtrl(self, wildcard=file_wildcard,
-                                                  style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST | wx.FLP_USE_TEXTCTRL)
-        self._bit_file_picker.SetToolTipString('Bitstream file to download to FPGA')
-        self.Bind(wx.EVT_FILEPICKER_CHANGED, self.set_bit_file, self._bit_file_picker)
+        self._dnld_file_picker = wx.FilePickerCtrl(self, wildcard=file_wildcard,
+                                                   style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
+        self._dnld_file_picker.SetToolTipString('Bitstream file to download to FPGA')
+        self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_download_button, self._dnld_file_picker)
 
-        down_arrow_bmp = wx.Bitmap(os.path.join(icon_dir,'down_arrow.png'), wx.BITMAP_TYPE_PNG)
-        down_arrow_disabled_bmp = wx.Bitmap(os.path.join(icon_dir,'down_arrow_disabled.png'), wx.BITMAP_TYPE_PNG)
+        stop_logging = wx.LogNull()    # This stops warnings about the color profile of the PNG files.
+        down_arrow_bmp = wx.Bitmap(os.path.join(icon_dir, 'down_arrow.png'), wx.BITMAP_TYPE_PNG)
+        down_arrow_disabled_bmp = wx.Bitmap(os.path.join(icon_dir, 'down_arrow_disabled.png'), wx.BITMAP_TYPE_PNG)
+        del stop_logging
+
         self._dnld_button = PBTN.PlateButton(self)
         self._dnld_button.SetBitmap(down_arrow_bmp)
         self._dnld_button.SetBitmapDisabled(down_arrow_disabled_bmp)
         self._dnld_button.SetToolTipString('Start download to FPGA')
         self._dnld_button.Disable()
-        self.Bind(wx.EVT_BUTTON, self.on_config, self._dnld_button)
+        self.Bind(wx.EVT_BUTTON, self.on_download, self._dnld_button)
+        pub.subscribe(self.handle_download_button, "Status.Change")
+        self.handle_download_button(dummy=None)
 
-        fpga_bmp = wx.Bitmap(os.path.join(icon_dir,'fpga.png'), wx.BITMAP_TYPE_PNG)
+        stop_logging = wx.LogNull()    # This stops warnings about the color profile of the PNG files.
+        fpga_bmp = wx.Bitmap(os.path.join(icon_dir, 'fpga.png'), wx.BITMAP_TYPE_PNG)
         fpga_stbmp = wx.StaticBitmap(self, bitmap=fpga_bmp)
+        del stop_logging
 
         vsizer = wx.BoxSizer(wx.VERTICAL)
         vsizer.AddSpacer(5)
-        vsizer.Add(self._bit_file_picker, 0, wx.EXPAND)
+        vsizer.Add(self._dnld_file_picker, 0, wx.EXPAND)
         vsizer.Add(self._dnld_button, 0, wx.ALIGN_CENTER)
         vsizer.Add(fpga_stbmp, 0, wx.ALIGN_CENTER)
         vsizer.AddSpacer(5)
@@ -693,26 +763,26 @@ class GxsFpgaConfigPanel(wx.Panel):
 
         self.SetSizer(hsizer)
 
-    def set_bit_file(self, event):
-        if event.GetEventObject().GetPath():
+    def handle_download_button(self, dummy):
+        if self._dnld_file_picker.GetPath() and active_board is not None:
             self._dnld_button.Enable()
         else:
             self._dnld_button.Disable()
 
-    def on_config(self, event):
-        PUBSUB.subscribe(self.cleanup, "Fpga.Cleanup")
-        self._config_progress = GxsProgressDialog(title="Configure FPGA with Bitstream", parent=self)
-        GxsFpgaConfigThread(self._bit_file_picker.GetPath())
+    def on_download(self, event):
+        pub.subscribe(self.cleanup, "Fpga.Cleanup")
+        self._download_progress = GxsProgressDialog(title="Download Bitstream to FPGA", parent=self)
+        GxsFpgaDownloadThread(self._dnld_file_picker.GetPath())
 
     def cleanup(self):
-        PUBSUB.unsubscribe(self.cleanup, "Fpga.Cleanup")
+        pub.unsubscribe(self.cleanup, "Fpga.Cleanup")
         self._config_progress.Destroy()
 
 
 # ===============================================================
 # Thread for running FPGA configuration.
 # ===============================================================
-class GxsFpgaConfigThread(Thread):
+class GxsFpgaDownloadThread(Thread):
 
     def __init__(self, config_file):
         Thread.__init__(self)
@@ -720,18 +790,18 @@ class GxsFpgaConfigThread(Thread):
         self.start()
 
     def run(self):
-        msg_box_title = 'FPGA Configuration Result'
+        msg_box_title = 'FPGA Bitstream Download Result'
         try:
             active_board.configure(self._config_file)
         except XSERROR.XsTerminate as e:
-            PUBSUB.sendMessage("Fpga.Cleanup")
+            pub.sendMessage("Fpga.Cleanup")
             wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
             return
         except XSERROR.XsError as e:
-            PUBSUB.sendMessage("Fpga.Cleanup")
+            pub.sendMessage("Fpga.Cleanup")
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
             return
-        PUBSUB.sendMessage("Fpga.Cleanup")
+        pub.sendMessage("Fpga.Cleanup")
         wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
 
 
@@ -748,28 +818,32 @@ class GxsMicrocontrollerPanel(wx.Panel):
 
         file_wildcard = 'object file (*.hex)|*.hex'
 
-        self._obj_file_picker = wx.FilePickerCtrl(self,
-                                                  wildcard=file_wildcard, style=wx.FLP_OPEN
-                                                  | wx.FLP_FILE_MUST_EXIST | wx.FLP_USE_TEXTCTRL)
-        self._obj_file_picker.SetToolTipString('Hex object file to download to microcontroller')
-        self.Bind(wx.EVT_FILEPICKER_CHANGED, self.set_obj_file,
-                  self._obj_file_picker)
+        self._dnld_file_picker = wx.FilePickerCtrl(self, wildcard=file_wildcard,
+                                                   style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
+        self._dnld_file_picker.SetToolTipString('Hex object file to download to microcontroller')
+        self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_download_button, self._dnld_file_picker)
 
-        down_arrow_bmp = wx.Bitmap(os.path.join(icon_dir,'down_arrow.png'), wx.BITMAP_TYPE_PNG)
-        down_arrow_disabled_bmp = wx.Bitmap(os.path.join(icon_dir,'down_arrow_disabled.png'), wx.BITMAP_TYPE_PNG)
+        stop_logging = wx.LogNull()    # This stops warnings about the color profile of the PNG files.
+        down_arrow_bmp = wx.Bitmap(os.path.join(icon_dir, 'down_arrow.png'), wx.BITMAP_TYPE_PNG)
+        down_arrow_disabled_bmp = wx.Bitmap(os.path.join(icon_dir, 'down_arrow_disabled.png'), wx.BITMAP_TYPE_PNG)
+        del stop_logging
+
         self._dnld_button = PBTN.PlateButton(self)
         self._dnld_button.SetBitmap(down_arrow_bmp)
         self._dnld_button.SetBitmapDisabled(down_arrow_disabled_bmp)
         self._dnld_button.SetToolTipString('Start download to microcontroller flash')
-        self._dnld_button.Disable()
-        self.Bind(wx.EVT_BUTTON, self.on_update_firmware, self._dnld_button)
+        self.Bind(wx.EVT_BUTTON, self.on_download, self._dnld_button)
+        pub.subscribe(self.handle_download_button, "Status.Change")
+        self.handle_download_button(dummy=None)
 
-        uc_bmp = wx.Bitmap(os.path.join(icon_dir,'uC.png'), wx.BITMAP_TYPE_PNG)
+        stop_logging = wx.LogNull()    # This stops warnings about the color profile of the PNG files.
+        uc_bmp = wx.Bitmap(os.path.join(icon_dir, 'uC.png'), wx.BITMAP_TYPE_PNG)
         uc_stbmp = wx.StaticBitmap(self, bitmap=uc_bmp)
+        del stop_logging
 
         vsizer = wx.BoxSizer(wx.VERTICAL)
         vsizer.AddSpacer(5)
-        vsizer.Add(self._obj_file_picker, 0, wx.EXPAND)
+        vsizer.Add(self._dnld_file_picker, 0, wx.EXPAND)
         vsizer.Add(self._dnld_button, 0, wx.ALIGN_CENTER)
         vsizer.Add(uc_stbmp, 0, wx.ALIGN_CENTER)
         vsizer.AddSpacer(5)
@@ -781,28 +855,40 @@ class GxsMicrocontrollerPanel(wx.Panel):
 
         self.SetSizer(hsizer)
 
-    def set_obj_file(self, event):
-        if event.GetEventObject().GetPath():
+    def handle_download_button(self, dummy):
+        if self._dnld_file_picker.GetPath() and active_board is not None:
             self._dnld_button.Enable()
         else:
             self._dnld_button.Disable()
 
-    def on_update_firmware(self, event):
-        PUBSUB.subscribe(self.cleanup, "Micro.Cleanup")
+    def on_download(self, event):
+        confirm_dlg = wx.MessageDialog(parent=self,
+                                       caption="WARNING!",
+                                       message="""WARNING!
+
+It's possible to render the board inoperable if you download the wrong firmware into the microcontroller.
+
+ARE YOU SURE YOU WANT TO DO THIS!?!?
+""",
+                                       style=wx.OK | wx.CANCEL | wx.ICON_QUESTION)
+        confirm_dnld = confirm_dlg.ShowModal()
+        confirm_dlg.Destroy()
+        if confirm_dnld is not wx.ID_OK:
+            return
+        pub.subscribe(self.cleanup, "Micro.Cleanup")
         self._upd_fmw_progress = GxsProgressDialog(title="Update Microcontroller Flash", parent=self)
-        PUBSUB.sendMessage("Timer.Stop")
-        GxsMicrocontrollerThread(self._obj_file_picker.GetPath())
+        pub.sendMessage("Timer.Stop")
+        GxsMcuDownloadThread(self._dnld_file_picker.GetPath())
 
     def cleanup(self):
-        PUBSUB.unsubscribe(self.cleanup, "Micro.Cleanup")
+        pub.unsubscribe(self.cleanup, "Micro.Cleanup")
         self._upd_fmw_progress.Destroy()
-        # PUBSUB.sendMessage("Timer.Start")
 
 
 # ===============================================================
 # Thread for running uC firmware update.
 # ===============================================================
-class GxsMicrocontrollerThread(Thread):
+class GxsMcuDownloadThread(Thread):
 
     def __init__(self, fmw_obj_file):
         Thread.__init__(self)
@@ -814,14 +900,14 @@ class GxsMicrocontrollerThread(Thread):
         try:
             active_board.update_firmware(self._fmw_obj_file)
         except XSERROR.XsTerminate as e:
-            PUBSUB.sendMessage("Micro.Cleanup")
+            pub.sendMessage("Micro.Cleanup")
             wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
             return
         except XSERROR.XsError as e:
-            PUBSUB.sendMessage("Micro.Cleanup")
+            pub.sendMessage("Micro.Cleanup")
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
             return
-        PUBSUB.sendMessage("Micro.Cleanup")
+        pub.sendMessage("Micro.Cleanup")
         wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
 
 
@@ -837,9 +923,10 @@ class GxsBoardTestPanel(wx.Panel):
         self.SetToolTipString("Use this tab to run a diagnostic on your XESS board.")
 
         self._test_button = wx.Button(self, label='Test')
-        self._test_button.SetToolTipString('Click to test the board attached to the selected port')
-        self._test_button.Bind(wx.EVT_BUTTON, self.on_test)
-        self._test_button.Disable()
+        self._test_button.SetToolTipString('Test the board attached to the selected port')
+        self.Bind(wx.EVT_BUTTON, self.on_test, self._test_button)
+        pub.subscribe(self.handle_test_button, "Status.Change")
+        self.handle_test_button(dummy=None)
 
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
         hsizer.AddSpacer(5)
@@ -853,21 +940,19 @@ class GxsBoardTestPanel(wx.Panel):
 
         self.SetSizer(vsizer)
 
-        PUBSUB.subscribe(self.update_port_connections, "Status.Board")
-
-    def update_port_connections(self, board):
-        if board is None or board == "":
-            self._test_button.Disable()
-        else:
+    def handle_test_button(self, dummy):
+        if active_board is not None:
             self._test_button.Enable()
+        else:
+            self._test_button.Disable()
 
     def on_test(self, event):
-        PUBSUB.subscribe(self.cleanup, "Test.Cleanup")
+        pub.subscribe(self.cleanup, "Test.Cleanup")
         self._test_progress = GxsProgressDialog(title="Run Board Diagnostic", parent=self)
-        GxsTestThread()
+        GxsBoardTestThread()
 
     def cleanup(self):
-        PUBSUB.unsubscribe(self.cleanup, "Test.Cleanup")
+        pub.unsubscribe(self.cleanup, "Test.Cleanup")
         self._test_progress.Destroy()
 
 
@@ -875,7 +960,7 @@ class GxsBoardTestPanel(wx.Panel):
 # Thread for running board diagnostic.
 # ===============================================================
 
-class GxsTestThread(Thread):
+class GxsBoardTestThread(Thread):
 
     def __init__(self):
         Thread.__init__(self)
@@ -886,14 +971,14 @@ class GxsTestThread(Thread):
         try:
             active_board.do_self_test()
         except XSERROR.XsTerminate as e:
-            PUBSUB.sendMessage("Test.Cleanup")
+            pub.sendMessage("Test.Cleanup")
             wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
             return
         except XSERROR.XsError as e:
-            PUBSUB.sendMessage("Test.Cleanup")
+            pub.sendMessage("Test.Cleanup")
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
             return
-        PUBSUB.sendMessage("Test.Cleanup")
+        pub.sendMessage("Test.Cleanup")
         wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
 
 
@@ -910,15 +995,15 @@ class GxsBoardFlagsPanel(wx.Panel):
 
         self._aux_jtag_flag = wx.CheckBox(self, label='Enable auxiliary JTAG header')
         self._aux_jtag_flag.SetToolTipString('Check to enable the auxiliary JTAG interface through the four-pin header')
-        self._aux_jtag_flag.Bind(wx.EVT_CHECKBOX, self.on_aux_jtag)
-        #self._aux_jtag_flag.SetValue(active_board.get_aux_jtag_flag())
-        self._aux_jtag_flag.Enable()
+        self.Bind(wx.EVT_CHECKBOX, self.on_aux_jtag, self._aux_jtag_flag)
+        pub.subscribe(self.handle_aux_jtag_flag, "Status.Change")
+        self.handle_aux_jtag_flag(dummy=None)
 
         self._flash_flag = wx.CheckBox(self, label='Enable FPGA access to the configuration flash')
         self._flash_flag.SetToolTipString('Check to allow the FPGA to read/write the configuration flash')
-        self._flash_flag.Bind(wx.EVT_CHECKBOX, self.on_flash)
-        #self._flash_flag.SetValue(active_board.get_flash_flag())
-        self._flash_flag.Enable()
+        self.Bind(wx.EVT_CHECKBOX, self.on_flash, self._flash_flag)
+        pub.subscribe(self.handle_flash_flag, "Status.Change")
+        self.handle_flash_flag(dummy=None)
 
         vsizer = wx.BoxSizer(wx.VERTICAL)
         vsizer.AddSpacer(5)
@@ -934,19 +1019,48 @@ class GxsBoardFlagsPanel(wx.Panel):
 
         self.SetSizer(hsizer)
 
-        PUBSUB.subscribe(self.update_port_connections, "Status.Board")
+    def handle_aux_jtag_flag(self, dummy):
+        if active_port_id is not None:
+            self._aux_jtag_flag.Enable()
+            if active_board is None:
+                tmp_board = XSBOARD.Xula(xsusb_id = active_port_id)
+            else:
+                tmp_board = active_board
+            self._aux_jtag_flag.SetValue(tmp_board.get_aux_jtag_flag())
+        else:
+            self._aux_jtag_flag.Disable()
+            self._aux_jtag_flag.SetValue(False)
 
-    def update_port_connections(self, board):
-        self._aux_jtag_flag.Enable()
-        self._flash_flag.Enable()
+    def handle_flash_flag(self, dummy):
+        if active_port_id is not None:
+            self._flash_flag.Enable()
+            if active_board is None:
+                tmp_board = XSBOARD.Xula(xsusb_id = active_port_id)
+            else:
+                tmp_board = active_board
+            self._flash_flag.SetValue(tmp_board.get_flash_flag())
+        else:
+            self._flash_flag.Disable()
+            self._flash_flag.SetValue(False)
 
     def on_aux_jtag(self, event):
-        new_value = active_board.toggle_aux_jtag_flag()
-        self._aux_jtag_flag.SetValue(new_value)
+        if active_port_id is not None:
+            if active_board is None:
+                tmp_board = XSBOARD.Xula(xsusb_id = active_port_id)
+            else:
+                tmp_board = active_board
+            new_value = tmp_board.toggle_aux_jtag_flag()
+            self._aux_jtag_flag.SetValue(new_value)
+        pub.sendMessage("Port.Check", force_check=True)
+
 
     def on_flash(self, event):
-        new_value = active_board.toggle_flash_flag()
-        self._flash_flag.SetValue(new_value)
+        if active_port_id is not None:
+            tmp_board = active_board
+            if active_board is None:
+                tmp_board = XSBOARD.Xula(xsusb_id = active_port_id)
+            new_value = tmp_board.toggle_flash_flag()
+            self._flash_flag.SetValue(new_value)
 
 
 # ===============================================================
@@ -958,25 +1072,25 @@ class GxsFlatNotebook(FNB.FlatNotebook):
         mystyle = FNB.FNB_FF2 | FNB.FNB_NO_X_BUTTON | FNB.FNB_NO_NAV_BUTTONS | FNB.FNB_SMART_TABS
         super(GxsFlatNotebook, self).__init__(parent, style=mystyle)
         self._port_panel = GxsPortPanel(self)
-        self._fpga_panel = GxsFpgaConfigPanel(self)
-        self._uc_panel = GxsMicrocontrollerPanel(self)
-        self._sdram_panel = GxsSdramPanel(self)
-        self._flash_panel = GxsFlashPanel(self)
-        self._test_panel = GxsBoardTestPanel(self)
-        #self._flags_panel = GxsBoardFlagsPanel(self)
         self.AddPage(self._port_panel, 'Ports')
+        self._fpga_panel = GxsFpgaConfigPanel(self)
         self.AddPage(self._fpga_panel, 'FPGA')
-        self.AddPage(self._flash_panel, 'Flash')
+        self._sdram_panel = GxsSdramPanel(self)
         self.AddPage(self._sdram_panel, 'SDRAM')
-        self.AddPage(self._uc_panel, 'uC')
+        self._flash_panel = GxsFlashPanel(self)
+        self.AddPage(self._flash_panel, 'Flash')
+        self._test_panel = GxsBoardTestPanel(self)
         self.AddPage(self._test_panel, 'Test')
-        #self.AddPage(self._flags_panel, 'Flags')
+        self._flags_panel = GxsBoardFlagsPanel(self)
+        self.AddPage(self._flags_panel, 'Flags')
+        self._uc_panel = GxsMicrocontrollerPanel(self)
+        self.AddPage(self._uc_panel, 'uC')
 
 
 class MyFrame(wx.Frame):
 
     def __init__(self, parent, id=wx.ID_ANY, title='', pos=wx.DefaultPosition,
-                 size=(600,400), style=wx.DEFAULT_FRAME_STYLE, name='MyFrame',):
+                 size=(600, 400), style=wx.DEFAULT_FRAME_STYLE, name='MyFrame',):
         super(MyFrame, self).__init__(parent, id, title, pos, size, style, name,)
 
         self.menu_bar = wx.MenuBar()
@@ -999,7 +1113,7 @@ class MyFrame(wx.Frame):
         self.SetMenuBar(self.menu_bar)
 
         self.SetStatusBar(GxsStatusBar(self))
-        
+
     def on_exit(self, event):
         self.Close()
 
