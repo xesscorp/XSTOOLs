@@ -296,6 +296,9 @@ class Xula(XulaBase):
     def get_flash_flag(self):
         return self.micro.get_cfg_flash_flag() != 0
         
+    def toggle_flash_flag(self):
+        return self.set_flash_flag(not self.get_flash_flag())
+        
 class Xula50(Xula):
 
     """Class for a XuLA board with an XC3S50A FPGA."""
@@ -349,6 +352,9 @@ class Xula2(XulaBase):
         
     def get_flash_flag(self):
         return True # Flash is always enabled for XuLA2.
+        
+    def toggle_flash_flag(self):
+        return self.get_flash_flag() # Flash enable doesn't change on XuLA2.
 
 class Xula2lx25(Xula2):
     
