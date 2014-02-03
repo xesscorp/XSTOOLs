@@ -22,7 +22,7 @@
 import sys
 
 # Uncomment this path when using local development version of xstools.
-sys.path.insert(0, r'C:\xesscorp\products\xstools')
+#sys.path.insert(0, r'C:\xesscorp\products\xstools')
 
 import os
 import xstools
