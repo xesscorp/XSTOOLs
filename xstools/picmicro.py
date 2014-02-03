@@ -127,12 +127,14 @@ class Pic18f14k50(FlashDevice):
     def enable_jtag_cable(self):
         """Set EEDATA flag to enable the JTAG cable interface."""
 
-        self.set_jtag_cable_flag(0)
+        # This disables the USB-to-JTAG interface, thus enabling the auxiliary JTAG cable interface!
+        self.set_jtag_cable_flag(self._xsusb.DISABLE_JTAG)
 
     def disable_jtag_cable(self):
         """Set EEDATA flag to disable the JTAG cable interface."""
 
-        self.set_jtag_cable_flag(self._xsusb.DISABLE_JTAG)
+        # This enables the USB-to-JTAG interface, thus disabling the auxiliary JTAG cable interface!
+        self.set_jtag_cable_flag(0) 
 
     def get_cfg_flash_flag(self):
         """Get EEDATA flag that enables/disables the serial configuration flash."""
