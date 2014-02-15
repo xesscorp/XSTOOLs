@@ -24,12 +24,12 @@
 This command-line program runs a self-test on an XESS board like so:
 
     python xstest.py
-    
+
 which downloads a self-test bitstream into an XESS board
-attached to a USB port and reports the result. For more info on 
+attached to a USB port and reports the result. For more info on
 using this program, type xsload -h.
 
-This program was originally conceived and written in C++ by Dave 
+This program was originally conceived and written in C++ by Dave
 Vandenbout and then ported to python.
 """
 
@@ -39,6 +39,10 @@ except ImportError:
     pass
 
 import sys
+
+# Uncomment this path when using local development version of xstools.
+#sys.path.insert(0, r'C:\xesscorp\products\xstools')
+
 import string
 from argparse import ArgumentParser
 import xstools.xsboard as XSBOARD
@@ -46,7 +50,7 @@ import xstools.xserror as XSERROR
 from xstools_defs import *
 
 p = ArgumentParser(description='Run self-test on an XESS board.')
-    
+
 p.add_argument('-u', '--usb', type=int, default=0,
                help='The USB port number for the XESS board. If you only have one board, then use 0.')
 p.add_argument('-b', '--board', type=str, default='xula-200',
@@ -91,7 +95,7 @@ while(True):
             else:
                 sys.exit()
         else:
-            XSERROR.XsFatalError( "%d is not within USB port range [0,%d]" % (args.usb, num_boards-1))
+            XSERROR.XsFatalError("%d is not within USB port range [0,%d]" % (args.usb, num_boards - 1))
             sys.exit()
     elif not args.multiple:
         XSERROR.XsFatalError("No XESS Boards found!")

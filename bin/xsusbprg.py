@@ -27,13 +27,13 @@ microcontroller that manages the USB interface of an XESS board.
 You would reprogram the microcontroller flash as follows:
 
     xsusbprg -f program.hex
-    
+
 which write the contents of the program.hex file into the PIC uC on
 the XuLA-200 board attached to a USB port. For more info on using this
 program, type xsusbprg -h.
 
 This program was originally conceived and coded in C++ by Dave Vandenbout.
-Al Neissner re-wrote it in python. Dave then took ideas and bits of Al's 
+Al Neissner re-wrote it in python. Dave then took ideas and bits of Al's
 code and integrated them into this program and the XSTOOLs classes and methods.
 """
 
@@ -42,7 +42,11 @@ try:
 except ImportError:
     pass
 
-import sys    
+import sys
+
+# Uncomment this path when using local development version of xstools.
+#sys.path.insert(0, r'C:\xesscorp\products\xstools')
+
 import os
 import string
 from argparse import ArgumentParser
@@ -51,7 +55,7 @@ import xstools.xserror as XSERROR
 from xstools_defs import *
 
 p = ArgumentParser(description='Program a firmware hex file into the microcontroller on an XESS board.')
-    
+
 p.add_argument('-f', '--filename', type=str, default=None,
                help='The name of the firmware hex file.')
 p.add_argument('-u', '--usb', type=int, default=0,
@@ -112,7 +116,7 @@ while(True):
                 # Therefore, exit this program without cleaning-up to avoid these error messages.
                 os._exit(0)
         else:
-            XSERROR.XsFatalError( "%d is not within USB port range [0,%d]" % (args.usb, num_boards-1))
+            XSERROR.XsFatalError("%d is not within USB port range [0,%d]" % (args.usb, num_boards - 1))
             sys.exit()
     elif not args.multiple:
         XSERROR.XsFatalError("No XESS Boards found!")

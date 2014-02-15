@@ -186,7 +186,7 @@ class GxsPortPanel(wx.Panel):
         self.SetToolTipString("Use this tab to select the port your XESS board is attached to.")
 
         self._port_list = wx.Choice(self)
-        #self._port_list.SetSelection(0)
+        # self._port_list.SetSelection(0)
         self._port_list.SetToolTipString('Select a port with an attached XESS board')
         self._port_list.Bind(wx.EVT_CHOICE, self.on_port_change)
 
@@ -214,13 +214,13 @@ class GxsPortPanel(wx.Panel):
 
     def check_port_connections(self, force_check):
         """Handles connections/disconnections of boards to/from USB ports"""
-        
+
         global active_board
-        
+
         xsusb_ports = XSUSB.XsUsb.get_xsusb_ports()
         num_boards = len(xsusb_ports)
         # print "# boards = %d" % num_boards
-        
+
         if num_boards != self._port_list.GetCount() or force_check:
             # A board has been connected or disconnected from a USB port, or a check of
             # connected boards is being forced to occur.
@@ -229,7 +229,8 @@ class GxsPortPanel(wx.Panel):
                 # if active_board is not None:
                     # active_board.xsusb.disconnect()
                 self._port_list.Clear()
-                if active_board is not None: active_board = None 
+                if active_board is not None:
+                    active_board = None
                 wx.PostEvent(self._port_list, wx.PyCommandEvent(wx.EVT_CHOICE.typeId, wx.ID_ANY))
             else:
                 self._port_list.Clear()
@@ -250,7 +251,7 @@ class GxsPortPanel(wx.Panel):
     def on_port_change(self, event):
         global active_port_id
         global active_board
-        
+
         port_id = self._port_list.GetSelection()
         if port_id != wx.NOT_FOUND:
             active_port_id = port_id
@@ -528,7 +529,7 @@ class GxsSdramPanel(wx.Panel):
         down_arrow_bmp = wx.Bitmap(os.path.join(icon_dir, 'down_arrow.png'), wx.BITMAP_TYPE_PNG)
         down_arrow_disabled_bmp = wx.Bitmap(os.path.join(icon_dir, 'down_arrow_disabled.png'), wx.BITMAP_TYPE_PNG)
         del stop_logging
-        
+
         self._dnld_button = PBTN.PlateButton(self)
         self._dnld_button.SetBitmap(down_arrow_bmp)
         self._dnld_button.SetBitmapDisabled(down_arrow_disabled_bmp)
@@ -568,8 +569,8 @@ class GxsSdramPanel(wx.Panel):
         stop_logging = wx.LogNull()    # This stops warnings about the color profile of the PNG files.
         sdram_bmp = wx.Bitmap(os.path.join(icon_dir, 'sdram.png'), wx.BITMAP_TYPE_PNG)
         sdram_stbmp = wx.StaticBitmap(self, bitmap=sdram_bmp)
-        del stop_logging 
-        
+        del stop_logging
+
         chip_hsizer = wx.BoxSizer(wx.HORIZONTAL)
         chip_hsizer.Add(sdram_stbmp)
         chip_hsizer.AddSpacer(5)
@@ -1023,7 +1024,7 @@ class GxsBoardFlagsPanel(wx.Panel):
         if active_port_id is not None:
             self._aux_jtag_flag.Enable()
             if active_board is None:
-                tmp_board = XSBOARD.Xula(xsusb_id = active_port_id)
+                tmp_board = XSBOARD.Xula(xsusb_id=active_port_id)
             else:
                 tmp_board = active_board
             self._aux_jtag_flag.SetValue(tmp_board.get_aux_jtag_flag())
@@ -1035,7 +1036,7 @@ class GxsBoardFlagsPanel(wx.Panel):
         if active_port_id is not None:
             self._flash_flag.Enable()
             if active_board is None:
-                tmp_board = XSBOARD.Xula(xsusb_id = active_port_id)
+                tmp_board = XSBOARD.Xula(xsusb_id=active_port_id)
             else:
                 tmp_board = active_board
             self._flash_flag.SetValue(tmp_board.get_flash_flag())
@@ -1046,19 +1047,18 @@ class GxsBoardFlagsPanel(wx.Panel):
     def on_aux_jtag(self, event):
         if active_port_id is not None:
             if active_board is None:
-                tmp_board = XSBOARD.Xula(xsusb_id = active_port_id)
+                tmp_board = XSBOARD.Xula(xsusb_id=active_port_id)
             else:
                 tmp_board = active_board
             new_value = tmp_board.toggle_aux_jtag_flag()
             self._aux_jtag_flag.SetValue(new_value)
         pub.sendMessage("Port.Check", force_check=True)
 
-
     def on_flash(self, event):
         if active_port_id is not None:
             tmp_board = active_board
             if active_board is None:
-                tmp_board = XSBOARD.Xula(xsusb_id = active_port_id)
+                tmp_board = XSBOARD.Xula(xsusb_id=active_port_id)
             new_value = tmp_board.toggle_flash_flag()
             self._flash_flag.SetValue(new_value)
 

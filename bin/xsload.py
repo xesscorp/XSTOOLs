@@ -24,24 +24,28 @@
 This command-line program downloads a bitstream into the FPGA
 on an XESS board.
 
-The most common use of this program is to download a bitstream into an 
+The most common use of this program is to download a bitstream into an
 XESS board like so:
 
     xsload -f design.bit -b xula-200
-    
+
 which downloads the bitstream in design.bit into the XuLA-200 board
 attached to a USB port. For more info on using this program, type
 xsload -h.
 
-This program was originally conceived and written in C++ by Dave 
-Vandenbout. James Bowman ported it to python. Hector Peraza 
-modified the python code to eliminate some problems and make 
+This program was originally conceived and written in C++ by Dave
+Vandenbout. James Bowman ported it to python. Hector Peraza
+modified the python code to eliminate some problems and make
 FPGA configuration via JTAG conform to accepted practice.
-Dave took ideas and bits of Hector's code and integrated them 
+Dave took ideas and bits of Hector's code and integrated them
 into this program and the XSTOOLs classes and methods.
 """
 
 import sys
+
+# Uncomment this path when using local development version of xstools.
+#sys.path.insert(0, r'C:\xesscorp\products\xstools')
+
 import string
 from argparse import ArgumentParser
 import xstools.xsboard as XSBOARD
@@ -50,11 +54,11 @@ from xstools_defs import *
 
 p = ArgumentParser(description='Program a bitstream file into the FPGA on an XESS board.')
 
-p.add_argument('--fpga', type=str, 
+p.add_argument('--fpga', type=str,
                help='The name of the bitstream file to load into the FPGA.')
-p.add_argument('--flash', type=str, 
+p.add_argument('--flash', type=str,
                help='The name of the file to down/upload to/from the serial configuration flash.')
-p.add_argument('--ram', type=str, 
+p.add_argument('--ram', type=str,
                help='The name of the file to down/upload to/from the RAM.')
 p.add_argument('-u', '--upload', nargs=2, type=int, default=0,
                help='Upload from RAM or flash the data between the lower and upper addresses.')
@@ -67,12 +71,12 @@ p.add_argument('-v', '--version', action='version', version='%(prog)s ' + VERSIO
 args = p.parse_args()
 
 args.board = string.lower(args.board)
-    
+
 num_boards = XSBOARD.XsUsb.get_num_xsusb()
 if num_boards > 0:
     if 0 <= args.usb < num_boards:
         xs_board = XSBOARD.XsBoard.get_xsboard(args.usb)
-            
+
         if args.flash:
             if args.upload:
                 hexfile_data = xs_board.read_cfg_flash(bottom=args.upload[0], top=args.upload[1])
@@ -87,11 +91,11 @@ if num_boards > 0:
                 xs_board.xsusb.disconnect()
                 sys.exit()
             print "Success: Bitstream", args.fpga, "downloaded into", xs_board.name, "!"
-                
+
         xs_board.xsusb.disconnect()
         sys.exit()
     else:
-        XSERROR.XsFatalError( "%d is not within USB port range [0,%d]" % (args.usb, num_boards-1))
+        XSERROR.XsFatalError("%d is not within USB port range [0,%d]" % (args.usb, num_boards - 1))
         sys.exit()
 else:
     XSERROR.XsFatalError("No XESS Boards found!")
