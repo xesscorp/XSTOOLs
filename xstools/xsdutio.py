@@ -59,10 +59,10 @@ class XsDutIo(XsHostIo):
         XsHostIo.__init__(self, xsusb_id=xsusb_id, module_id=module_id, xsjtag=xsjtag)
         # Get the number of inputs and outputs of the DUT.
         (self.total_dut_input_width, self.total_dut_output_width) = self._get_io_widths()
-        assert self.total_dut_input_width != 0
-        assert self.total_dut_output_width != 0
         logging.debug('# DUT input bits = %d' % self.total_dut_input_width)
         logging.debug('# DUT output bits = %d' % self.total_dut_output_width)
+        assert self.total_dut_output_width != 0
+        assert self.total_dut_input_width != 0
 
         if dut_input_widths == None:
             # If no DUT input widths are provided, then make a single-element
