@@ -1,3 +1,4 @@
+v0.1.13, 04/07/2014 -- Add bidirectional communication channel between host and FPGA: xscomm.py.
 v0.1.12, 02/03/2014 -- Added graphical front-end to XSTOOLs: gxstools.py.
 v0.1.11, 01/03/2014 -- Fixed bit direction for checking status bits in xsi2c.py.
 v0.1.10, 11/20/2013 -- Added support for XuLA2-LX9 board.
