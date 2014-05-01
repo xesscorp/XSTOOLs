@@ -87,7 +87,7 @@ class XsBoard:
         board['ID'] = '%02x%02x' % (info[1], info[2])
         board['VERSION'] = '%d.%d' % (info[3], info[4])
         # Description is 0-terminated string
-        desc = info[5:-1]
+        desc = info[5:]
         desc_len = desc.index(0)
         board['DESCRIPTION'] = desc[:desc_len].tostring()
         return board
