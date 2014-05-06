@@ -36,16 +36,12 @@ from picmicro import *
 class XsBoard:
 
     """Class object for a generic XESS FPGA board."""
-
-    BASE_SIGNATURE = 0xA50000A5
-    SELF_TEST_SIGNATURE = BASE_SIGNATURE | (1<<8)
-    (TEST_START, TEST_WRITE, TEST_READ, TEST_DONE) = range(0,4)
     
     @classmethod
     def get_xsboard(cls, xsusb_id=0, xsboard_name=''):
         """Detect which type of XESS board is connected to a USB port."""
         
-        board_classes = (Xula50, Xula200, Xula2lx25, Xula2lx9)      
+        board_classes = (Xula50, Xula200, Xula2lx25, Xula2lx9, XulaOldFmw)      
 
         for c in board_classes:
             if xsboard_name.lower() == c.name.lower():
@@ -57,6 +53,11 @@ class XsBoard:
                 return xsboard
 
         return None
+        
+
+class XulaMicro(XsBoard):
+
+    """Class for XuLA-type boards that only includes methods of the microcontroller interface."""
 
     def __init__(self, xsusb_id=0):
         # Create a USB interface for the board object.
@@ -92,67 +93,10 @@ class XsBoard:
         board['DESCRIPTION'] = desc[:desc_len].tostring()
         return board
         
-    def is_connected(self):
-        """Return true if the board is connected to a USB port."""
-        
-        return self.fpga.is_connected()
-        
     def get_xsusb_id(self):
         """Return the USB port number the board is connected to."""
         
         return self.xsusb.get_xsusb_id()
-
-    def configure(self, bitstream, silent=False):
-        """Configure the FPGA on the board with a bitstream."""
-
-        PUBSUB.sendMessage("Progress.Phase", phase="Downloading bitstream")
-        # Clear any configuration already in the FPGA.
-        self.xsusb.set_prog(1)
-        self.xsusb.set_prog(0)
-        self.xsusb.set_prog(1)
-        time.sleep(0.03)  # Wait for FPGA to clear.
-        # Configure the FPGA with the bitstream.
-        self.fpga.configure(bitstream)
-        PUBSUB.sendMessage("Progress.Phase", phase="Download complete")
-        
-    def do_self_test(self, test_bitstream=None):
-        """Load the FPGA with a bitstream to test the board."""
-
-        if test_bitstream == None:
-            test_bitstream = self.test_bitstream
-        PUBSUB.sendMessage("Progress.Phase", phase="Downloading diagostic bitstream")
-        self.configure(test_bitstream, silent=True)
-        # Create a channel to query the results of the board test.
-        dut = XsDutIo(xsjtag=self.xsjtag, module_id=self._TEST_MODULE_ID,
-                      dut_output_widths=[2,1,32], dut_input_widths=1)
-        # Assert and release the reset for the testing circuit.
-        dut.write(1)
-        dut.write(0)
-        PUBSUB.sendMessage("Progress.Phase", phase="Writing SDRAM")
-        prev_progress = XsBoard.TEST_START
-        while True:
-            [progress, failed, signature] = dut.read()
-            if signature.unsigned != XsBoard.SELF_TEST_SIGNATURE:
-                raise XsMajorError(self.name + "FPGA is not configured with diagnostic bitstream.")
-            if progress.unsigned != prev_progress:
-                if progress.unsigned == XsBoard.TEST_READ:
-                    PUBSUB.sendMessage("Progress.Phase", phase="Reading SDRAM")
-                if failed.unsigned == 1:
-                    PUBSUB.sendMessage("Progress.Phase", phase="Test Done")
-                    raise XsMinorError(self.name + " failed diagnostic test.")
-                elif progress.unsigned == XsBoard.TEST_DONE:
-                    PUBSUB.sendMessage("Progress.Phase", phase="Test Done")
-                    return # Test passed!
-            prev_progress = progress.unsigned
-        
-        
-class XulaBase(XsBoard):
-
-    """Base class for all XuLA-type boards."""
-    
-    _TEST_MODULE_ID = 0x01
-    _CFG_FLASH_MODULE_ID = 0x02
-    _SDRAM_MODULE_ID = 0x03
 
     def update_firmware(self, hexfile=None):
         """Re-flash microcontroller with new firmware from hex file."""
@@ -175,6 +119,96 @@ class XulaBase(XsBoard):
         self.micro.verify(hexfile)
         self.micro.enter_user_mode()
         PUBSUB.sendMessage("Progress.Phase", phase="Firmware verification done")
+        
+    def set_aux_jtag_flag(self, flag):
+        if not flag:
+            self.micro.disable_jtag_cable()
+            return False
+        else:
+            self.micro.enable_jtag_cable()
+            return True
+        
+    def get_aux_jtag_flag(self):
+        return self.micro.get_jtag_cable_flag() != 0
+        
+    def toggle_aux_jtag_flag(self):
+        return self.set_aux_jtag_flag(not self.get_aux_jtag_flag())
+        
+    def set_flash_flag(self, flag):
+        if not flag:
+            self.micro.disable_cfg_flash()
+            return False
+        else:
+            self.micro.enable_cfg_flash()
+            return True
+        
+    def get_flash_flag(self):
+        return self.micro.get_cfg_flash_flag() != 0
+        
+    def toggle_flash_flag(self):
+        return self.set_flash_flag(not self.get_flash_flag())
+        
+        
+class XulaBase(XulaMicro):
+
+    """Base class for all XuLA-type boards."""
+    
+    # IDs for HostIo modules.
+    _TEST_MODULE_ID = 0x01  # Board diagnostic module ID.
+    _CFG_FLASH_MODULE_ID = 0x02  # Configuration flash programming module ID.
+    _SDRAM_MODULE_ID = 0x03  # SDRAM R/W module ID.
+        
+    def is_connected(self):
+        """Return true if the board is connected to a USB port."""
+        
+        return self.fpga.is_connected()
+
+    def configure(self, bitstream, silent=False):
+        """Configure the FPGA on the board with a bitstream."""
+
+        PUBSUB.sendMessage("Progress.Phase", phase="Downloading bitstream")
+        # Clear any configuration already in the FPGA.
+        self.xsusb.set_prog(1)
+        self.xsusb.set_prog(0)
+        self.xsusb.set_prog(1)
+        time.sleep(0.03)  # Wait for FPGA to clear.
+        # Configure the FPGA with the bitstream.
+        self.fpga.configure(bitstream)
+        PUBSUB.sendMessage("Progress.Phase", phase="Download complete")
+        
+    def do_self_test(self, test_bitstream=None):
+        """Load the FPGA with a bitstream to test the board."""
+
+        BASE_SIGNATURE = 0xA50000A5
+        SELF_TEST_SIGNATURE = BASE_SIGNATURE | (1<<8)
+        (TEST_START, TEST_WRITE, TEST_READ, TEST_DONE) = range(0,4)
+
+        if test_bitstream == None:
+            test_bitstream = self.test_bitstream
+        PUBSUB.sendMessage("Progress.Phase", phase="Downloading diagostic bitstream")
+        self.configure(test_bitstream, silent=True)
+        # Create a channel to query the results of the board test.
+        dut = XsDutIo(xsjtag=self.xsjtag, module_id=self._TEST_MODULE_ID,
+                      dut_output_widths=[2,1,32], dut_input_widths=1)
+        # Assert and release the reset for the testing circuit.
+        dut.write(1)
+        dut.write(0)
+        PUBSUB.sendMessage("Progress.Phase", phase="Writing SDRAM")
+        prev_progress = TEST_START
+        while True:
+            [progress, failed, signature] = dut.read()
+            if signature.unsigned != SELF_TEST_SIGNATURE:
+                raise XsMajorError(self.name + "FPGA is not configured with diagnostic bitstream.")
+            if progress.unsigned != prev_progress:
+                if progress.unsigned == TEST_READ:
+                    PUBSUB.sendMessage("Progress.Phase", phase="Reading SDRAM")
+                if failed.unsigned == 1:
+                    PUBSUB.sendMessage("Progress.Phase", phase="Test Done")
+                    raise XsMinorError(self.name + " failed diagnostic test.")
+                elif progress.unsigned == TEST_DONE:
+                    PUBSUB.sendMessage("Progress.Phase", phase="Test Done")
+                    return # Test passed!
+            prev_progress = progress.unsigned
         
     def read_cfg_flash(self, bottom, top):
         PUBSUB.sendMessage("Progress.Phase", phase="Configuring FPGA for reading configuration flash")
@@ -228,23 +262,7 @@ class XulaBase(XsBoard):
         hex_data = sdram.erase(bottom, top)
         PUBSUB.sendMessage("Progress.Phase", phase="SDRAM erase done")
         return
-        
-    def set_aux_jtag_flag(self, flag):
-        if not flag:
-            self.micro.disable_jtag_cable()
-            return False
-        else:
-            self.micro.enable_jtag_cable()
-            return True
-        
-    def get_aux_jtag_flag(self):
-        return self.micro.get_jtag_cable_flag() != 0
-        
-    def toggle_aux_jtag_flag(self):
-        return self.set_aux_jtag_flag(not self.get_aux_jtag_flag())
-        
-    def toggle_flash_flag(self):
-        return self.set_flash_flag(not self.get_flash_flag())
+
         
 class Xula(XulaBase):
 
@@ -284,20 +302,7 @@ class Xula(XulaBase):
     def create_sdram(self):
         """Create the SDRAM for this board."""
         return Sdram_8MB(module_id=self._SDRAM_MODULE_ID, xsjtag=self.xsjtag)
-        
-    def set_flash_flag(self, flag):
-        if not flag:
-            self.micro.disable_cfg_flash()
-            return False
-        else:
-            self.micro.enable_cfg_flash()
-            return True
-        
-    def get_flash_flag(self):
-        return self.micro.get_cfg_flash_flag() != 0
-        
-    def toggle_flash_flag(self):
-        return self.set_flash_flag(not self.get_flash_flag())
+
         
 class Xula50(Xula):
 
@@ -383,6 +388,26 @@ class Xula2lx9(Xula2):
     def __init__(self, xsusb_id=0):
         Xula2.__init__(self, xsusb_id)
         self.fpga = Xc6slx9ftg256(self.xsjtag)
+
+    
+class XulaOldFmw(XulaMicro):
+    """XuLA with old firmware so only the microcontroller is visible."""
+    
+    name = "XulaOldFmw"
+    
+    def __init__(self, xsusb_id=0):
+        XulaMicro.__init__(self, xsusb_id)
+        self.micro = Pic18f14k50(xsusb=self.xsusb)
+            
+    def is_connected(self):
+        """Return true if the board is connected to a USB port."""
+        
+        try:
+            self.get_board_info()
+        except XsMinorError, XsMajorError:
+            return False
+            
+        return True
 
 
 

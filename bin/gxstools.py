@@ -23,7 +23,7 @@
 import sys
 
 # Uncomment this path when using local development version of xstools.
-#sys.path.insert(0, r'C:\xesscorp\products\xstools')
+sys.path.insert(0, r'C:\xesscorp\products\xstools')
 
 import os
 import xstools
@@ -261,6 +261,9 @@ class GxsPortPanel(wx.Panel):
             if active_board is None:
                 # This happens when the board has its auxiliary JTAG port enabled.
                 active_board_name = ''
+                # TODO: patch to let program flash the microcontroller.
+                active_board = XSBOARD.XsBoard.get_xsboard(active_port_id, xsboard_name='XuLA2-LX25')
+                active_board_name = active_board.name
             else:
                 active_board_name = active_board.name
             self._blink_button.Enable()
@@ -875,7 +878,8 @@ ARE YOU SURE YOU WANT TO DO THIS!?!?
                                        style=wx.OK | wx.CANCEL | wx.ICON_QUESTION)
         confirm_dnld = confirm_dlg.ShowModal()
         confirm_dlg.Destroy()
-        if confirm_dnld is not wx.ID_OK:
+        if confirm_dnld != wx.ID_OK:
+            print "ABORTING!"
             return
         pub.subscribe(self.cleanup, "Micro.Cleanup")
         self._upd_fmw_progress = GxsProgressDialog(title="Update Microcontroller Flash", parent=self)
