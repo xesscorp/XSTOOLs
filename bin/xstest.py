@@ -27,7 +27,7 @@ This command-line program runs a self-test on an XESS board like so:
 
 which downloads a self-test bitstream into an XESS board
 attached to a USB port and reports the result. For more info on
-using this program, type xsload -h.
+using this program, type xstest -h.
 
 This program was originally conceived and written in C++ by Dave
 Vandenbout and then ported to python.
