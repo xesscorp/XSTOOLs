@@ -41,8 +41,9 @@ class XsComm:
     _FIFO_ADDR = 0  # Address for sending/receiving data to/from the FPGA.
     _STATUS_ADDR = 1  # Address for getting status on the send/recv comm channels.
     _CONTROL_ADDR = 1  # Write to this address to reset the entire comm channel.
-    _DN_FREE_ADDR = 2  # Read this address to get the amount of free space in the download FIFO.
+    _DN_FREE_ADDR = 2  # Read this address to get the # of words of free space in the download FIFO.
     _UP_USED_ADDR = 3  # Read this address to get the # of words waiting in the upload FIFO.
+    _UPDN_RELOAD_ADDR = 5 # Read this address to reload upload/download count registers.
 
     def __init__(
         self,
@@ -69,11 +70,13 @@ class XsComm:
 
     def get_send_buffer_space(self):
         """Return the amount of space available in the FPGA to receive data."""
-        return self._memio.read(self._DN_FREE_ADDR, 1).unsigned
+        #self._memio.read(_UPDN_RELOAD_ADDR,1)
+        return reduce(lambda s,d: s*256+d.unsigned, reversed(self._memio.read(self._DN_FREE_ADDR, 4)), 0)
 
     def get_recv_buffer_length(self):
         """Return the amount of data waiting in the FPGA to be transmitted."""
-        return self._memio.read(self._UP_USED_ADDR, 1).unsigned
+        #self._memio.read(_UPDN_RELOAD_ADDR,1)
+        return reduce(lambda s,d: s*256+d.unsigned, reversed(self._memio.read(self._UP_USED_ADDR, 4)), 0)
 
     def get_levels(self):
         """Get the amount of space available in the FPGA to receive data and the amount of data
@@ -105,7 +108,7 @@ class XsComm:
                 num_words_sent += space_avail
             space_avail = self.get_send_buffer_space()
 
-    def receive(self, num_words=None, wait=True, drain=True):
+    def receive(self, num_words=None, wait=True, drain=True, always_list=False):
         """Return a buffer of data received from the FPGA through the comm channel.
 
         Keyword arguments:
@@ -130,7 +133,10 @@ class XsComm:
                 num_words_needed = num_words - len(buffer)
             num_words_avail = self.get_recv_buffer_length()
         if num_words == 1:
-            return buffer[0]
+            if always_list:
+                return [XsBitArray(buffer)]
+            else:
+                return XsBitArray(buffer)
         else:
             return buffer
 
