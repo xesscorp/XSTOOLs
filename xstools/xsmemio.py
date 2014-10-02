@@ -86,7 +86,7 @@ class XsMemIo(XsHostIo):
         
         begin_address = memory address of first read.
         num_of_reads = number of memory reads to perform.
-        return_type = instance of the type of data to return.
+        return_type = instance of the type of data to return. Negative integer=signed; positive integer=unsigned.
         """
 
         # Start the payload with the READ_OPCODE.
@@ -112,15 +112,19 @@ class XsMemIo(XsHostIo):
             l = result.length
             # Start from the far end, skip the first data value which is crap, and then proceed to the beginning.
             results = [result[i:i+w] for i in range(l-2*w,-w,-w)]
-            if not isinstance(return_type, XsBitArray): # Convert bit arrays into integers.
-                results = [d.unsigned for d in results]
+            if not isinstance(return_type, XsBitArray): # Return type is not a bit array, so convert bit arrays into integers.
+                if return_type < 0 :
+                    results = [d.int for d in results]
+                else:
+                    results = [d.unsigned for d in results]
             return results
 
-    def write(self, begin_address, data):
+    def write(self, begin_address, data, data_type=None):
         """Write a list of bit arrays to the memory.
         
         begin_address = memory address of first write.
         data = list of bit arrays or integers.
+        data_type = instance of data that is stored in the data array. Negative integer=signed; positive integer=unsigned.
         """
 
         # Start the payload with the WRITE_OPCODE.
@@ -130,12 +134,23 @@ class XsMemIo(XsHostIo):
         payload += XsBitArray(uint=begin_address, length=self.address_width)
 
         # Concatenate the data to the payload.
-        for d in data:
-            if isinstance(d, XsBitArray):
+        if data_type is None:
+            for d in data:
+                if isinstance(d, XsBitArray):
+                    payload += d
+                else:
+                    # Convert integers to bit arrays.
+                    payload += XsBitArray(uint=d, length=self.data_width)
+        elif isinstance(data_type, XsBitArray):
+            for d in data:
                 payload += d
-            else:
-                # Convert integers to bit arrays.
+        elif data_type < 0:
+            for d in data:
+                payload += XsBitArray(int=d, length=self.data_width)
+        else:
+            for d in data:
                 payload += XsBitArray(uint=d, length=self.data_width)
+                
         assert payload.len > self._WRITE_OPCODE.len
 
         # Send the payload to write the data to memory.

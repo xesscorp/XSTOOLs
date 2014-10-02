@@ -1,3 +1,5 @@
+v0.1.15, 05/16/2014 -- Added support for upload/download of signed integers to memio methods.
+v0.1.14, 05/05/2014 -- Fixed FPGA bitstreams to remove errors during SDRAM upload/download.
 v0.1.13, 04/09/2014 -- Add bidirectional communication channel between host and FPGA: xscomm.py.
 v0.1.12, 02/03/2014 -- Added graphical front-end to XSTOOLs: gxstools.py.
 v0.1.11, 01/03/2014 -- Fixed bit direction for checking status bits in xsi2c.py.
