@@ -22,8 +22,14 @@
 
 import sys
 
-# Uncomment this path when using local development version of xstools.
-sys.path.insert(0, r'C:\xesscorp\products\xstools')
+# Use local development version of xstools when use_local_xstools.py exists.
+# Remember to delete both use_local_xstools.py and use_local_xstools.pyc.
+try:
+    import use_local_xstools
+except:
+    pass
+else:
+    sys.path.insert(0, r'..')
 
 import os
 import xstools
@@ -297,7 +303,7 @@ class GxsFlashPanel(wx.Panel):
         self.SetToolTipString('Use this tab to transfer data to/from the %s on your XESS board.' % mem_type)
 
         #file_wildcard = 'Intel Hex (*.hex)|*.hex|Motorola EXO (*.exo)|*.exo|XESS (*.xes)|*.xes'
-        file_wildcard = 'Intel Hex (*.hex)|*.hex'
+        file_wildcard = 'Xilinx bitstream (*.bit)|*.bit|Intel Hex (*.hex)|*.hex'
 
         self._dnld_file_picker = wx.FilePickerCtrl(self, wildcard=file_wildcard,
                                                    style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)

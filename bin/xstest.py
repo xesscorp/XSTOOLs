@@ -40,8 +40,14 @@ except ImportError:
 
 import sys
 
-# Uncomment this path when using local development version of xstools.
-#sys.path.insert(0, r'C:\xesscorp\products\xstools')
+# Use local development version of xstools when use_local_xstools.py exists.
+# Remember to delete both use_local_xstools.py and use_local_xstools.pyc.
+try:
+    import use_local_xstools
+except:
+    pass
+else:
+    sys.path.insert(0, r'..')
 
 import string
 from argparse import ArgumentParser

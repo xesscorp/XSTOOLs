@@ -26,13 +26,20 @@ a COM/serial port and the USB port of a XuLA board.
 """
 
 import sys
+
+# Use local development version of xstools when use_local_xstools.py exists.
+# Remember to delete both use_local_xstools.py and use_local_xstools.pyc.
+try:
+    import use_local_xstools
+except:
+    pass
+else:
+    sys.path.insert(0, r'..')
+
 import serial
 import string
 import logging
 from argparse import ArgumentParser
-
-# Uncomment this path when using local development version of xstools.
-sys.path.insert(0, r'C:\xesscorp\products\xstools')
 import xstools.xsboard as XSBOARD
 import xstools.xserror as XSERROR
 import xstools.xscomm as XSCOMM

@@ -182,7 +182,7 @@ class XulaBase(XulaMicro):
         BASE_SIGNATURE = 0xA50000A5
         SELF_TEST_SIGNATURE = BASE_SIGNATURE | (1<<8)
         (TEST_START, TEST_WRITE, TEST_READ, TEST_DONE) = range(0,4)
-
+        
         if test_bitstream == None:
             test_bitstream = self.test_bitstream
         PUBSUB.sendMessage("Progress.Phase", phase="Downloading diagostic bitstream")
