@@ -6,7 +6,7 @@ import subprocess
 
 setup(
     name='XsTools',
-    version='0.1.15',
+    version='0.1.16',
     description='Classes for interfacing with XESS FPGA boards via USB.',
     long_description=open('README.txt').read(),
     author='XESS Corp.',
@@ -14,8 +14,9 @@ setup(
     url='http://pypi.python.org/pypi/XsTools/',
     classifiers=['License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)',],
     packages=['xstools'],
-    package_data={'xstools': ['xula*/*/*/*.bit', 'xula*/Firmware/*.hex', '*.rules', 'icons/*.png']},
-    scripts=['bin/xstools_defs.py', 'bin/xstest.py', 'bin/xsload.py', 'bin/xsusbprg.py', 'bin/gxstools.py'],
+    package_data={'xstools': ['xula*/*.bit', 'xula*/Firmware/*.hex', '*.rules', 'icons/*.png']},
+    scripts=['bin/xstools_defs.py', 'bin/xstest.py', 'bin/xsload.py', 'bin/xsusbprg.py', 'bin/xsflags.py', 
+             'bin/usb2serial.py', 'bin/gxstools.py',],
     install_requires=['pypubsub >= 3.1.2', 'pyusb >= 1.0.0a3', 'bitstring >= 3.1.1', 'intelhex >= 1.4'],
     )
 
