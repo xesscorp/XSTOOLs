@@ -115,30 +115,29 @@ class XsComm:
         num_words -- The number of words to get from the FPGA (default None).
         wait -- If true, wait until the number of words requested is available (default True).
         drain -- If true and num_words==None, then take everything currently stored in the FPGA transmit buffer (default True).
+        always_list -- If true, always return a list even if there is only one word in it.
         """
 
         num_words_avail = self.get_recv_buffer_length()
 
         if drain and num_words is None:
-            return self._memio.read(self._FIFO_ADDR, num_words_avail)
+            buffer = self._memio.read(self._FIFO_ADDR, num_words_avail)
 
-        if num_words_avail < num_words and not wait:
+        elif num_words_avail < num_words and not wait:
             raise XsCommException('Too little data to fill receive buffer.')
 
-        buffer = []
-        num_words_needed = num_words
-        while num_words_needed > 0:
-            if num_words_avail is not 0:
-                buffer.extend(self._memio.read(self._FIFO_ADDR, min(num_words_needed, num_words_avail)))
-                num_words_needed = num_words - len(buffer)
-            num_words_avail = self.get_recv_buffer_length()
-        if num_words == 1:
-            if always_list:
-                return [XsBitArray(buffer)]
-            else:
-                return XsBitArray(buffer)
         else:
-            return buffer
+            buffer = []
+            num_words_needed = num_words
+            while num_words_needed > 0:
+                if num_words_avail is not 0:
+                    buffer.extend(self._memio.read(self._FIFO_ADDR, min(num_words_needed, num_words_avail)))
+                    num_words_needed = num_words - len(buffer)
+                num_words_avail = self.get_recv_buffer_length()
+        
+        if always_list and type(buffer) != list:
+            buffer = [buffer]
+        return buffer
 
 if __name__ == '__main__':
     # logging.root.setLevel(logging.DEBUG)
