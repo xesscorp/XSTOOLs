@@ -309,10 +309,9 @@ class Xula50(Xula):
     """Class for a XuLA board with an XC3S50A FPGA."""
     
     name = Xula.name + "-50"
-    dir = os.path.join(Xula.dir, "50", "usb")
-    test_bitstream = os.path.join(dir, "test_board_jtag.bit")
-    cfg_flash_bitstream = os.path.join(dir, "fintf_jtag.bit")
-    sdram_bitstream = os.path.join(dir, "ramintfc_jtag.bit")
+    test_bitstream = os.path.join(Xula.dir, "test_board_jtag_50.bit")
+    cfg_flash_bitstream = os.path.join(Xula.dir, "fintf_jtag_50.bit")
+    sdram_bitstream = os.path.join(Xula.dir, "ramintfc_jtag_50.bit")
 
     def __init__(self, xsusb_id=0):
         Xula.__init__(self, xsusb_id)
@@ -323,10 +322,9 @@ class Xula200(Xula):
     """Class for a XuLA board with an XC3S200A FPGA."""
 
     name = Xula.name + "-200"
-    dir = os.path.join(Xula.dir, "200", "usb")
-    test_bitstream = os.path.join(dir, "test_board_jtag.bit")
-    cfg_flash_bitstream = os.path.join(dir, "fintf_jtag.bit")
-    sdram_bitstream = os.path.join(dir, "ramintfc_jtag.bit")
+    test_bitstream = os.path.join(Xula.dir, "test_board_jtag_200.bit")
+    cfg_flash_bitstream = os.path.join(Xula.dir, "fintf_jtag_200.bit")
+    sdram_bitstream = os.path.join(Xula.dir, "ramintfc_jtag_200.bit")
 
     def __init__(self, xsusb_id=0):
         Xula.__init__(self, xsusb_id)
@@ -338,7 +336,7 @@ class Xula2(XulaBase):
     
     name = "XuLA2"
     dir = os.path.join(xstools.install_dir ,"xula2")
-    firmware = os.path.join(dir, "Firmware", "XuLA_jtag.hex")
+    firmware = os.path.join(dir, "XuLA_jtag.hex")
     
     def __init__(self, xsusb_id=0):
         XulaBase.__init__(self, xsusb_id)
@@ -366,10 +364,9 @@ class Xula2lx25(Xula2):
     """Class for a XuLA2 board with an XC6SLX25 FPGA."""
 
     name = Xula2.name + "-LX25"
-    dir = os.path.join(Xula2.dir, "lx25", "usb")
-    test_bitstream = os.path.join(dir, "test_board_jtag.bit")
-    cfg_flash_bitstream = os.path.join(dir, "fintf_jtag.bit")
-    sdram_bitstream = os.path.join(dir, "ramintfc_jtag.bit")
+    test_bitstream = os.path.join(Xula2.dir, "test_board_jtag_lx25.bit")
+    cfg_flash_bitstream = os.path.join(Xula2.dir, "fintf_jtag_lx25.bit")
+    sdram_bitstream = os.path.join(Xula2.dir, "ramintfc_jtag_lx25.bit")
     
     def __init__(self, xsusb_id=0):
         Xula2.__init__(self, xsusb_id)
@@ -380,10 +377,9 @@ class Xula2lx9(Xula2):
     """Class for a XuLA2 board with an XC6SLX9 FPGA."""
 
     name = Xula2.name + "-LX9"
-    dir = os.path.join(Xula2.dir, "lx9", "usb")
-    test_bitstream = os.path.join(dir, "test_board_jtag.bit")
-    cfg_flash_bitstream = os.path.join(dir, "fintf_jtag.bit")
-    sdram_bitstream = os.path.join(dir, "ramintfc_jtag.bit")
+    test_bitstream = os.path.join(Xula2.dir, "test_board_jtag_lx9.bit")
+    cfg_flash_bitstream = os.path.join(Xula2.dir, "fintf_jtag_lx9.bit")
+    sdram_bitstream = os.path.join(Xula2.dir, "ramintfc_jtag_lx9.bit")
     
     def __init__(self, xsusb_id=0):
         Xula2.__init__(self, xsusb_id)
