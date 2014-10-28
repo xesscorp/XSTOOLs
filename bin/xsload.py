@@ -89,6 +89,13 @@ if num_boards > 0:
                 hexfile_data.tofile(args.flash, format='hex')
             else:
                 xs_board.write_cfg_flash(args.flash)
+                
+        if args.ram:
+            if args.upload:
+                hexfile_data = xs_board.read_sdram(bottom=args.upload[0], top=args.upload[1])
+                hexfile_data.tofile(args.ram, format='hex')
+            else:
+                xs_board.write_sdram(args.ram)
 
         if args.fpga:
             try:
