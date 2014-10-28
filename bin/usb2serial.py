@@ -68,6 +68,7 @@ else:
     logger.setLevel(1000)
 
 xsreset = XSDUTIO.XsDutIo(xsusb_id=args.usb, module_id=254, dut_input_widths=[1])
+xsreset.write(1)
 xscomm = XSCOMM.XsComm(xsusb_id=args.usb, module_id=args.module)
 xscomm.get_levels()
 #xscomm.reset()
@@ -109,6 +110,7 @@ while True:
     xscomm_waiting = xscomm.get_recv_buffer_length()
     if xscomm_waiting > 0:
         logger.debug('xscomm_waiting = %d' % xscomm_waiting)
-        buf = [chr(d.unsigned) for d in xscomm.receive(num_words=xscomm_waiting, always_list=True)]
+        #buf = [chr(d.unsigned) for d in xscomm.receive(num_words=xscomm_waiting, always_list=True)]
+        buf = [chr(d.unsigned) for d in xscomm.receive(always_list=True)]
         logger.debug('USB%d,%02x: %s' % (args.usb, args.module, ' '.join(['%02x' % ord(b) for b in buf])))
         sercomm.write(buf)
