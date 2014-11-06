@@ -1,3 +1,6 @@
+v0.1.17, 11/06/2014 -- Fixed handling of XuLA/XuLA2 boards with old firmware or with the USB-to-JTAG
+                       path disabled.
+
 v0.1.16, 10/27/2014 -- Added command-line and GUI methods for setting/getting flags in XuLA/XuLA2 boards.
                        Enabled loading of .bit files into serial configuration flash via gxstools.
                        Updated hex file to newest version of the PIC 18F14K50 firmware.
