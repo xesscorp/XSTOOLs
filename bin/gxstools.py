@@ -924,6 +924,7 @@ class GxsMcuDownloadThread(Thread):
         msg_box_title = 'Microcontroller Flash Update Result'
         try:
             active_board.update_firmware(self._fmw_obj_file)
+            pub.sendMessage("Status.Change", dummy=None) # Update flag settings because of new uC firmware.
         except XSERROR.XsTerminate as e:
             pub.sendMessage("Micro.Cleanup")
             wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
