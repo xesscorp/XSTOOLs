@@ -41,16 +41,23 @@ class XsBoard:
     def get_xsboard(cls, xsusb_id=0, xsboard_name=''):
         """Detect which type of XESS board is connected to a USB port."""
         
-        board_classes = (Xula50, Xula200, Xula2lx25, Xula2lx9, XulaOldFmw)      
+        if xsusb_id is None:
+            return None
+        
+        # All possible board types. XulaNoJtag must be first because it is impossible to query what type of FPGA it has.
+        board_classes = (XulaOldFmw, Xula50, Xula200, Xula2lx25, Xula2lx9, XulaNoJtag)      
 
         for c in board_classes:
             if xsboard_name.lower() == c.name.lower():
                 return c(xsusb_id)
         
         for c in board_classes:
-            xsboard = c(xsusb_id)
-            if xsboard.is_connected():
-                return xsboard
+            try:
+                xsboard = c(xsusb_id)
+                if xsboard.is_connected():
+                    return xsboard
+            except:
+                pass
 
         return None
         
@@ -64,6 +71,8 @@ class XulaMicro(XsBoard):
         self.xsusb = XsUsb(xsusb_id)
         # Now attach a JTAG interface to the USB interface.
         self.xsjtag = XsJtag(self.xsusb)
+        # Instantiate microcontroller. (Override this in subclass if a different uC is used.)
+        self.micro = Pic18f14k50(xsusb=self.xsusb)
 
     def reset(self):
         """Reset the XESS board."""
@@ -76,22 +85,40 @@ class XulaMicro(XsBoard):
         try:
             info = self.xsusb.get_info()
         except:
-            self.reset()
             try:
+                self.reset()
                 info = self.xsusb.get_info()
             except:
                 raise XsMajorError('Unable to get XESS board information.')
         if sum(info) & 0xff != 0:
             # Checksum failure.
             raise XsMinorError('XESS board information is corrupted.')
-        board = {}
-        board['ID'] = '%02x%02x' % (info[1], info[2])
-        board['VERSION'] = '%d.%d' % (info[3], info[4])
+        board_info = {}
+        board_info['ID'] = '%02x%02x' % (info[1], info[2])
+        board_info['VERSION'] = '%d.%d' % (info[3], info[4])
         # Description is 0-terminated string
         desc = info[5:]
         desc_len = desc.index(0)
-        board['DESCRIPTION'] = desc[:desc_len].tostring()
-        return board
+        board_info['DESCRIPTION'] = desc[:desc_len].tostring()
+        return board_info
+        
+    def get_board_fmw_version(self):
+        """Return version number of XuLA microcontroller firmware as a float."""
+        board_info = self.get_board_info()
+        return float(board_info['VERSION'])
+        
+    def is_connected(self):
+        """Return true if the board is connected to a USB port."""
+        try:
+            version = self.get_board_fmw_version()
+        except e:
+            return false
+            
+        if version < 1.2:
+            return false
+        elif hasattr(self,'fpga'):
+            return self.fpga.is_connected()
+        return False
         
     def get_xsusb_id(self):
         """Return the USB port number the board is connected to."""
@@ -107,6 +134,7 @@ class XulaMicro(XsBoard):
         self.micro.enter_reflash_mode()
         self.micro.program(hexfile)
         self.micro.enter_user_mode()
+        self.micro.disable_jtag_cable() # uC flash sometimes enables auxiliary JTAG cable, so make sure it's disabled.
         PUBSUB.sendMessage("Progress.Phase", phase="Firmware update done")
 
     def verify_firmware(self, hexfile):
@@ -157,11 +185,6 @@ class XulaBase(XulaMicro):
     _TEST_MODULE_ID = 0x01  # Board diagnostic module ID.
     _CFG_FLASH_MODULE_ID = 0x02  # Configuration flash programming module ID.
     _SDRAM_MODULE_ID = 0x03  # SDRAM R/W module ID.
-        
-    def is_connected(self):
-        """Return true if the board is connected to a USB port."""
-        
-        return self.fpga.is_connected()
 
     def configure(self, bitstream, silent=False):
         """Configure the FPGA on the board with a bitstream."""
@@ -274,7 +297,6 @@ class Xula(XulaBase):
     
     def __init__(self, xsusb_id=0):
         XulaBase.__init__(self, xsusb_id)
-        self.micro = Pic18f14k50(xsusb=self.xsusb)
         
     def create_cfg_flash(self):
         """Create the serial configuration flash for this board."""
@@ -340,7 +362,6 @@ class Xula2(XulaBase):
     
     def __init__(self, xsusb_id=0):
         XulaBase.__init__(self, xsusb_id)
-        self.micro = Pic18f14k50(xsusb=self.xsusb)
         
     def create_cfg_flash(self):
         """Create the serial configuration flash for this board."""
@@ -387,23 +408,41 @@ class Xula2lx9(Xula2):
 
     
 class XulaOldFmw(XulaMicro):
-    """XuLA with old firmware so only the microcontroller is visible."""
+    """XuLA with old firmware so the JTAG port is not usable."""
     
-    name = "XulaOldFmw"
+    name = "XuLA UNKNOWN"
     
     def __init__(self, xsusb_id=0):
         XulaMicro.__init__(self, xsusb_id)
-        self.micro = Pic18f14k50(xsusb=self.xsusb)
-            
+        
     def is_connected(self):
         """Return true if the board is connected to a USB port."""
-        
         try:
-            self.get_board_info()
-        except XsMinorError, XsMajorError:
-            return False
+            version = self.get_board_fmw_version()
+        except e:
+            return false
+
+        # True if the firmware is too old to query the JTAG port.
+        return version < 1.2
+
+    
+class XulaNoJtag(XulaMicro):
+    """XuLA with disabled JTAG so only the microcontroller is visible."""
+    
+    name = "XuLA UNKNOWN"
+    
+    def __init__(self, xsusb_id=0):
+        XulaMicro.__init__(self, xsusb_id)
+        
+    def is_connected(self):
+        """Return true if the board is connected to a USB port."""
+        try:
+            version = self.get_board_fmw_version()
+        except e:
+            return false
             
-        return True
+        # If the firmware is new, assume the FPGA IDCODE can't be queried because the JTAG is deactivated.
+        return version >= 1.2
 
 
 

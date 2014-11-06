@@ -50,6 +50,7 @@ from threading import Thread
 # ********************* Globals ***********************************
 active_port_id = None
 active_board = None
+port_thread = None
 icon_dir = os.path.join(xstools.install_dir, 'icons')
 
 
@@ -222,11 +223,20 @@ class GxsPortPanel(wx.Panel):
     def check_port_connections(self, force_check):
         """Handles connections/disconnections of boards to/from USB ports"""
 
+        # Only check the USB port if no child thread is using it.
+        global port_thread
+        if port_thread != None:
+            if port_thread.is_alive() is False:
+                port_thread = None
+                force_check = True
+        if port_thread != None:
+            return
+
         global active_board
 
         xsusb_ports = XSUSB.XsUsb.get_xsusb_ports()
         num_boards = len(xsusb_ports)
-        # print "# boards = %d" % num_boards
+        #print "# boards = %d" % num_boards
 
         if num_boards != self._port_list.GetCount() or force_check:
             # A board has been connected or disconnected from a USB port, or a check of
@@ -252,32 +262,34 @@ class GxsPortPanel(wx.Panel):
                         self._port_list.SetSelection(0)
                     else:
                         self._port_list.SetSelection(xsusb_id)
-                active_board = XSBOARD.Xula(self._port_list.GetSelection())
+                active_board = XSBOARD.XsBoard.get_xsboard(self._port_list.GetSelection())
                 wx.PostEvent(self._port_list, wx.PyCommandEvent(wx.EVT_CHOICE.typeId, wx.ID_ANY))
 
     def on_port_change(self, event):
+
+        # Only check the USB port if no child thread is using it.
+        global port_thread
+        if port_thread != None:
+            if port_thread.is_alive() is False:
+                port_thread = None
+        if port_thread != None:
+            return
+
         global active_port_id
         global active_board
 
         port_id = self._port_list.GetSelection()
-        if port_id != wx.NOT_FOUND:
+        if port_id == wx.NOT_FOUND:
+            active_port_id = None
+            active_port_name = ''
+        else:
             active_port_id = port_id
             active_port_name = 'USB%d' % active_port_id
-            active_board = XSBOARD.XsBoard.get_xsboard(active_port_id)
-            if active_board is None:
-                # This happens when the board has its auxiliary JTAG port enabled.
-                active_board_name = ''
-                # TODO: patch to let program flash the microcontroller.
-                active_board = XSBOARD.XsBoard.get_xsboard(active_port_id, xsboard_name='XuLA2-LX25')
-                active_board_name = active_board.name
-            else:
-                active_board_name = active_board.name
+        active_board = XSBOARD.XsBoard.get_xsboard(active_port_id)
+        active_board_name = getattr(active_board, 'name', '')
+        if hasattr(active_board,'micro'):
             self._blink_button.Enable()
         else:
-            active_port_id = None
-            active_port_name = ""
-            active_board = None
-            active_board_name = ""
             self._blink_button.Disable()
         pub.sendMessage("Status.Port", port=active_port_name)
         pub.sendMessage("Status.Board", board=active_board_name)
@@ -386,7 +398,7 @@ class GxsFlashPanel(wx.Panel):
         self.SetSizer(hsizer)
 
     def handle_download_button(self, dummy):
-        if self._dnld_file_picker.GetPath() and active_board is not None:
+        if self._dnld_file_picker.GetPath() and hasattr(active_board,'cfg_flash'):
             self._dnld_button.Enable()
         else:
             self._dnld_button.Disable()
@@ -403,7 +415,7 @@ class GxsFlashPanel(wx.Panel):
             self._upld_button.Disable()
 
     def handle_upload_button(self, dummy):
-        if self._upld_file_picker.GetPath() and active_board is not None:
+        if self._upld_file_picker.GetPath() and hasattr(active_board,'cfg_flash'):
             self._upld_button.Enable()
         else:
             self._upld_button.Disable()
@@ -414,7 +426,7 @@ class GxsFlashPanel(wx.Panel):
         GxsFlashUploadThread(self._upld_file_picker.GetPath(), self._lo_addr_ctrl.GetValue(), self._hi_addr_ctrl.GetValue())
 
     def handle_erase_button(self, dummy):
-        if active_board is not None:
+        if hasattr(active_board,'cfg_flash'):
             self._erase_button.Enable()
         else:
             self._erase_button.Disable()
@@ -605,7 +617,7 @@ class GxsSdramPanel(wx.Panel):
         self.SetSizer(hsizer)
 
     def handle_download_button(self, dummy):
-        if self._dnld_file_picker.GetPath() and active_board is not None:
+        if self._dnld_file_picker.GetPath() and hasattr(active_board,'sdram'):
             self._dnld_button.Enable()
         else:
             self._dnld_button.Disable()
@@ -616,7 +628,7 @@ class GxsSdramPanel(wx.Panel):
         GxsSdramDownloadThread(self._dnld_file_picker.GetPath())
 
     def handle_upload_button(self, dummy):
-        if self._upld_file_picker.GetPath() and active_board is not None:
+        if self._upld_file_picker.GetPath() and hasattr(active_board,'sdram'):
             self._upld_button.Enable()
         else:
             self._upld_button.Disable()
@@ -627,7 +639,7 @@ class GxsSdramPanel(wx.Panel):
         GxsSdramUploadThread(self._upld_file_picker.GetPath(), self._lo_addr_ctrl.GetValue(), self._hi_addr_ctrl.GetValue())
 
     def handle_erase_button(self, dummy):
-        if active_board is not None:
+        if hasattr(active_board,'sdram'):
             self._erase_button.Enable()
         else:
             self._erase_button.Disable()
@@ -775,7 +787,7 @@ class GxsFpgaConfigPanel(wx.Panel):
         self.SetSizer(hsizer)
 
     def handle_download_button(self, dummy):
-        if self._dnld_file_picker.GetPath() and active_board is not None:
+        if self._dnld_file_picker.GetPath() and hasattr(active_board,'fpga'):
             self._dnld_button.Enable()
         else:
             self._dnld_button.Disable()
@@ -867,7 +879,7 @@ class GxsMicrocontrollerPanel(wx.Panel):
         self.SetSizer(hsizer)
 
     def handle_download_button(self, dummy):
-        if self._dnld_file_picker.GetPath() and active_board is not None:
+        if self._dnld_file_picker.GetPath() and hasattr(active_board,'micro'):
             self._dnld_button.Enable()
         else:
             self._dnld_button.Disable()
@@ -885,12 +897,13 @@ ARE YOU SURE YOU WANT TO DO THIS!?!?
         confirm_dnld = confirm_dlg.ShowModal()
         confirm_dlg.Destroy()
         if confirm_dnld != wx.ID_OK:
-            print "ABORTING!"
+            #print "ABORTING!"
             return
         pub.subscribe(self.cleanup, "Micro.Cleanup")
         self._upd_fmw_progress = GxsProgressDialog(title="Update Microcontroller Flash", parent=self)
-        pub.sendMessage("Timer.Stop")
-        GxsMcuDownloadThread(self._dnld_file_picker.GetPath())
+        
+        global port_thread
+        port_thread = GxsMcuDownloadThread(self._dnld_file_picker.GetPath())
 
     def cleanup(self):
         pub.unsubscribe(self.cleanup, "Micro.Cleanup")
@@ -953,7 +966,7 @@ class GxsBoardTestPanel(wx.Panel):
         self.SetSizer(vsizer)
 
     def handle_test_button(self, dummy):
-        if active_board is not None:
+        if hasattr(active_board,'fpga'):
             self._test_button.Enable()
         else:
             self._test_button.Disable()
@@ -1032,46 +1045,27 @@ class GxsBoardFlagsPanel(wx.Panel):
         self.SetSizer(hsizer)
 
     def handle_aux_jtag_flag(self, dummy):
-        if active_port_id is not None:
+        if hasattr(active_board,'micro'):
             self._aux_jtag_flag.Enable()
-            if active_board is None:
-                tmp_board = XSBOARD.Xula(xsusb_id=active_port_id)
-            else:
-                tmp_board = active_board
-            self._aux_jtag_flag.SetValue(tmp_board.get_aux_jtag_flag())
+            self._aux_jtag_flag.SetValue(active_board.get_aux_jtag_flag())
         else:
             self._aux_jtag_flag.Disable()
             self._aux_jtag_flag.SetValue(False)
 
     def handle_flash_flag(self, dummy):
-        if active_port_id is not None:
+        if hasattr(active_board,'micro'):
             self._flash_flag.Enable()
-            if active_board is None:
-                tmp_board = XSBOARD.Xula(xsusb_id=active_port_id)
-            else:
-                tmp_board = active_board
-            self._flash_flag.SetValue(tmp_board.get_flash_flag())
+            self._flash_flag.SetValue(active_board.get_flash_flag())
         else:
             self._flash_flag.Disable()
             self._flash_flag.SetValue(False)
 
     def on_aux_jtag(self, event):
-        if active_port_id is not None:
-            if active_board is None:
-                tmp_board = XSBOARD.Xula(xsusb_id=active_port_id)
-            else:
-                tmp_board = active_board
-            new_value = tmp_board.toggle_aux_jtag_flag()
-            self._aux_jtag_flag.SetValue(new_value)
-        pub.sendMessage("Port.Check", force_check=True)
+        self._aux_jtag_flag.SetValue( active_board.toggle_aux_jtag_flag() )
+        pub.sendMessage("Port.Check", force_check=True) # Because port will change if JTAG feature changes.
 
     def on_flash(self, event):
-        if active_port_id is not None:
-            tmp_board = active_board
-            if active_board is None:
-                tmp_board = XSBOARD.Xula(xsusb_id=active_port_id)
-            new_value = tmp_board.toggle_flash_flag()
-            self._flash_flag.SetValue(new_value)
+        self._flash_flag.SetValue( active_board.toggle_flash_flag() )
 
 
 # ===============================================================
