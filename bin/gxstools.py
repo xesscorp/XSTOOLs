@@ -1075,7 +1075,7 @@ class GxsFlatNotebook(FNB.FlatNotebook):
 
     def __init__(self, parent):
         mystyle = FNB.FNB_FF2 | FNB.FNB_NO_X_BUTTON | FNB.FNB_NO_NAV_BUTTONS | FNB.FNB_SMART_TABS
-        super(GxsFlatNotebook, self).__init__(parent, style=mystyle)
+        super(GxsFlatNotebook, self).__init__(parent, agwStyle=mystyle)
         self._port_panel = GxsPortPanel(self)
         self.AddPage(self._port_panel, 'Ports')
         self._fpga_panel = GxsFpgaConfigPanel(self)
