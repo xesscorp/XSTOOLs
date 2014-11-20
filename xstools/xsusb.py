@@ -152,7 +152,7 @@ class XsUsb:
                 pass # Keep trying until no exceptions occur.
             
         # Compare them to the previous set of active XESS USB devices.
-        for i in range(len(devs)):
+        for i in range(len(list(devs))):
             for d in cls._xsusb_devs:
                 if devs[i].bus == d.bus and devs[i].address == d.address:
                     # Re-use a previously-assigned XESS USB device instead of the new device
@@ -160,7 +160,7 @@ class XsUsb:
                     devs[i] = d
                     
         # Update the array of currently-active XESS USB devices.
-        cls._xsusb_devs = devs
+        cls._xsusb_devs = list(devs)
         return cls._xsusb_devs
 
     @classmethod
