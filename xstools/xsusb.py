@@ -202,7 +202,7 @@ class XsUsb:
         logging.debug('OUT => (%d) %s', len(bytes), str([bin(x | 0x100)[3:] for x in bytes]))
         time_out = self._calc_time_out(len(bytes))
         if self._dev.write(usb.util.ENDPOINT_OUT | self._endpoint,
-                           bytes, 0, time_out) \
+                           bytes, 0) \
             != len(bytes):
             raise XsMajorError('Failed to write required number of bytes over the USB link')
 
@@ -215,7 +215,7 @@ class XsUsb:
 
         time_out = self._calc_time_out(num_bytes)
         bytes = self._dev.read(usb.util.ENDPOINT_IN | self._endpoint,
-                               num_bytes, 0, time_out)
+                               num_bytes, 0)
         if len(bytes) != num_bytes:
             raise XsMajorError('Failed to read required number of bytes over the USB link'
                                )
