@@ -145,14 +145,14 @@ class XsUsb:
         # connected/reconnected, so catch the exceptions.
         while(True):
             try:
-                devs = usb.core.find(idVendor=cls._VENDOR_ID,
-                       idProduct=cls._PRODUCT_ID, find_all=True)
+                devs = list(usb.core.find(idVendor=cls._VENDOR_ID,
+                       idProduct=cls._PRODUCT_ID, find_all=True))
                 break # Exit the loop once find() completes without an exception.
             except usb.core.USBError:
                 pass # Keep trying until no exceptions occur.
             
         # Compare them to the previous set of active XESS USB devices.
-        for i in range(len(list(devs))):
+        for i in range(len(devs)):
             for d in cls._xsusb_devs:
                 if devs[i].bus == d.bus and devs[i].address == d.address:
                     # Re-use a previously-assigned XESS USB device instead of the new device
@@ -160,7 +160,7 @@ class XsUsb:
                     devs[i] = d
                     
         # Update the array of currently-active XESS USB devices.
-        cls._xsusb_devs = list(devs)
+        cls._xsusb_devs = devs
         return cls._xsusb_devs
 
     @classmethod
