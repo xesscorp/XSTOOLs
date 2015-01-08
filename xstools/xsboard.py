@@ -293,7 +293,7 @@ class Xula(XulaBase):
     
     name = "XuLA"
     dir = os.path.join(xstools.install_dir ,"xula")
-    firmware = os.path.join(dir, "Firmware", "XuLA_jtag.hex")
+    firmware = os.path.join(dir, "XuLA_jtag.hex")
     
     def __init__(self, xsusb_id=0):
         XulaBase.__init__(self, xsusb_id)
