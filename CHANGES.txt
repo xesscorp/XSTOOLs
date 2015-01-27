@@ -1,3 +1,5 @@
+v0.1.22, 01/26/2015 -- Modified usb2serial.py to support non-ZPUino use of the USB-to-serial server.
+
 v0.1.21, 01/07/2015 -- Modified setup.py so pyusb < 1.0.0b1 is installed as a dependency since the
                        newer 1.0.0bX libraries cause a problem with finding XESS boards on USB ports. 
 
