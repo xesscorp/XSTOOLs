@@ -1,3 +1,6 @@
+v0.1.23, 02/03/2015 -- Modified usb2serial.py and xscomm.py to support new serial BREAK command.
+                       Added .cmd file to initiate each XSTOOLs script in a Windows command window.
+
 v0.1.22, 01/26/2015 -- Modified usb2serial.py to support non-ZPUino use of the USB-to-serial server.
 
 v0.1.21, 01/07/2015 -- Modified setup.py so pyusb < 1.0.0b1 is installed as a dependency since the
