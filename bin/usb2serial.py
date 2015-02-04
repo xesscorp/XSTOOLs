@@ -55,8 +55,6 @@ p.add_argument('-u', '--usb', type=int, default=0,
                help='The USB port number for the XESS XuLA board. If you only have one board, then use 0.')
 p.add_argument('-m', '--comm_module', type=int, default=253,
                help='The ID of the comm module in the XuLA attached to the USB port.')
-p.add_argument('-r', '--reset_module', type=int, default=-1,
-               help='The ID of the comm link reset module in the XuLA attached to the USB port.')
 p.add_argument('-d', '--debug', action='store_true',
                help='Turn on debugging messages.')
 p.add_argument('-v', '--version', action='version', version='%(prog)s ' + VERSION,
@@ -69,10 +67,8 @@ if args.debug:
 else:
     logger.setLevel(1000)
 
-if args.reset_module >= 0:
-    xsreset = XSDUTIO.XsDutIo(xsusb_id=args.usb, module_id=args.reset_module, dut_input_widths=[1])
-    xsreset.write(1)
 xscomm = XSCOMM.XsComm(xsusb_id=args.usb, module_id=args.comm_module)
+xscomm.send_break()
 xscomm.get_levels()
 
 sercomm = serial.Serial(args.comport - 1)
@@ -105,7 +101,7 @@ while True:
             logger.debug('%s: %s' % (sercomm.name, ' '.join(['%02x' % b for b in buf])))
             xscomm.send(buf)
             if break_found(buf):
-                xsreset.write(1)
+                xscomm.send_break()
                 logger.debug('Reset sent.')
         
     # Transmit data from the USB port to the serial port.

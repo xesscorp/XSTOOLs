@@ -43,8 +43,7 @@ class XsComm:
     _CONTROL_ADDR = 1  # Write to this address to reset the entire comm channel.
     _DN_FREE_ADDR = 2  # Read this address to get the # of words of free space in the download FIFO.
     _UP_USED_ADDR = 3  # Read this address to get the # of words waiting in the upload FIFO.
-    _UPDN_RELOAD_ADDR = 5 # Read this address to reload upload/download count registers.
-
+    _BREAK_ADDR = 4  # Write to this address to send a break command.
     def __init__(
         self,
         xsusb_id=DEFAULT_XSUSB_ID,
@@ -70,18 +69,20 @@ class XsComm:
 
     def get_send_buffer_space(self):
         """Return the amount of space available in the FPGA to receive data."""
-        #self._memio.read(_UPDN_RELOAD_ADDR,1)
         return reduce(lambda s,d: s*256+d.unsigned, reversed(self._memio.read(self._DN_FREE_ADDR, 4)), 0)
 
     def get_recv_buffer_length(self):
         """Return the amount of data waiting in the FPGA to be transmitted."""
-        #self._memio.read(_UPDN_RELOAD_ADDR,1)
         return reduce(lambda s,d: s*256+d.unsigned, reversed(self._memio.read(self._UP_USED_ADDR, 4)), 0)
 
     def get_levels(self):
         """Get the amount of space available in the FPGA to receive data and the amount of data
         waiting in the FPGA to be transmitted."""
         print "available = %d  waiting = %d" % (self.get_send_buffer_space(), self.get_recv_buffer_length())
+        
+    def send_break(self):
+        """Send a break command."""
+        self._memio.write(self._BREAK_ADDR, [0])
 
     def send(self, buffer, wait=True):
         """Send buffer contents through the comm channel to the FPGA.
