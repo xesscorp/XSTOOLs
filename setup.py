@@ -6,7 +6,7 @@ import subprocess
 
 setup(
     name='XsTools',
-    version='0.1.23',
+    version='0.1.24',
     description='Classes for interfacing with XESS FPGA boards via USB.',
     long_description=open('README.txt').read(),
     author='XESS Corp.',

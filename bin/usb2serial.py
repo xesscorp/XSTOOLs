@@ -100,7 +100,7 @@ while True:
             buf = [ord(c) for c in buf]
             logger.debug('%s: %s' % (sercomm.name, ' '.join(['%02x' % b for b in buf])))
             xscomm.send(buf)
-            if break_found(buf):
+            if break_found(buf) and n==3: # Reset string should be the only thing in the buffer.
                 xscomm.send_break()
                 logger.debug('Reset sent.')
         
