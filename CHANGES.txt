@@ -1,3 +1,6 @@
+v0.1.25, 06/05/2015 -- Fixed problem where flash and SDRAM couldn't be accessed in gxstools
+                       because I appended 'bitstream' to the attribute names.
+                       
 v0.1.24, 03/16/2015 -- Modified usb2serial.py to prevent accidental triggering of serial BREAK.
 
 v0.1.23, 02/03/2015 -- Modified usb2serial.py and xscomm.py to support new serial BREAK command.
