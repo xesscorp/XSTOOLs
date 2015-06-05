@@ -185,6 +185,12 @@ class XulaBase(XulaMicro):
     _TEST_MODULE_ID = 0x01  # Board diagnostic module ID.
     _CFG_FLASH_MODULE_ID = 0x02  # Configuration flash programming module ID.
     _SDRAM_MODULE_ID = 0x03  # SDRAM R/W module ID.
+    
+    def __init__(self, xsusb_id=0):
+        XulaMicro.__init__(self, xsusb_id)
+        # Create a few attributes to indicate the presence of these devices on the board.
+        self.cfg_flash = None  # The value doesn't matter. Just its existence.
+        self.sdram = None
 
     def configure(self, bitstream, silent=False):
         """Configure the FPGA on the board with a bitstream."""
@@ -237,8 +243,8 @@ class XulaBase(XulaMicro):
         PUBSUB.sendMessage("Progress.Phase", phase="Configuring FPGA for reading configuration flash")
         self.configure(self.cfg_flash_bitstream, silent=True)
         PUBSUB.sendMessage("Progress.Phase", phase="Reading configuration flash")
-        cfg_flash = self.create_cfg_flash()
-        hex_data = cfg_flash.read(bottom, top)
+        self.cfg_flash = self.create_cfg_flash()
+        hex_data = self.cfg_flash.read(bottom, top)
         PUBSUB.sendMessage("Progress.Phase", phase="Configuration flash read done")
         return hex_data
         
@@ -246,26 +252,26 @@ class XulaBase(XulaMicro):
         PUBSUB.sendMessage("Progress.Phase", phase="Configuring FPGA for writing configuration flash")
         self.configure(self.cfg_flash_bitstream, silent=True)
         PUBSUB.sendMessage("Progress.Phase", phase="Erasing configuration flash")
-        cfg_flash = self.create_cfg_flash()
-        cfg_flash.erase()
+        self.cfg_flash = self.create_cfg_flash()
+        self.cfg_flash.erase()
         PUBSUB.sendMessage("Progress.Phase", phase="Writing configuration flash")
-        cfg_flash.write(hexfile, bottom, top)
+        self.cfg_flash.write(hexfile, bottom, top)
         PUBSUB.sendMessage("Progress.Phase", phase="Configuration flash write done")
         
     def erase_cfg_flash(self, bottom, top):
         PUBSUB.sendMessage("Progress.Phase", phase="Configuring FPGA for erasing configuration flash")
         self.configure(self.cfg_flash_bitstream, silent=True)
         PUBSUB.sendMessage("Progress.Phase", phase="Erasing configuration flash")
-        cfg_flash = self.create_cfg_flash()
-        cfg_flash.erase()
+        self.cfg_flash = self.create_cfg_flash()
+        self.cfg_flash.erase()
         PUBSUB.sendMessage("Progress.Phase", phase="Configuration flash erase done")
         
     def read_sdram(self, bottom, top):
         PUBSUB.sendMessage("Progress.Phase", phase="Configuring FPGA for reading SDRAM")
         self.configure(self.sdram_bitstream, silent=True)
         PUBSUB.sendMessage("Progress.Phase", phase="Reading SDRAM")
-        sdram = self.create_sdram()
-        hex_data = sdram.read(bottom, top)
+        self.sdram = self.create_sdram()
+        hex_data = self.sdram.read(bottom, top)
         PUBSUB.sendMessage("Progress.Phase", phase="SDRAM read done")
         return hex_data
     
@@ -273,16 +279,16 @@ class XulaBase(XulaMicro):
         PUBSUB.sendMessage("Progress.Phase", phase="Configuring FPGA for writing SDRAM")
         self.configure(self.sdram_bitstream, silent=True)
         PUBSUB.sendMessage("Progress.Phase", phase="Writing SDRAM")
-        sdram = self.create_sdram()
-        sdram.write(hexfile, bottom, top)
+        self.sdram = self.create_sdram()
+        self.sdram.write(hexfile, bottom, top)
         PUBSUB.sendMessage("Progress.Phase", phase="SDRAM write done")
         
     def erase_sdram(self, bottom, top):
         PUBSUB.sendMessage("Progress.Phase", phase="Configuring FPGA for erasing SDRAM")
         self.configure(self.sdram_bitstream, silent=True)
         PUBSUB.sendMessage("Progress.Phase", phase="Erasing SDRAM")
-        sdram = self.create_sdram()
-        hex_data = sdram.erase(bottom, top)
+        self.sdram = self.create_sdram()
+        hex_data = self.sdram.erase(bottom, top)
         PUBSUB.sendMessage("Progress.Phase", phase="SDRAM erase done")
         return
 
