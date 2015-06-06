@@ -1,24 +1,63 @@
-from setuptools import setup
+import setuptools
+
+import xstools
+
 import sys
 import os
 import shutil
 import subprocess
 
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
+
+with open('README.rst') as readme_file:
+    readme = readme_file.read()
+
+with open('HISTORY.rst') as history_file:
+    history = history_file.read().replace('.. :changelog:', '')
+
+requirements = [
+    'pypubsub >= 3.1.2',
+    'pyusb >= 1.0.0a3, <1.0.0b1', 
+    'bitstring >= 3.1.1', 
+    'intelhex >= 1.4',
+]
+
+test_requirements = [  # TODO: put package test requirements here
+]
+
+
 setup(
     name='XsTools',
-    version='0.1.25',
+    version=xstools.__version__,
     description='Classes for interfacing with XESS FPGA boards via USB.',
-    long_description=open('README.txt').read(),
-    author='XESS Corp.',
-    author_email='info@xess.com',
-    url='http://pypi.python.org/pypi/XsTools/',
-    classifiers=['License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)',],
-    packages=['xstools'],
+    long_description=readme + '\n\n' + history,
+    author=xstools.__author__,
+    author_email=xstools.__email__,
+    url='https://github.com/xesscorp/XSTOOLs',
+#    packages=['xstools'],
+    packages=setuptools.find_packages(),
+    package_dir={'xstools': 'xstools'},
+    include_package_data=True,
     package_data={'xstools': ['xula*/*.bit', 'xula*/*.hex', '*.rules', 'icons/*.png']},
     scripts=['bin/xstools_defs.py', 'bin/xstest.py', 'bin/xstest.cmd', 'bin/xsload.py', 'bin/xsload.cmd', 
              'bin/xsusbprg.py', 'bin/xsusbprg.cmd', 'bin/xsflags.py', 'bin/xsflags.cmd', 
              'bin/usb2serial.py', 'bin/usb2serial.cmd', 'bin/gxstools.py', 'bin/gxstools.cmd'],
-    install_requires=['pypubsub >= 3.1.2', 'pyusb >= 1.0.0a3, <1.0.0b1', 'bitstring >= 3.1.1', 'intelhex >= 1.4'],
+    install_requires=requirements,
+    license="GPLv2+",
+    zip_safe=False,
+    keywords='xstools',
+    classifiers=['Development Status :: 2 - Pre-Alpha',
+                 'Intended Audience :: Developers',
+                 'License :: OSI Approved ::GNU General Public License v2 or later (GPLv2+)',
+                 'Natural Language :: English',
+                 "Programming Language :: Python :: 2",
+                 'Programming Language :: Python :: 2.6',
+                 'Programming Language :: Python :: 2.7', ],
+    test_suite='tests',
+    tests_require=test_requirements,
     )
 
 if 'install' in sys.argv or 'install_data' in sys.argv:

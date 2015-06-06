@@ -1,0 +1,118 @@
+<NotepadPlus>
+    <Project name="XSTOOLs">
+        <Folder name="bin">
+            <Folder name="xula-py">
+                <File name="xula-py\bitstream.py" />
+                <File name="xula-py\bitstream.pyc" />
+                <File name="xula-py\fintf_jtag.bit" />
+                <File name="xula-py\flash.py" />
+                <File name="xula-py\jtag.py" />
+                <File name="xula-py\jtag.pyc" />
+                <File name="xula-py\loader.py" />
+                <File name="xula-py\rdflash.py" />
+                <File name="xula-py\test_board_jtag.bit" />
+                <File name="xula-py\usbprg.py" />
+                <File name="xula-py\xula.py" />
+                <File name="xula-py\xula.pyc" />
+            </Folder>
+            <File name="erase.hex" />
+            <File name="gold.HEX" />
+            <File name="gxstools.py" />
+            <File name="pc_analog_io_test.py" />
+            <File name="pc_subtractor_test.py" />
+            <File name="pitch.py" />
+            <File name="pmodtest.bit" />
+            <File name="ramupld.hex" />
+            <File name="recordplayback.bit" />
+            <File name="SdcardSfwTest.py" />
+            <File name="SdcardSfwTest2.py" />
+            <File name="serial_drv.py" />
+            <File name="serial_mon.py" />
+            <File name="usb2serial.py" />
+            <File name="usb2serial_test.py" />
+            <File name="use_local_xstools.py" />
+            <File name="wingtest.bit" />
+            <File name="xsflags.py" />
+            <File name="xsload.py" />
+            <File name="xsmfgtest.py" />
+            <File name="xsramio(delete this).py" />
+            <File name="xstest.py" />
+            <File name="xstools_defs.py" />
+            <File name="xsusbprg.py" />
+        </Folder>
+        <Folder name="dist">
+            <File name="C:\xesscorp\PRODUCTS\XsTools\dist\XsTools-0.1.11.zip" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\dist\XsTools-0.1.12.zip" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\dist\XsTools-0.1.13.zip" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\dist\XsTools-0.1.14.zip" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\dist\XsTools-0.1.15.zip" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\dist\XsTools-0.1.16.zip" />
+        </Folder>
+        <Folder name="docs" />
+        <Folder name="src" />
+        <Folder name="xstools">
+            <Folder name="icons">
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\icons\down_arrow.png" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\icons\down_arrow_disabled.png" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\icons\fpga.png" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\icons\gxstools_icons.svg" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\icons\sdram.jpg" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\icons\sdram.png" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\icons\serial_flash.png" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\icons\uc.png" />
+            </Folder>
+            <Folder name="test">
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\test\test_location.py" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\test\test_utils.py" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\test\__init__.py" />
+            </Folder>
+            <Folder name="xula">
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xula\fintf_jtag_200.bit" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xula\fintf_jtag_50.bit" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xula\ramintfc_jtag_200.bit" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xula\ramintfc_jtag_50.bit" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xula\test_board_jtag_200.bit" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xula\test_board_jtag_50.bit" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xula\XuLA_jtag.hex" />
+            </Folder>
+            <Folder name="xula2">
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xula2\fintf_jtag_lx25.bit" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xula2\fintf_jtag_lx9.bit" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xula2\ramintfc_jtag_lx25.bit" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xula2\ramintfc_jtag_lx9.bit" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xula2\test_board_jtag_lx25.bit" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xula2\test_board_jtag_lx9.bit" />
+                <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xula2\XuLA_jtag.hex" />
+            </Folder>
+            <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\flashdev.py" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\picmicro.py" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\ramdev.py" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xilbitstr.py" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xilfpga.py" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xsbitarray.py" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xsboard.py" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xscomm.py" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xsdutio.py" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xserror.py" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xshostio.py" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xsi2c.py" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xsjtag.py" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xsmemio.py" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xsspi.py" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\XstoolsApi.py" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\xsusb.py" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\xstools\__init__.py" />
+        </Folder>
+        <Folder name="XsTools.egg-info">
+            <File name="C:\xesscorp\PRODUCTS\XsTools\XsTools.egg-info\dependency_links.txt" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\XsTools.egg-info\PKG-INFO" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\XsTools.egg-info\requires.txt" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\XsTools.egg-info\SOURCES.txt" />
+            <File name="C:\xesscorp\PRODUCTS\XsTools\XsTools.egg-info\top_level.txt" />
+        </Folder>
+        <File name="C:\xesscorp\PRODUCTS\XsTools\CHANGES.txt" />
+        <File name="C:\xesscorp\PRODUCTS\XsTools\LICENSE.txt" />
+        <File name="C:\xesscorp\PRODUCTS\XsTools\README.txt" />
+        <File name="C:\xesscorp\PRODUCTS\XsTools\setup.py" />
+    </Project>
+</NotepadPlus>
