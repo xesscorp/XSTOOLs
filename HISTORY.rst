@@ -3,6 +3,17 @@
 History
 -------
 
+v0.1.27 (2015-07-31) 
+---------------------
+
+* Removed scripts in bin directory and placed them in the xstools directory.
+* Added entrypoints to generate executables for the XSTOOLs scripts. 
+                       
+v0.1.26 (2015-06-06) 
+---------------------
+
+* Changed distribution to use readthedocs for documentation.
+                       
 v0.1.25 (2015-06-05) 
 ---------------------
 

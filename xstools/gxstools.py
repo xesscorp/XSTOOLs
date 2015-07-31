@@ -21,22 +21,11 @@
 # **********************************************************************
 
 import sys
-
-# Use local development version of xstools when use_local_xstools.py exists.
-# Remember to delete both use_local_xstools.py and use_local_xstools.pyc.
-try:
-    import use_local_xstools
-except:
-    pass
-else:
-    sys.path.insert(0, r'..')
-
 import os
 import xstools
-import xstools.xsboard as XSBOARD
-import xstools.xsusb as XSUSB
-import xstools.xserror as XSERROR
-import xstools_defs
+import xsboard as XSBOARD
+import xsusb as XSUSB
+import xserror as XSERROR
 import wx
 import wx.lib
 import wx.lib.intctrl as INTCTRL
@@ -45,6 +34,7 @@ import wx.lib.platebtn as PBTN
 import wx.html
 from pubsub import pub
 from threading import Thread
+from __init__ import __version__
 
 
 # ********************* Globals ***********************************
@@ -78,7 +68,7 @@ class GxsAboutBox(wx.Dialog):
         hwin = GxsHtmlWindow(self, -1, size=(400, 200))
         aboutText = \
             """<p>Graphical XSTOOLs Utilities Version %s</p>"""
-        hwin.SetPage(aboutText % xstools_defs.VERSION)
+        hwin.SetPage(aboutText % __version__)
         btn = hwin.FindWindowById(wx.ID_OK)
         irep = hwin.GetInternalRepresentation()
         hwin.SetSize((irep.GetWidth() + 25, irep.GetHeight() + 10))
@@ -1139,7 +1129,11 @@ class MyApp(wx.App):
         self.timer = GxsTimer()
         return True
 
-
-if __name__ == '__main__':
+    
+def gxstools():    
     app = MyApp(False)
     app.MainLoop()
+
+    
+if __name__ == '__main__':
+    gxstools()
