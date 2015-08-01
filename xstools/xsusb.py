@@ -200,9 +200,9 @@ class XsUsb:
             raise XsTerminate()
 
         logging.debug('OUT => (%d) %s', len(bytes), str([bin(x | 0x100)[3:] for x in bytes]))
-        time_out = self._calc_time_out(len(bytes))
+        timeout = self._calc_time_out(len(bytes))
         if self._dev.write(usb.util.ENDPOINT_OUT | self._endpoint,
-                           bytes, 0, time_out) \
+                           bytes, timeout=timeout) \
             != len(bytes):
             raise XsMajorError('Failed to write required number of bytes over the USB link')
 
@@ -213,9 +213,9 @@ class XsUsb:
             self.terminate = False
             raise XsTerminate()
 
-        time_out = self._calc_time_out(num_bytes)
+        timeout = self._calc_time_out(num_bytes)
         bytes = self._dev.read(usb.util.ENDPOINT_IN | self._endpoint,
-                               num_bytes, 0, time_out)
+                               num_bytes, timeout=timeout)
         if len(bytes) != num_bytes:
             raise XsMajorError('Failed to read required number of bytes over the USB link'
                                )
@@ -338,12 +338,18 @@ if __name__ == '__main__':
     # Get the number of XESS USB devices out there.
     while(True):
         sys.stdout.write('Plug it in...\n')
-        while XsUsb.get_num_xsusb() == 0:
-            pass
+        while True:
+            n = XsUsb.get_num_xsusb()
+            print n
+            if n != 0:
+                break
         xsusb = XsUsb()
         sys.stdout.write('Pull it out...\n')
-        while XsUsb.get_num_xsusb() != 0:
-            pass
+        while True:
+            n = XsUsb.get_num_xsusb()
+            print n
+            if n == 0:
+                break
             
     # Create a link for talking over USB to an XESS USB device.
     xsusb = XsUsb()
