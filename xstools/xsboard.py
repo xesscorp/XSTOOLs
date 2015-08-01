@@ -84,11 +84,11 @@ class XulaMicro(XsBoard):
 
         try:
             info = self.xsusb.get_info()
-        except:
+        except XSERROR.XsError as e:
             try:
                 self.reset()
                 info = self.xsusb.get_info()
-            except:
+            except XSERROR.XsError as e:
                 raise XsMajorError('Unable to get XESS board information.')
         if sum(info) & 0xff != 0:
             # Checksum failure.
@@ -111,7 +111,7 @@ class XulaMicro(XsBoard):
         """Return true if the board is connected to a USB port."""
         try:
             version = self.get_board_fmw_version()
-        except e:
+        except XSERROR.XsError as e:
             return false
             
         if version < 1.2:
