@@ -72,8 +72,8 @@ def xstest():
                         winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
                     except:
                         pass
-                    xs_board.xsusb.disconnect()
                     if args.multiple:
+                        xs_board.xsusb.disconnect()
                         while XSBOARD.XsUsb.get_num_xsusb() != 0:
                             pass
                         continue
@@ -84,8 +84,8 @@ def xstest():
                     winsound.MessageBeep()
                 except:
                     pass
-                xs_board.xsusb.disconnect()
                 if args.multiple:
+                    xs_board.xsusb.disconnect()
                     while XSBOARD.XsUsb.get_num_xsusb() != 0:
                         pass
                     continue

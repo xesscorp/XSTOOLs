@@ -92,11 +92,9 @@ def xsload():
                 try:
                     xs_board.configure(args.fpga)
                 except XSERROR.XsError as e:
-                    xs_board.xsusb.disconnect()
                     sys.exit()
                 print "Success: Bitstream", args.fpga, "downloaded into", xs_board.name, "!"
 
-            xs_board.xsusb.disconnect()
             sys.exit()
         else:
             XSERROR.XsFatalError("%d is not within USB port range [0,%d]" % (args.usb, num_boards - 1))
