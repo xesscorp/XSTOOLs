@@ -38,7 +38,6 @@ from __init__ import __version__
 
 
 # ********************* Globals ***********************************
-active_port_id = None
 active_board = None
 port_thread = None
 icon_dir = os.path.join(xstools.install_dir, 'icons')
@@ -190,12 +189,12 @@ class GxsProgressDialog(wx.ProgressDialog):
 
 class GxsPortPanel(wx.Panel):
 
+    active_port_id = None
+
     def __init__(self, *args, **kwargs):
         super(GxsPortPanel, self).__init__(*args, **kwargs)
 
-        global active_port_id
         global active_board
-        active_port_id = None
         active_board = None
 
         self.SetToolTipString("Use this tab to select the port your XESS board is attached to.")
@@ -283,17 +282,16 @@ class GxsPortPanel(wx.Panel):
         if port_thread != None:
             return
 
-        global active_port_id
         global active_board
 
         port_id = self._port_list.GetSelection()
         if port_id == wx.NOT_FOUND:
-            active_port_id = None
+            GxsPortPanel.active_port_id = None
             active_port_name = ''
         else:
-            active_port_id = port_id
-            active_port_name = 'USB%d' % active_port_id
-        active_board = XSBOARD.XsBoard.get_xsboard(active_port_id)
+            GxsPortPanel.active_port_id = port_id
+            active_port_name = 'USB%d' % GxsPortPanel.active_port_id
+        active_board = XSBOARD.XsBoard.get_xsboard(GxsPortPanel.active_port_id)
         active_board_name = getattr(active_board, 'name', '')
         if hasattr(active_board,'micro'):
             self._blink_button.Enable()

@@ -170,6 +170,8 @@ class XsUsb:
         return len(cls.get_xsusb_ports())
         
     def get_xsusb_id(self):
+        if self._dev is None:
+            return None
         devs = XsUsb.get_xsusb_ports()
         indexed_devs = zip(range(0,len(devs)), devs)
         for index, dev in indexed_devs:
