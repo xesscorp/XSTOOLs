@@ -44,6 +44,23 @@ port_thread = None
 icon_dir = os.path.join(xstools.install_dir, 'icons')
 
 
+
+
+# ===============================================================
+# Utility routines for connecting and disconnecting the USB port.
+# ===============================================================
+
+def disconnect():
+    if active_board != None:
+        active_board.xsusb.disconnect()
+        
+def reconnect():
+    global active_board
+    if active_board != None:
+        active_board = XSBOARD.XsBoard.get_xsboard(active_board.xsusb._xsusb_id)
+
+
+
 # ===============================================================
 # GXSTOOLs About Box.
 # ===============================================================
@@ -254,6 +271,7 @@ class GxsPortPanel(wx.Panel):
                         self._port_list.SetSelection(xsusb_id)
                 active_board = XSBOARD.XsBoard.get_xsboard(self._port_list.GetSelection())
                 wx.PostEvent(self._port_list, wx.PyCommandEvent(wx.EVT_CHOICE.typeId, wx.ID_ANY))
+                disconnect()
 
     def on_port_change(self, event):
 
@@ -284,11 +302,14 @@ class GxsPortPanel(wx.Panel):
         pub.sendMessage("Status.Port", port=active_port_name)
         pub.sendMessage("Status.Board", board=active_board_name)
         pub.sendMessage("Status.Change", dummy=None)
+        disconnect()
 
     def on_blink(self, event):
+        reconnect()
         port_id = self._port_list.GetSelection()
         if port_id != wx.NOT_FOUND:
             active_board.get_board_info()
+        disconnect()
 
 
 # ===============================================================
@@ -444,17 +465,16 @@ class GxsFlashDownloadThread(Thread):
     def run(self):
         msg_box_title = 'Flash Download Result'
         try:
+            reconnect()
             active_board.write_cfg_flash(self._dnld_file)
+            wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
         except XSERROR.XsTerminate as e:
-            pub.sendMessage("Flash.Cleanup")
             wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
-            return
         except XSERROR.XsError as e:
-            pub.sendMessage("Flash.Cleanup")
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
-            return
-        pub.sendMessage("Flash.Cleanup")
-        wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
+        finally:
+            pub.sendMessage("Flash.Cleanup")
+            disconnect()
 
 
 # ===============================================================
@@ -472,17 +492,16 @@ class GxsFlashUploadThread(Thread):
     def run(self):
         msg_box_title = 'Flash Upload Result'
         try:
+            reconnect()
             active_board.read_cfg_flash(self._low_addr, self._high_addr).tofile(self._upld_file, format='hex')
+            wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
         except XSERROR.XsTerminate as e:
-            pub.sendMessage("Flash.Cleanup")
             wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
-            return
         except XSERROR.XsError as e:
-            pub.sendMessage("Flash.Cleanup")
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
-            return
-        pub.sendMessage("Flash.Cleanup")
-        wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
+        finally:
+            pub.sendMessage("Flash.Cleanup")
+            disconnect()
 
 
 # ===============================================================
@@ -499,17 +518,16 @@ class GxsFlashEraseThread(Thread):
     def run(self):
         msg_box_title = 'Flash Erase Result'
         try:
+            reconnect()
             active_board.erase_cfg_flash(self._low_addr, self._high_addr)
+            wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
         except XSERROR.XsTerminate as e:
-            pub.sendMessage("Flash.Cleanup")
             wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
-            return
         except XSERROR.XsError as e:
-            pub.sendMessage("Flash.Cleanup")
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
-            return
-        pub.sendMessage("Flash.Cleanup")
-        wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
+        finally:
+            pub.sendMessage("Flash.Cleanup")
+            disconnect()
 
 
 # ===============================================================
@@ -657,17 +675,16 @@ class GxsSdramDownloadThread(Thread):
     def run(self):
         msg_box_title = 'SDRAM Download Result'
         try:
+            reconnect()
             active_board.write_sdram(self._dnld_file)
+            wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
         except XSERROR.XsTerminate as e:
-            pub.sendMessage("Sdram.Cleanup")
             wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
-            return
         except XSERROR.XsError as e:
-            pub.sendMessage("Sdram.Cleanup")
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
-            return
-        pub.sendMessage("Sdram.Cleanup")
-        wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
+        finally:
+            pub.sendMessage("Sdram.Cleanup")
+            disconnect()
 
 
 # ===============================================================
@@ -685,17 +702,16 @@ class GxsSdramUploadThread(Thread):
     def run(self):
         msg_box_title = 'SDRAM Upload Result'
         try:
+            reconnect()
             active_board.read_sdram(self._low_addr, self._high_addr).tofile(self._upld_file, format='hex')
+            wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
         except XSERROR.XsTerminate as e:
-            pub.sendMessage("Sdram.Cleanup")
             wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
-            return
         except XSERROR.XsError as e:
-            pub.sendMessage("Sdram.Cleanup")
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
-            return
-        pub.sendMessage("Sdram.Cleanup")
-        wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
+        finally:
+            pub.sendMessage("Sdram.Cleanup")
+            disconnect()
 
 
 # ===============================================================
@@ -712,17 +728,16 @@ class GxsSdramEraseThread(Thread):
     def run(self):
         msg_box_title = 'SDRAM Erase Result'
         try:
+            reconnect()
             active_board.erase_sdram(self._low_addr, self._high_addr)
+            wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
         except XSERROR.XsTerminate as e:
-            pub.sendMessage("Sdram.Cleanup")
             wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
-            return
         except XSERROR.XsError as e:
-            pub.sendMessage("Sdram.Cleanup")
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
-            return
-        pub.sendMessage("Sdram.Cleanup")
-        wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
+        finally:
+            pub.sendMessage("Sdram.Cleanup")
+            disconnect()
 
 
 # ===============================================================
@@ -805,17 +820,16 @@ class GxsFpgaDownloadThread(Thread):
     def run(self):
         msg_box_title = 'FPGA Bitstream Download Result'
         try:
+            reconnect()
             active_board.configure(self._config_file)
+            wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
         except XSERROR.XsTerminate as e:
-            pub.sendMessage("Fpga.Cleanup")
             wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
-            return
         except XSERROR.XsError as e:
-            pub.sendMessage("Fpga.Cleanup")
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
-            return
-        pub.sendMessage("Fpga.Cleanup")
-        wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
+        finally:
+            pub.sendMessage("Fpga.Cleanup")
+            disconnect()
 
 
 # ===============================================================
@@ -913,18 +927,17 @@ class GxsMcuDownloadThread(Thread):
     def run(self):
         msg_box_title = 'Microcontroller Flash Update Result'
         try:
+            reconnect()
             active_board.update_firmware(self._fmw_obj_file)
             pub.sendMessage("Status.Change", dummy=None) # Update flag settings because of new uC firmware.
+            wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
         except XSERROR.XsTerminate as e:
-            pub.sendMessage("Micro.Cleanup")
             wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
-            return
         except XSERROR.XsError as e:
-            pub.sendMessage("Micro.Cleanup")
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
-            return
-        pub.sendMessage("Micro.Cleanup")
-        wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
+        finally:
+            pub.sendMessage("Micro.Cleanup")
+            disconnect()
 
 
 # ===============================================================
@@ -985,17 +998,16 @@ class GxsBoardTestThread(Thread):
     def run(self):
         msg_box_title = 'Board Diagnostic Result'
         try:
+            reconnect()
             active_board.do_self_test()
+            wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
         except XSERROR.XsTerminate as e:
-            pub.sendMessage("Test.Cleanup")
             wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
-            return
         except XSERROR.XsError as e:
-            pub.sendMessage("Test.Cleanup")
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
-            return
-        pub.sendMessage("Test.Cleanup")
-        wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
+        finally:
+            disconnect()
+            pub.sendMessage("Test.Cleanup")
 
 
 # ===============================================================
@@ -1036,27 +1048,35 @@ class GxsBoardFlagsPanel(wx.Panel):
         self.SetSizer(hsizer)
 
     def handle_aux_jtag_flag(self, dummy):
+        reconnect()
         if hasattr(active_board,'micro'):
             self._aux_jtag_flag.Enable()
             self._aux_jtag_flag.SetValue(active_board.get_aux_jtag_flag())
         else:
             self._aux_jtag_flag.Disable()
             self._aux_jtag_flag.SetValue(False)
+        disconnect()
 
     def handle_flash_flag(self, dummy):
+        reconnect()
         if hasattr(active_board,'micro'):
             self._flash_flag.Enable()
             self._flash_flag.SetValue(active_board.get_flash_flag())
         else:
             self._flash_flag.Disable()
             self._flash_flag.SetValue(False)
+        disconnect()
 
     def on_aux_jtag(self, event):
+        reconnect()
         self._aux_jtag_flag.SetValue( active_board.toggle_aux_jtag_flag() )
+        disconnect()
         pub.sendMessage("Port.Check", force_check=True) # Because port will change if JTAG feature changes.
 
     def on_flash(self, event):
+        reconnect()
         self._flash_flag.SetValue( active_board.toggle_flash_flag() )
+        disconnect()
 
 
 # ===============================================================
