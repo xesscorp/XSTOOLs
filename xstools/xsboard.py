@@ -56,7 +56,7 @@ class XsBoard:
                 xsboard = c(xsusb_id)
                 if xsboard.is_connected():
                     return xsboard
-            except:
+            except Exception as e:
                 pass
 
         return None
@@ -84,11 +84,11 @@ class XulaMicro(XsBoard):
 
         try:
             info = self.xsusb.get_info()
-        except XSERROR.XsError as e:
+        except XsError as e:
             try:
                 self.reset()
                 info = self.xsusb.get_info()
-            except XSERROR.XsError as e:
+            except XsError as e:
                 raise XsMajorError('Unable to get XESS board information.')
         if sum(info) & 0xff != 0:
             # Checksum failure.
@@ -111,11 +111,11 @@ class XulaMicro(XsBoard):
         """Return true if the board is connected to a USB port."""
         try:
             version = self.get_board_fmw_version()
-        except XSERROR.XsError as e:
-            return false
-            
+        except XsError as e:
+            return False
+
         if version < 1.2:
-            return false
+            return False
         elif hasattr(self,'fpga'):
             return self.fpga.is_connected()
         return False
@@ -425,8 +425,8 @@ class XulaOldFmw(XulaMicro):
         """Return true if the board is connected to a USB port."""
         try:
             version = self.get_board_fmw_version()
-        except e:
-            return false
+        except Exception as e:
+            return False
 
         # True if the firmware is too old to query the JTAG port.
         return version < 1.2
@@ -444,8 +444,8 @@ class XulaNoJtag(XulaMicro):
         """Return true if the board is connected to a USB port."""
         try:
             version = self.get_board_fmw_version()
-        except e:
-            return false
+        except Exception as e:
+            return False
             
         # If the firmware is new, assume the FPGA IDCODE can't be queried because the JTAG is deactivated.
         return version >= 1.2
