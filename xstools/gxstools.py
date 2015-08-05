@@ -184,6 +184,26 @@ class GxsProgressDialog(wx.ProgressDialog):
 
 
 # ===============================================================
+# File picker with drag-n-drop feature.
+# ===============================================================
+
+class DnDFilePickerCtrl(wx.FilePickerCtrl, wx.FileDropTarget):
+
+    def __init__(self, window, wildcard, style):
+        wx.FilePickerCtrl.__init__(self, window, wildcard=wildcard, style=style)
+        wx.FileDropTarget.__init__(self)
+        self.SetDropTarget(self)
+        self.SetDefaultAction(wx.DragCopy)
+        
+    def OnDropFiles(self, x, y, filenames):
+        try:
+            self.SetPath(filenames[0])
+            wx.PostEvent(self, wx.PyCommandEvent(wx.EVT_FILEPICKER_CHANGED.typeId, self.GetId()))
+        except (IndexError, TypeError):
+            self.SetPath('')
+
+            
+# ===============================================================
 # Port setup panel.
 # ===============================================================
 
@@ -326,11 +346,11 @@ class GxsFlashPanel(wx.Panel):
         #file_wildcard = 'Intel Hex (*.hex)|*.hex|Motorola EXO (*.exo)|*.exo|XESS (*.xes)|*.xes'
         file_wildcard = 'Xilinx bitstream (*.bit)|*.bit|Intel Hex (*.hex)|*.hex'
 
-        self._dnld_file_picker = wx.FilePickerCtrl(self, wildcard=file_wildcard,
+        self._dnld_file_picker = DnDFilePickerCtrl(self, wildcard=file_wildcard,
                                                    style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
         self._dnld_file_picker.SetToolTipString('File to download to %s' % mem_type)
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_download_button, self._dnld_file_picker)
-        self._upld_file_picker = wx.FilePickerCtrl(self, wildcard=file_wildcard,
+        self._upld_file_picker = DnDFilePickerCtrl(self, wildcard=file_wildcard,
                                                    style=wx.FLP_SAVE | wx.FLP_OVERWRITE_PROMPT | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
         self._upld_file_picker.SetToolTipString('File to upload from %s' % mem_type)
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_upload_button, self._upld_file_picker)
@@ -544,11 +564,11 @@ class GxsSdramPanel(wx.Panel):
         #file_wildcard = 'Intel Hex (*.hex)|*.hex|Motorola EXO (*.exo)|*.exo|XESS (*.xes)|*.xes'
         file_wildcard = 'Intel Hex (*.hex)|*.hex'
 
-        self._dnld_file_picker = wx.FilePickerCtrl(self, wildcard=file_wildcard,
+        self._dnld_file_picker = DnDFilePickerCtrl(self, wildcard=file_wildcard,
                                                    style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
         self._dnld_file_picker.SetToolTipString('File to download to %s' % mem_type)
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_download_button, self._dnld_file_picker)
-        self._upld_file_picker = wx.FilePickerCtrl(self, wildcard=file_wildcard,
+        self._upld_file_picker = DnDFilePickerCtrl(self, wildcard=file_wildcard,
                                                    style=wx.FLP_SAVE | wx.FLP_OVERWRITE_PROMPT | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
         self._upld_file_picker.SetToolTipString('File to upload from %s' % mem_type)
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_upload_button, self._upld_file_picker)
@@ -751,7 +771,7 @@ class GxsFpgaConfigPanel(wx.Panel):
 
         file_wildcard = 'Xilinx bitstreams (*.bit)|*.bit'
 
-        self._dnld_file_picker = wx.FilePickerCtrl(self, wildcard=file_wildcard,
+        self._dnld_file_picker = DnDFilePickerCtrl(self, wildcard=file_wildcard,
                                                    style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
         self._dnld_file_picker.SetToolTipString('Bitstream file to download to FPGA')
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_download_button, self._dnld_file_picker)
@@ -834,6 +854,7 @@ class GxsFpgaDownloadThread(Thread):
 # Microcontroller panel.
 # ===============================================================
 
+
 class GxsMicrocontrollerPanel(wx.Panel):
 
     def __init__(self, *args, **kwargs):
@@ -843,7 +864,7 @@ class GxsMicrocontrollerPanel(wx.Panel):
 
         file_wildcard = 'object file (*.hex)|*.hex'
 
-        self._dnld_file_picker = wx.FilePickerCtrl(self, wildcard=file_wildcard,
+        self._dnld_file_picker = DnDFilePickerCtrl(window=self, wildcard=file_wildcard,
                                                    style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
         self._dnld_file_picker.SetToolTipString('Hex object file to download to microcontroller')
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_download_button, self._dnld_file_picker)
