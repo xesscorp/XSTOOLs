@@ -198,9 +198,10 @@ class DnDFilePickerCtrl(wx.FilePickerCtrl, wx.FileDropTarget):
     def OnDropFiles(self, x, y, filenames):
         try:
             self.SetPath(filenames[0])
-            wx.PostEvent(self, wx.PyCommandEvent(wx.EVT_FILEPICKER_CHANGED.typeId, self.GetId()))
         except (IndexError, TypeError):
             self.SetPath('')
+        finally:
+            wx.PostEvent(self, wx.PyCommandEvent(wx.EVT_FILEPICKER_CHANGED.typeId, self.GetId()))
 
             
 # ===============================================================
@@ -822,7 +823,7 @@ class GxsFpgaConfigPanel(wx.Panel):
 
     def cleanup(self):
         pub.unsubscribe(self.cleanup, "Fpga.Cleanup")
-        self._config_progress.Destroy()
+        self._download_progress.Destroy()
 
 
 # ===============================================================
