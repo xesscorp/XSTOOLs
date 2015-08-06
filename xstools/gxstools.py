@@ -31,6 +31,7 @@ import wx.lib
 import wx.lib.intctrl as INTCTRL
 import wx.lib.flatnotebook as FNB
 import wx.lib.platebtn as PBTN
+import wx.lib.filebrowsebutton as FBB
 import wx.html
 from pubsub import pub
 from threading import Thread
@@ -184,24 +185,46 @@ class GxsProgressDialog(wx.ProgressDialog):
 
 
 # ===============================================================
-# File picker with drag-n-drop feature.
+# File browser that maintains its history.
 # ===============================================================
 
-class DnDFilePickerCtrl(wx.FilePickerCtrl, wx.FileDropTarget):
+class DnDFilePickerCtrl(FBB.FileBrowseButtonWithHistory, wx.FileDropTarget):
 
-    def __init__(self, window, wildcard, style):
-        wx.FilePickerCtrl.__init__(self, window, wildcard=wildcard, style=style)
+    def __init__(self, *args, **kwargs):
+        FBB.FileBrowseButtonWithHistory.__init__(self, *args, **kwargs)
         wx.FileDropTarget.__init__(self)
         self.SetDropTarget(self)
-        self.SetDefaultAction(wx.DragCopy)
+        self.SetDefaultAction(wx.DragCopy) # Show '+' icon when hovering over this field.
+        
+    def GetPath(self, addToHistory=False):
+        current_value = self.GetValue()
+        if addToHistory:
+            self.AddToHistory(current_value)
+        return current_value
+        
+    def AddToHistory(self, value):
+        if value == u'':
+            return
+        if type(value) in (str, unicode):
+            history = self.GetHistory()
+            history.insert(0, value)
+            history = tuple(set(history))
+            self.SetHistory(history, 0)
+            self.SetValue(value)
+        elif type(value) in (list, tuple):
+            for v in value:
+                self.AddToHistory(v)
+        
+    def SetPath(self, path):
+        self.AddToHistory(path)
+        self.SetValue(path)
+        
+    def OnChanged(self, evt):
+        wx.PostEvent(self, wx.PyCommandEvent(wx.EVT_FILEPICKER_CHANGED.typeId, self.GetId()))
         
     def OnDropFiles(self, x, y, filenames):
-        try:
-            self.SetPath(filenames[0])
-        except (IndexError, TypeError):
-            self.SetPath('')
-        finally:
-            wx.PostEvent(self, wx.PyCommandEvent(wx.EVT_FILEPICKER_CHANGED.typeId, self.GetId()))
+        self.AddToHistory(filenames)
+        wx.PostEvent(self, wx.PyCommandEvent(wx.EVT_FILEPICKER_CHANGED.typeId, self.GetId()))
 
             
 # ===============================================================
@@ -347,13 +370,24 @@ class GxsFlashPanel(wx.Panel):
         #file_wildcard = 'Intel Hex (*.hex)|*.hex|Motorola EXO (*.exo)|*.exo|XESS (*.xes)|*.xes'
         file_wildcard = 'Xilinx bitstream (*.bit)|*.bit|Intel Hex (*.hex)|*.hex'
 
-        self._dnld_file_picker = DnDFilePickerCtrl(self, wildcard=file_wildcard,
-                                                   style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
-        self._dnld_file_picker.SetToolTipString('File to download to %s' % mem_type)
+        # self._dnld_file_picker = DnDFilePickerCtrl(self, wildcard=file_wildcard,
+                                                   # style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
+        # self._dnld_file_picker.SetToolTipString('File to download to %s' % mem_type)
+        self._dnld_file_picker = DnDFilePickerCtrl(parent=self, 
+            labelText='',
+            buttonText='Browse',
+            toolTip='File to download to %s' % mem_type,
+            dialogTitle='Select file to download to %s' % mem_type,
+            fileMask=file_wildcard,
+            fileMode=wx.FD_OPEN)
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_download_button, self._dnld_file_picker)
-        self._upld_file_picker = DnDFilePickerCtrl(self, wildcard=file_wildcard,
-                                                   style=wx.FLP_SAVE | wx.FLP_OVERWRITE_PROMPT | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
-        self._upld_file_picker.SetToolTipString('File to upload from %s' % mem_type)
+        self._upld_file_picker = DnDFilePickerCtrl(parent=self, 
+            labelText='',
+            buttonText='Browse',
+            toolTip='File to upload from %s' % mem_type,
+            dialogTitle='Select file to store %s contents' % mem_type,
+            fileMask=file_wildcard,
+            fileMode=wx.FD_SAVE)
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_upload_button, self._upld_file_picker)
 
         stop_logging = wx.LogNull()    # This stops warnings about the color profile of the PNG files.
@@ -436,7 +470,7 @@ class GxsFlashPanel(wx.Panel):
     def on_download(self, event):
         pub.subscribe(self.cleanup, "Flash.Cleanup")
         self._progress = GxsProgressDialog(title="Downloading to Flash", parent=self)
-        GxsFlashDownloadThread(self._dnld_file_picker.GetPath())
+        GxsFlashDownloadThread(self._dnld_file_picker.GetPath(addToHistory=True))
 
     def set_upload_file(self, event):
         if event.GetEventObject().GetPath():
@@ -453,7 +487,7 @@ class GxsFlashPanel(wx.Panel):
     def on_upload(self, event):
         pub.subscribe(self.cleanup, "Flash.Cleanup")
         self._progress = GxsProgressDialog(title="Uploading from Flash", parent=self)
-        GxsFlashUploadThread(self._upld_file_picker.GetPath(), self._lo_addr_ctrl.GetValue(), self._hi_addr_ctrl.GetValue())
+        GxsFlashUploadThread(self._upld_file_picker.GetPath(addToHistory=True), self._lo_addr_ctrl.GetValue(), self._hi_addr_ctrl.GetValue())
 
     def handle_erase_button(self, dummy):
         if hasattr(active_board,'cfg_flash'):
@@ -565,13 +599,21 @@ class GxsSdramPanel(wx.Panel):
         #file_wildcard = 'Intel Hex (*.hex)|*.hex|Motorola EXO (*.exo)|*.exo|XESS (*.xes)|*.xes'
         file_wildcard = 'Intel Hex (*.hex)|*.hex'
 
-        self._dnld_file_picker = DnDFilePickerCtrl(self, wildcard=file_wildcard,
-                                                   style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
-        self._dnld_file_picker.SetToolTipString('File to download to %s' % mem_type)
+        self._dnld_file_picker = DnDFilePickerCtrl(parent=self, 
+            labelText='',
+            buttonText='Browse',
+            toolTip='File to download to %s' % mem_type,
+            dialogTitle='Select file to download to %s' % mem_type,
+            fileMask=file_wildcard,
+            fileMode=wx.FD_OPEN)
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_download_button, self._dnld_file_picker)
-        self._upld_file_picker = DnDFilePickerCtrl(self, wildcard=file_wildcard,
-                                                   style=wx.FLP_SAVE | wx.FLP_OVERWRITE_PROMPT | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
-        self._upld_file_picker.SetToolTipString('File to upload from %s' % mem_type)
+        self._upld_file_picker = DnDFilePickerCtrl(parent=self, 
+            labelText='',
+            buttonText='Browse',
+            toolTip='File to upload from %s' % mem_type,
+            dialogTitle='Select file to store %s contents' % mem_type,
+            fileMask=file_wildcard,
+            fileMode=wx.FD_SAVE)
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_upload_button, self._upld_file_picker)
 
         stop_logging = wx.LogNull()    # This stops warnings about the color profile of the PNG files.
@@ -652,7 +694,7 @@ class GxsSdramPanel(wx.Panel):
     def on_download(self, event):
         pub.subscribe(self.cleanup, "Sdram.Cleanup")
         self._progress = GxsProgressDialog(title="Downloading to SDRAM", parent=self)
-        GxsSdramDownloadThread(self._dnld_file_picker.GetPath())
+        GxsSdramDownloadThread(self._dnld_file_picker.GetPath(addToHistory=True))
 
     def handle_upload_button(self, dummy):
         if self._upld_file_picker.GetPath() and hasattr(active_board,'sdram'):
@@ -663,7 +705,7 @@ class GxsSdramPanel(wx.Panel):
     def on_upload(self, event):
         pub.subscribe(self.cleanup, "Sdram.Cleanup")
         self._progress = GxsProgressDialog(title="Uploading from SDRAM", parent=self)
-        GxsSdramUploadThread(self._upld_file_picker.GetPath(), self._lo_addr_ctrl.GetValue(), self._hi_addr_ctrl.GetValue())
+        GxsSdramUploadThread(self._upld_file_picker.GetPath(addToHistory=True), self._lo_addr_ctrl.GetValue(), self._hi_addr_ctrl.GetValue())
 
     def handle_erase_button(self, dummy):
         if hasattr(active_board,'sdram'):
@@ -772,9 +814,13 @@ class GxsFpgaConfigPanel(wx.Panel):
 
         file_wildcard = 'Xilinx bitstreams (*.bit)|*.bit'
 
-        self._dnld_file_picker = DnDFilePickerCtrl(self, wildcard=file_wildcard,
-                                                   style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
-        self._dnld_file_picker.SetToolTipString('Bitstream file to download to FPGA')
+        self._dnld_file_picker = DnDFilePickerCtrl(parent=self, 
+            labelText='',
+            buttonText='Browse',
+            toolTip='Bitstream file to download to FPGA',
+            dialogTitle='Select bitstream file to download to FPGA',
+            fileMask=file_wildcard,
+            fileMode=wx.FD_OPEN)
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_download_button, self._dnld_file_picker)
 
         stop_logging = wx.LogNull()    # This stops warnings about the color profile of the PNG files.
@@ -819,7 +865,7 @@ class GxsFpgaConfigPanel(wx.Panel):
     def on_download(self, event):
         pub.subscribe(self.cleanup, "Fpga.Cleanup")
         self._download_progress = GxsProgressDialog(title="Download Bitstream to FPGA", parent=self)
-        GxsFpgaDownloadThread(self._dnld_file_picker.GetPath())
+        GxsFpgaDownloadThread(self._dnld_file_picker.GetPath(addToHistory=True))
 
     def cleanup(self):
         pub.unsubscribe(self.cleanup, "Fpga.Cleanup")
@@ -865,9 +911,13 @@ class GxsMicrocontrollerPanel(wx.Panel):
 
         file_wildcard = 'object file (*.hex)|*.hex'
 
-        self._dnld_file_picker = DnDFilePickerCtrl(window=self, wildcard=file_wildcard,
-                                                   style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
-        self._dnld_file_picker.SetToolTipString('Hex object file to download to microcontroller')
+        self._dnld_file_picker = DnDFilePickerCtrl(parent=self, 
+            labelText='',
+            buttonText='Browse',
+            toolTip='Hex object file to download to microcontroller',
+            dialogTitle='Select hex object file to download to microcontroller',
+            fileMask=file_wildcard,
+            fileMode=wx.FD_OPEN)
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_download_button, self._dnld_file_picker)
 
         stop_logging = wx.LogNull()    # This stops warnings about the color profile of the PNG files.
@@ -927,7 +977,7 @@ ARE YOU SURE YOU WANT TO DO THIS!?!?
         self._upd_fmw_progress = GxsProgressDialog(title="Update Microcontroller Flash", parent=self)
         
         global port_thread
-        port_thread = GxsMcuDownloadThread(self._dnld_file_picker.GetPath())
+        port_thread = GxsMcuDownloadThread(self._dnld_file_picker.GetPath(addToHistory=True))
 
     def cleanup(self):
         pub.unsubscribe(self.cleanup, "Micro.Cleanup")
