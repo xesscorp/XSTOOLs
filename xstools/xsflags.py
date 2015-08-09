@@ -57,7 +57,7 @@ def xsflags():
                    help='Turn the auxiliary JTAG port on or off.')
     p.add_argument('-f', '--flash', type=str, default='nochange', choices=['on','off'],
                    help='Make the serial flash accessible to the FPGA. (Only applies to the XuLA-50 & XuLA-200 boards.)')
-    p.add_argument('-r', '--read', 
+    p.add_argument('-r', '--read', action='store_const', const=True, default=False,
                    help='Read the flag settings from the XESS board.')
     p.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__,
                    help='Print the version number of this program and exit.')
