@@ -20,7 +20,7 @@ with open('HISTORY.rst') as history_file:
 
 requirements = [
     'pypubsub >= 3.1.2',
-    'pyusb >= 1.0.0a3, <1.0.0b1', 
+    'pyusb >= 1.0.0a3', 
     'bitstring >= 3.1.1', 
     'intelhex >= 1.4',
 ]

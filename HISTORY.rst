@@ -3,6 +3,16 @@
 History
 -------
 
+v0.1.28 (2015-08-06) 
+---------------------
+
+* Now supports pyusb versions 1.0.0a and 1.0.0b.
+* The utilities only connect to the USB port when they are actively executing
+  some function for the attached XESS board. This allows other utilities to
+  access the board.
+* Added drag-and-drop capability for selecting bitstream and hex files.
+* A history of bitstream and hex files is maintained.
+
 v0.1.27 (2015-07-31) 
 ---------------------
 
