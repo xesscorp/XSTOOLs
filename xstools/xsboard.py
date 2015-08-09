@@ -56,7 +56,7 @@ class XsBoard:
                 xsboard = c(xsusb_id)
                 if xsboard.is_connected():
                     return xsboard
-            except Exception as e:
+            except (XsFatalError, XsMajorError, XsMinorError) as e:
                 pass
 
         return None
