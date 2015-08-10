@@ -3,7 +3,7 @@
 History
 -------
 
-v0.1.28 (2015-08-06) 
+v0.1.28 (2015-08-09) 
 ---------------------
 
 * Now supports pyusb versions 1.0.0a and 1.0.0b.
@@ -12,6 +12,7 @@ v0.1.28 (2015-08-06)
   access the board.
 * Added drag-and-drop capability for selecting bitstream and hex files.
 * A history of bitstream and hex files is maintained.
+* Exceptions caused by pyusb on program termination are now caught and filtered out.
 
 v0.1.27 (2015-07-31) 
 ---------------------
