@@ -44,7 +44,6 @@ setup(
             'usb2serial = xstools.usb2serial:usb2serial',
             'xsflags = xstools.xsflags:xsflags',
             'xsload = xstools.xsload:xsload',
-            'xsmfgtest = xstools.xsmfgtest2:xsmfgtest',
             'xstest = xstools.xstest:xstest',
             'xsusbprg = xstools.xsusbprg:xsusbprg',
         ],
