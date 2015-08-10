@@ -1,6 +1,9 @@
 XSTOOLs
 ===============================
 
+.. image:: https://img.shields.io/pypi/v/xstools.svg
+        :target: https://pypi.python.org/pypi/XsTools
+
 XSTOOLs is a collection of Python classes for interfacing to
 XESS FPGA boards through a USB connection.
 
