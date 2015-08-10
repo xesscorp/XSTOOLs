@@ -19,7 +19,6 @@
 #
 #   (c)2012 - X Engineering Software Systems Corp. (www.xess.com)
 # **********************************************************************
-
 """
 This command-line program downloads a bitstream into the FPGA
 on an XESS board.
@@ -41,6 +40,7 @@ Dave took ideas and bits of Hector's code and integrated them
 into this program and the XSTOOLs classes and methods.
 """
 
+import os
 import sys
 import string
 from argparse import ArgumentParser
@@ -48,60 +48,121 @@ import xsboard as XSBOARD
 import xserror as XSERROR
 from __init__ import __version__
 
+SUCCESS = 0
+FAILURE = 1
+
+
 def xsload():
-    p = ArgumentParser(description='Program a bitstream file into the FPGA on an XESS board.')
 
-    p.add_argument('--fpga', type=str, metavar='FILE.BIT',
-                   help='The name of the bitstream file to load into the FPGA.')
-    p.add_argument('--flash', type=str, metavar='FILE.HEX',
-                   help='The name of the file to down/upload to/from the serial configuration flash.')
-    p.add_argument('--ram', type=str, metavar='FILE.HEX',
-                   help='The name of the file to down/upload to/from the RAM.')
-    p.add_argument('-u', '--upload', nargs=2, type=int, default=0, metavar=('LOWER','UPPER'),
-                   help='Upload from RAM or flash the data between the lower and upper addresses.')
-    p.add_argument('--usb', type=int, default=0, metavar='N',
-                   help='The USB port number for the XESS board. If you only have one board, then use 0.')
-    p.add_argument('-b', '--board', type=str, default='xula-200', metavar='BOARD_NAME',
-                   help='***DEPRECATED*** The XESS board type (e.g., xula-200)')
-    p.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__,
-                   help='Print the version number of this program and exit.')
-    args = p.parse_args()
+    try:
+        num_boards = XSBOARD.XsUsb.get_num_xsusb()
 
-    args.board = string.lower(args.board)
+        p = ArgumentParser(
+            description=
+            'Program a bitstream file into the FPGA on an XESS board.')
 
-    num_boards = XSBOARD.XsUsb.get_num_xsusb()
-    if num_boards > 0:
-        if 0 <= args.usb < num_boards:
-            xs_board = XSBOARD.XsBoard.get_xsboard(args.usb)
+        p.add_argument(
+            '--fpga',
+            type=str,
+            metavar='FILE.BIT',
+            help='The name of the bitstream file to load into the FPGA.')
+        p.add_argument(
+            '--flash',
+            type=str,
+            metavar='FILE.HEX',
+            help=
+            'The name of the file to down/upload to/from the serial configuration flash.')
+        p.add_argument(
+            '--ram',
+            type=str,
+            metavar='FILE.HEX',
+            help='The name of the file to down/upload to/from the RAM.')
+        p.add_argument(
+            '-u', '--upload',
+            nargs=2,
+            type=int,
+            default=0,
+            metavar=('LOWER', 'UPPER'),
+            help=
+            'Upload from RAM or flash the data between the lower and upper addresses.')
+        p.add_argument(
+            '--usb',
+            type=int,
+            default=0,
+            choices=range(num_boards),
+            help=
+            'The USB port number for the XESS board. If you only have one board, then use 0.')
+        p.add_argument(
+            '-b', '--board',
+            type=str,
+            default='none',
+            choices=['xula-50', 'xula-200', 'xula2-lx9', 'xula2-lx25'])
+        p.add_argument(
+            '-v', '--version',
+            action='version',
+            version='%(prog)s ' + __version__,
+            help='Print the version number of this program and exit.')
+
+        args = p.parse_args()
+
+        if num_boards > 0:
+            xs_board = XSBOARD.XsBoard.get_xsboard(args.usb, args.board)
 
             if args.flash:
-                if args.upload:
-                    hexfile_data = xs_board.read_cfg_flash(bottom=args.upload[0], top=args.upload[1])
-                    hexfile_data.tofile(args.flash, format='hex')
-                else:
-                    xs_board.write_cfg_flash(args.flash)
-                    
+                try:
+                    if args.upload:
+                        hexfile_data = xs_board.read_cfg_flash(
+                            bottom=args.upload[0],
+                            top=args.upload[1])
+                        hexfile_data.tofile(args.flash, format='hex')
+                        print "Success: Data in address range [{bottom},{top}] of serial flash on {board} uploaded to {file}!".format(
+                            bottom=args.upload[0],
+                            top=args.upload[1],
+                            board=xs_board.name,
+                            file=args.flash)
+                    else:
+                        xs_board.write_cfg_flash(args.flash)
+                        print "Success: Data in {file} downloaded to serial flash on {board}!".format(
+                            file=args.flash,
+                            board=xs_board.name)
+                except XSERROR.XsError as e:
+                    sys.exit(FAILURE)
+
             if args.ram:
-                if args.upload:
-                    hexfile_data = xs_board.read_sdram(bottom=args.upload[0], top=args.upload[1])
-                    hexfile_data.tofile(args.ram, format='hex')
-                else:
-                    xs_board.write_sdram(args.ram)
+                try:
+                    if args.upload:
+                        hexfile_data = xs_board.read_sdram(
+                            bottom=args.upload[0],
+                            top=args.upload[1])
+                        hexfile_data.tofile(args.ram, format='hex')
+                        print "Success: Data in address range [{bottom},{top}] of RAM on {board} uploaded to {file}!".format(
+                            bottom=args.upload[0],
+                            top=args.upload[1],
+                            board=xs_board.name,
+                            file=args.ram)
+                    else:
+                        xs_board.write_sdram(args.ram)
+                        print "Success: Data in {file} downloaded to RAM on {board}!".format(
+                            file=args.flash,
+                            board=xs_board.name)
+                except XSERROR.XsError as e:
+                    sys.exit(FAILURE)
 
             if args.fpga:
                 try:
                     xs_board.configure(args.fpga)
+                    print "Success: Bitstream in {file} downloaded to FPGA on {board}!".format(
+                        file=args.fpga, 
+                        board=xs_board.name)
                 except XSERROR.XsError as e:
-                    sys.exit()
-                print "Success: Bitstream", args.fpga, "downloaded into", xs_board.name, "!"
+                    sys.exit(FAILURE)
 
-            sys.exit()
+            sys.exit(SUCCESS)
         else:
-            XSERROR.XsFatalError("%d is not within USB port range [0,%d]" % (args.usb, num_boards - 1))
-            sys.exit()
-    else:
-        XSERROR.XsFatalError("No XESS Boards found!")
-        sys.exit()
+            XSERROR.XsFatalError("No XESS Boards found!")
+
+    except SystemExit as e:
+        os._exit(SUCCESS)
 
 
 if __name__ == '__main__':

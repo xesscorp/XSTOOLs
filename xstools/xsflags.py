@@ -19,7 +19,6 @@
 #
 #   (c)2012 - X Engineering Software Systems Corp. (www.xess.com)
 # **********************************************************************
-
 """
 This command-line program changes the configuration flags on an
 XESS board like so:
@@ -39,6 +38,7 @@ try:
 except ImportError:
     pass
 
+import os
 import sys
 import string
 from argparse import ArgumentParser
@@ -46,67 +46,93 @@ import xsboard as XSBOARD
 import xserror as XSERROR
 from __init__ import __version__
 
+SUCCESS = 0
+FAILURE = 1
+
+
 def xsflags():
-    p = ArgumentParser(description='Change configuration flags on an XESS board.')
 
-    p.add_argument('-u', '--usb', type=int, default=0, metavar='N',
-                   help='The USB port number for the XESS board. If you only have one board, then use 0.')
-    p.add_argument('-b', '--board', type=str, default='xula-200',  metavar='BOARD_NAME',
-                   help='***DEPRECATED*** The XESS board type (e.g., xula2-lx9)')
-    p.add_argument('-j', '--jtag', type=str, default='nochange', choices=['on','off'],
-                   help='Turn the auxiliary JTAG port on or off.')
-    p.add_argument('-f', '--flash', type=str, default='nochange', choices=['on','off'],
-                   help='Make the serial flash accessible to the FPGA. (Only applies to the XuLA-50 & XuLA-200 boards.)')
-    p.add_argument('-r', '--read', action='store_const', const=True, default=False,
-                   help='Read the flag settings from the XESS board.')
-    p.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__,
-                   help='Print the version number of this program and exit.')
-    args = p.parse_args()
+    try:
+        num_boards = XSBOARD.XsUsb.get_num_xsusb()
 
-    args.board = string.lower(args.board)
+        p = ArgumentParser(
+            description='Change configuration flags on an XESS board.')
 
-    num_boards = XSBOARD.XsUsb.get_num_xsusb()
-    if num_boards > 0:
+        p.add_argument(
+            '-u', '--usb',
+            type=int,
+            default=0,
+            choices=range(num_boards),
+            help=
+            'The USB port number for the XESS board. If you only have one board, then use 0.')
+        p.add_argument(
+            '-b', '--board',
+            type=str,
+            default='none',
+            choices=['xula-50','xula-200','xula2-lx9','xula2-lx25'])
+        p.add_argument(
+            '-j', '--jtag',
+            type=str,
+            default='nochange',
+            choices=['on', 'off'],
+            help='Turn the auxiliary JTAG port on or off.')
+        p.add_argument(
+            '-f', '--flash',
+            type=str,
+            default='nochange',
+            choices=['on', 'off'],
+            help=
+            'Make the serial flash accessible to the FPGA. (Only applies to the XuLA-50 & XuLA-200 boards.)')
+        p.add_argument(
+            '-r', '--read',
+            action='store_const',
+            const=True,
+            default=False,
+            help='Read the flag settings from the XESS board.')
+        p.add_argument(
+            '-v', '--version',
+            action='version',
+            version='%(prog)s ' + __version__,
+            help='Print the version number of this program and exit.')
+            
+        args = p.parse_args()
 
-        if 0 <= args.usb < num_boards:
+        args.board = string.lower(args.board)
 
-            if args.board == 'xula-200':
-                xs_board = XSBOARD.Xula200(args.usb)
-            elif args.board == 'xula-50':
-                xs_board = XSBOARD.Xula50(args.usb)
-            elif args.board == 'xula2-lx9':
-                xs_board = XSBOARD.Xula2lx9(args.usb)
-            elif args.board == 'xula2-lx25':
-                xs_board = XSBOARD.Xula2lx25(args.usb)
-            else:
-                XSERROR.XsFatalError("%s is not an allowable board at this time." % args.board)
-        
+        if num_boards > 0:
+
+            xs_board = XSBOARD.XsBoard.get_xsboard(args.usb, args.board)
+
             try:
                 if args.jtag == 'on':
                     xs_board.set_aux_jtag_flag(True)
                 elif args.jtag == 'off':
                     xs_board.set_aux_jtag_flag(False)
-                    
+
                 if args.flash == 'on':
                     xs_board.set_flash_flag(True)
                 elif args.flash == 'off':
                     xs_board.set_flash_flag(False)
-                    
+
                 flag = xs_board.get_aux_jtag_flag()
-                print 'Auxiliary JTAG port is ' + ((flag==True and 'enabled.') or (flag==False and 'disabled.'))
+                print 'Auxiliary JTAG port is ' + (
+                    (flag == True and 'enabled.') or
+                    (flag == False and 'disabled.'))
                 flag = xs_board.get_flash_flag()
-                print 'Serial flash is ' + ((flag==True and 'enabled.') or (flag==False and 'disabled.'))
+                print 'Serial flash is ' + (
+                    (flag == True and 'enabled.') or
+                    (flag == False and 'disabled.'))
 
             except XSERROR.XsError as e:
                 pass
 
         else:
-            XSERROR.XsFatalError("%d is not within USB port range [0,%d]" % (args.usb, num_boards - 1))
+            XSERROR.XsFatalError("No XESS Boards found!")
 
-    else:
-        XSERROR.XsFatalError("No XESS Boards found!")
-
-    sys.exit()
+        sys.exit(SUCCESS)
+        
+    except SystemExit as e:
+        os._exit(SUCCESS)
 
 
 if __name__ == '__main__':

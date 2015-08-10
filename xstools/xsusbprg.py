@@ -19,7 +19,6 @@
 #
 #   (c)2012 - X Engineering Software Systems Corp. (www.xess.com)
 # **********************************************************************
-
 """
 This command-line program allows you to reprogram the flash memory in the
 microcontroller that manages the USB interface of an XESS board.
@@ -50,30 +49,63 @@ import xsboard as XSBOARD
 import xserror as XSERROR
 from __init__ import __version__
 
+SUCCESS = 0
+FAILURE = 1
+
 
 def xsusbprg():
-    p = ArgumentParser(description='Program a firmware hex file into the microcontroller on an XESS board.')
 
-    p.add_argument('-f', '--filename', type=str, default=None, metavar='FILE.HEX',
-                   help='The name of the firmware hex file.')
-    p.add_argument('-u', '--usb', type=int, default=0, metavar='N',
-                   help='The USB port number for the XESS board. If you only have one board, then use 0.')
-    p.add_argument('-b', '--board', type=str, default='xula-200', metavar='BOARD_NAME',
-                   help='The XESS board type (e.g., xula-200)')
-    p.add_argument('-m', '--multiple', action='store_const', const=True,
-                   default=False, help='Program multiple boards each time a board is detected on the USB port.')
-    p.add_argument('--verify', action='store_const', const=True, default=False,
-                   help='Verify the microcontroller flash against the firmware hex file.')
-    p.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__,
-                   help='Print the version number of this program and exit.')
-    args = p.parse_args()
-
-    args.board = string.lower(args.board)
-
-    while(True):
+    try:
         num_boards = XSBOARD.XsUsb.get_num_xsusb()
-        if num_boards > 0:
-            if 0 <= args.usb < num_boards:
+
+        p = ArgumentParser(
+            description=
+            'Program a firmware hex file into the microcontroller on an XESS board.')
+
+        p.add_argument(
+            '-f', '--filename',
+            type=str,
+            default=None,
+            metavar='FILE.HEX',
+            help='The name of the firmware hex file.')
+        p.add_argument(
+            '-u', '--usb',
+            type=int,
+            default=0,
+            choices=range(num_boards),
+            help=
+            'The USB port number for the XESS board. If you only have one board, then use 0.')
+        p.add_argument(
+            '-b', '--board',
+            type=str,
+            default='none',
+            choices=['xula-50', 'xula-200', 'xula2-lx9', 'xula2-lx25'])
+        p.add_argument(
+            '-m', '--multiple',
+            action='store_const',
+            const=True,
+            default=False,
+            help=
+            'Program multiple boards each time a board is detected on the USB port.')
+        p.add_argument(
+            '--verify',
+            action='store_const',
+            const=True,
+            default=False,
+            help=
+            'Verify the microcontroller flash against the firmware hex file.')
+        p.add_argument(
+            '-v', '--version',
+            action='version',
+            version='%(prog)s ' + __version__,
+            help='Print the version number of this program and exit.')
+            
+        args = p.parse_args()
+
+        args.board = string.lower(args.board)
+
+        while (True):
+            if num_boards > 0:
                 xs_board = XSBOARD.XsBoard.get_xsboard(args.usb, args.board)
                 try:
                     if args.verify == True:
@@ -95,10 +127,7 @@ def xsusbprg():
                             pass
                         continue
                     else:
-                        # Under linux, the creation and destruction of USB ports while programming the PIC's flash
-                        # leaves unconnected ports lieing around that throw errors when they are deleted.
-                        # Therefore, exit this program without cleaning-up to avoid these error messages.
-                        os._exit(0)
+                        sys.exit(FAILURE)
                 try:
                     winsound.MessageBeep()
                 except:
@@ -109,17 +138,13 @@ def xsusbprg():
                         pass
                     continue
                 else:
-                    # Under linux, the creation and destruction of USB ports while programming the PIC's flash
-                    # leaves unconnected ports lieing around that throw errors when they are deleted.
-                    # Therefore, exit this program without cleaning-up to avoid these error messages.
-                    os._exit(0)
-            else:
-                XSERROR.XsFatalError("%d is not within USB port range [0,%d]" % (args.usb, num_boards - 1))
-                sys.exit()
-        elif not args.multiple:
-            XSERROR.XsFatalError("No XESS Boards found!")
-            sys.exit()
-    sys.exit()
+                    sys.exit(SUCCESS)
+                    
+            elif not args.multiple:
+                XSERROR.XsFatalError("No XESS Boards found!")
+
+    except SystemExit as e:
+        os._exit(SUCCESS)
 
 
 if __name__ == '__main__':
