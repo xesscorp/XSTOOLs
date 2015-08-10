@@ -18,14 +18,17 @@
 #
 #   (c)2012 - X Engineering Software Systems Corp. (www.xess.com)
 # **********************************************************************
-
 """
 XESS error processing class.
 """
 
+import sys
+
+SUCCESS = 0
+FAILURE = 1
+
 
 class XsError(Exception):
-
     def __init__(self, *args, **kwargs):
         Exception.__init__(self, *args, **kwargs)
         print 'ERROR: %s' % args[0]
@@ -42,10 +45,11 @@ class XsMajorError(XsError):
 
 
 class XsFatalError(XsError):
+    def __init__(self, *args, **kwargs):
+        XsError.__init__(self, *args, **kwargs)
+        sys.exit(FAILURE)
 
-    pass
 
 class XsTerminate(Exception):
 
     pass
-
