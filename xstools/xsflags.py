@@ -67,18 +67,18 @@ def xsflags():
             'The USB port number for the XESS board. If you only have one board, then use 0.')
         p.add_argument(
             '-b', '--board',
-            type=str,
+            type=str.lower,
             default='none',
             choices=['xula-50','xula-200','xula2-lx9','xula2-lx25'])
         p.add_argument(
             '-j', '--jtag',
-            type=str,
+            type=str.lower,
             default='nochange',
             choices=['on', 'off'],
             help='Turn the auxiliary JTAG port on or off.')
         p.add_argument(
             '-f', '--flash',
-            type=str,
+            type=str.lower,
             default='nochange',
             choices=['on', 'off'],
             help=
@@ -96,8 +96,6 @@ def xsflags():
             help='Print the version number of this program and exit.')
             
         args = p.parse_args()
-
-        args.board = string.lower(args.board)
 
         if num_boards > 0:
 

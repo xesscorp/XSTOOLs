@@ -65,7 +65,7 @@ def xstest():
             'The USB port number for the XESS board. If you only have one board, then use 0.')
         p.add_argument(
             '-b', '--board',
-            type=str,
+            type=str.lower,
             default='none',
             choices=['xula-50', 'xula-200', 'xula2-lx9', 'xula2-lx25'])
         p.add_argument(
