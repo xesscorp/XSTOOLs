@@ -3,6 +3,11 @@
 History
 -------
 
+v0.1.29 (2015-08-10) 
+---------------------
+
+* Specifying the board model on the CLI utilities is now case-insensitive.
+
 v0.1.28 (2015-08-09) 
 ---------------------
 
