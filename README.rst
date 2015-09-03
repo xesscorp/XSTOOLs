@@ -21,5 +21,3 @@ Features
 * Command-line tools for configuring the FPGA, uploading/downloading the
   serial flash and SDRAM, and running diagnostics on the board.
 * GUI tool that performs the same functions as the command-line tools.
-
-.. include:: docs/installation.rst

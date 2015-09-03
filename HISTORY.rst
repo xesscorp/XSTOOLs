@@ -3,6 +3,11 @@
 History
 -------
 
+v0.1.30 (2015-09-02) 
+---------------------
+
+* Removed include in README.rst that caused an error generating the documentation.
+
 v0.1.29 (2015-08-10) 
 ---------------------
 
