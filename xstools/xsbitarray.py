@@ -26,6 +26,7 @@ XESS extensions to the BitArray class of the bitstring module.
 
 import logging
 from xserror import *
+import bitstring
 from bitstring import Bits, BitArray, BitStream, ConstBitStream
 from intelhex import IntelHex
 

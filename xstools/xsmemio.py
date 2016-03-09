@@ -106,18 +106,25 @@ class XsMemIo(XsHostIo):
             if isinstance(return_type, XsBitArray):
                 return result
             else:
-                return result.unsigned
+                if return_type < 0:
+                    return result.int
+                else:
+                    return result.uint
         else: # Otherwise, return a list of bit arrays with data_width bits by partitioning the result bit array.
             w = self.data_width
             l = result.length
             # Start from the far end, skip the first data value which is crap, and then proceed to the beginning.
-            results = [result[i:i+w] for i in range(l-2*w,-w,-w)]
-            if not isinstance(return_type, XsBitArray): # Return type is not a bit array, so convert bit arrays into integers.
+            if isinstance(return_type, XsBitArray):
+                # Chop the bit array into an array of smaller bit arrays.
+                return [result[i:i+w] for i in range(l-2*w,-w,-w)]
+            else: # Return type is not a bit array, so convert bit arrays into integers.
+                # Chop the bit array into an array of smaller bit arrays.
+                results = [result[i:i+w] for i in range(l-2*w,-w,-w)]
                 if return_type < 0 :
                     results = [d.int for d in results]
                 else:
-                    results = [d.unsigned for d in results]
-            return results
+                    results = [d.uint for d in results]
+                return results
 
     def write(self, begin_address, data, data_type=None):
         """Write a list of bit arrays to the memory.
@@ -127,30 +134,49 @@ class XsMemIo(XsHostIo):
         data_type = instance of data that is stored in the data array. Negative integer=signed; positive integer=unsigned.
         """
 
-        # Start the payload with the WRITE_OPCODE.
-        payload = XsBitArray(self._WRITE_OPCODE)
+        if data_type is None:
+            if isinstance(data[0], XsBitArray):
+                data_type = data[0]  # XsBitArray.
+            else:
+                data_type = 1  # Unsigned, positive integer.
 
-        # Append the memory address to the payload.
-        payload += XsBitArray(uint=begin_address, length=self.address_width)
+        from timeit import default_timer as timer
+        start = timer()
 
         # Concatenate the data to the payload.
-        if data_type is None:
+        if isinstance(data_type, XsBitArray):
+            w = data_type.len
+            payload = XsBitArray(w * len(data))
+            index = w * (len(data)-1)
             for d in data:
-                if isinstance(d, XsBitArray):
-                    payload += d
-                else:
-                    # Convert integers to bit arrays.
-                    payload += XsBitArray(uint=d, length=self.data_width)
-        elif isinstance(data_type, XsBitArray):
-            for d in data:
-                payload += d
-        elif data_type < 0:
-            for d in data:
-                payload += XsBitArray(int=d, length=self.data_width)
+                payload.overwrite(d, index)
+                index -= w
         else:
-            for d in data:
-                payload += XsBitArray(uint=d, length=self.data_width)
-                
+            w = self.data_width
+            l = len(data)
+            if w % 8 == 0:
+                words = [[(d>>i) & 0xff for i in range(0,w,8)] for d in data]
+                bytes = [byte for word in words for byte in word]
+                bytes.reverse()
+                payload = BitArray(bytes=bytes)
+            else:
+                payload = XsBitArray(w * len(data))
+                index = w * (len(data)-1)
+                for d in data:
+                    payload.overwrite(XsBitArray(uint=d, length=w), index)
+                    index -= w
+
+        end = timer()
+        print("Elapsed time: {}".format(end-start))
+
+        # Start the payload with the WRITE_OPCODE.
+        header = XsBitArray(self._WRITE_OPCODE)
+
+        # Append the memory address to the payload.
+        header += XsBitArray(uint=begin_address, length=self.address_width)
+        
+        payload = header + payload
+
         assert payload.len > self._WRITE_OPCODE.len
 
         # Send the payload to write the data to memory.
