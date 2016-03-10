@@ -27,6 +27,7 @@ of an XESS board through the USB port.
 
 import logging
 import itertools
+import struct
 from xshostio import *
 
 
@@ -113,18 +114,39 @@ class XsMemIo(XsHostIo):
         else: # Otherwise, return a list of bit arrays with data_width bits by partitioning the result bit array.
             w = self.data_width
             l = result.length
-            # Start from the far end, skip the first data value which is crap, and then proceed to the beginning.
             if isinstance(return_type, XsBitArray):
                 # Chop the bit array into an array of smaller bit arrays.
+                # Start from the far end, skip the first data value which is crap, and then proceed to the beginning.
                 return [result[i:i+w] for i in range(l-2*w,-w,-w)]
             else: # Return type is not a bit array, so convert bit arrays into integers.
-                # Chop the bit array into an array of smaller bit arrays.
-                results = [result[i:i+w] for i in range(l-2*w,-w,-w)]
-                if return_type < 0 :
-                    results = [d.int for d in results]
-                else:
-                    results = [d.uint for d in results]
-                return results
+                try:
+                    # If word width is not byte-sized, then raise exception and
+                    # use the slower method.
+                    if w % 8 != 0:
+                        raise KeyError
+                    # If word width is not 1, 2, 4 or 8 bytes wide, then an
+                    # exception occurs and the slower method is used.
+                    w_type = {1:'B', 2:'H', 4:'I', 8:'Q'}[w // 8]
+                    if return_type < 0:
+                        w_type = str.lower(w_type)
+                    alignment = '>'
+                    n_words = l // w  # Number of words in the bit array.
+                    fmt = '{}{}{}'.format(alignment, n_words, w_type)
+                    # Get bytes from bit array, form them into integers and reverse
+                    # their order so index [0] corresponds to lowest memory address.
+                    # (Skip first integer because it's crap.)
+                    return struct.unpack(fmt, result.bytes)[-2::-1]
+                except KeyError:
+                    # Slower method:
+                    #     Chop the bit array into an array of smaller bit arrays.
+                    #     Start from the far end, skip the first data value 
+                    #     which is crap, and then proceed to the beginning.
+                    results = [result[i:i+w] for i in range(l-2*w,-w,-w)]
+                    if return_type < 0 :
+                        results = [d.int for d in results]
+                    else:
+                        results = [d.uint for d in results]
+                    return results
 
     def write(self, begin_address, data, data_type=None):
         """Write a list of bit arrays to the memory.
@@ -139,9 +161,6 @@ class XsMemIo(XsHostIo):
                 data_type = data[0]  # XsBitArray.
             else:
                 data_type = 1  # Unsigned, positive integer.
-
-        from timeit import default_timer as timer
-        start = timer()
 
         # Concatenate the data to the payload.
         if isinstance(data_type, XsBitArray):
@@ -165,9 +184,6 @@ class XsMemIo(XsHostIo):
                 for d in data:
                     payload.overwrite(XsBitArray(uint=d, length=w), index)
                     index -= w
-
-        end = timer()
-        print("Elapsed time: {}".format(end-start))
 
         # Start the payload with the WRITE_OPCODE.
         header = XsBitArray(self._WRITE_OPCODE)
