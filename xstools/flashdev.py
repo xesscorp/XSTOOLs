@@ -23,11 +23,10 @@
 Classes for devices containing flash memory.
 """
 
-import logging
 from intelhex import IntelHex
-from xserror import *
-from xsspi import *
-from xilbitstr import *      
+from xstools.xserror import *
+from xstools.xsspi import *
+from xstools.xilbitstr import *
 
 
 class FlashDevice:
@@ -228,15 +227,11 @@ class W25X(FlashDevice):
         return hex_data
         
 if __name__ == '__main__':
-    #logging.root.setLevel(logging.DEBUG)
-    
     USB_ID = 0  # This is the USB index for the XuLA board connected to the host PC.
     SPI_ID = 0xf0
     flash = W25X(xsusb_id=USB_ID, module_id=SPI_ID)
     mfg_id, jedec_id = flash.get_chip_id()
-    print '%x %x' % (mfg_id, jedec_id)
-    print '%x' % flash.get_chip_size(jedec_id)
-    print flash.device_name
-    print '%x' % flash._END_ADDR
-    #import sys
-    #sys.exit(0)
+    print('%x %x' % (mfg_id, jedec_id))
+    print('%x' % flash.get_chip_size(jedec_id))
+    print(flash.device_name)
+    print('%x' % flash._END_ADDR)

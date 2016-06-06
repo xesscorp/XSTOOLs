@@ -25,17 +25,12 @@ This command-line program is a server that transfers bytes between
 a COM/serial port and the USB port of a XuLA board.
 """
 
-import sys
 import serial
-import string
 import logging
 from argparse import ArgumentParser
-import xsboard as XSBOARD
-import xserror as XSERROR
-import xscomm as XSCOMM
-import xsdutio as XSDUTIO
-from __init__ import __version__
-import time
+import xstools.xscomm as XSCOMM
+from xstools import __version__
+
 
 def usb2serial():
     p = ArgumentParser(description='Transfer bytes between a COM/serial port and the USB port of a XuLA board.')
@@ -65,7 +60,7 @@ def usb2serial():
 
     sercomm = serial.Serial(args.comport - 1)
     sercomm.writeTimeout = 0  # This disables serial port write timeouts. Don't use 'None'.
-    print "Serial port = ", sercomm.name
+    print("Serial port = ", sercomm.name)
 
     break_pattern = [0x00, 0xFF, 0x00]  # Serial data pattern indicating break signal.
     break_buf = [0x11 for i in range(len(break_pattern))]  # Initialize with garbage.

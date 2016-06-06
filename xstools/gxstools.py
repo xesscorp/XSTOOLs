@@ -23,9 +23,9 @@
 import sys
 import os
 import xstools
-import xsboard as XSBOARD
-import xsusb as XSUSB
-import xserror as XSERROR
+import xstools.xsboard as XSBOARD
+import xstools.xsusb as XSUSB
+import xstools.xserror as XSERROR
 import wx
 import wx.lib
 import wx.lib.intctrl as INTCTRL
@@ -35,7 +35,7 @@ import wx.lib.filebrowsebutton as FBB
 import wx.html
 from pubsub import pub
 from threading import Thread
-from __init__ import __version__
+from xstools import __version__
 
 
 # ********************* Globals ***********************************
@@ -44,26 +44,26 @@ port_thread = None
 icon_dir = os.path.join(xstools.install_dir, 'icons')
 
 
-
-
 # ===============================================================
 # Utility routines for connecting and disconnecting the USB port.
 # ===============================================================
 
+
 def disconnect():
     if active_board != None:
         active_board.xsusb.disconnect()
-        
+
+
 def reconnect():
     global active_board
     if active_board != None:
         active_board = XSBOARD.XsBoard.get_xsboard(active_board.xsusb._xsusb_id)
 
 
-
 # ===============================================================
 # GXSTOOLs About Box.
 # ===============================================================
+
 
 class GxsHtmlWindow(wx.html.HtmlWindow):
 

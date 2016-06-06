@@ -25,10 +25,8 @@ Class for reading and writing memory or registers in the FPGA
 of an XESS board through the USB port.
 """
 
-import logging
-import itertools
 import struct
-from xshostio import *
+from xstools.xshostio import *
 
 
 class XsMemIo(XsHostIo):
@@ -202,7 +200,6 @@ class XsMemIo(XsHostIo):
 XsMem = XsMemIo  # Associate the old XsMem class with the new XsMemIo class.
 
 if __name__ == '__main__':
-    import sys
     import random
     from bitarray import *
     from scipy import *
@@ -218,11 +215,11 @@ if __name__ == '__main__':
         return ((curr << 1) | b) & mask
 
 
-    print """
+    print("""
     ##################################################################
     # Get some random numbers from the RNG in the XuLA FPGA.
     ##################################################################
-    """
+    """)
 
     USB_ID = 0  # This is the USB index for the XuLA board connected to the host PC.
     RAND_ID = 1  # This is the identifier for the RNG in the FPGA.
@@ -241,14 +238,14 @@ if __name__ == '__main__':
         py_rand_nums[i] = prng(py_rand_nums[i - 1], prng_poly, mask)
 
     for i in range(1, PERIOD):
-        print '%8x %8x' % (py_rand_nums[i], rand_nums[i - 1])
+        print('%8x %8x' % (py_rand_nums[i], rand_nums[i - 1]))
 
     compare = [rand_nums[i] != prng(rand_nums[i - 1], prng_poly, mask)
                for i in range(1, PERIOD)]
     if sum(compare) == 0:
-        print '\nSUCCESS!'
+        print('\nSUCCESS!')
     else:
-        print '\n', sum(compare), 'ERRORS'
+        print('\n', sum(compare), 'ERRORS')
 
     hist(rand_nums, 40)
     show()

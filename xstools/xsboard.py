@@ -22,16 +22,14 @@
 """
 Classes for types of XESS FPGA boards.
 """
+import os
 
-import time
 import xstools
 from pubsub import pub as PUBSUB
-from xserror import *
-from xilfpga import *
-from xsdutio import *
-from flashdev import *
-from ramdev import *
-from picmicro import *
+from xstools.xilfpga import *
+from xstools.xsdutio import *
+from xstools.ramdev import *
+from xstools.picmicro import *
 
 class XsBoard:
 
@@ -68,7 +66,7 @@ class XulaMicro(XsBoard):
 
     def __init__(self, xsusb_id=0):
         # Create a USB interface for the board object.
-        self.xsusb = XsUsb(xsusb_id)
+        self.xsusb = xstools.XsUsb(xsusb_id)
         # Now attach a JTAG interface to the USB interface.
         self.xsjtag = XsJtag(self.xsusb)
         # Instantiate microcontroller. (Override this in subclass if a different uC is used.)
@@ -451,14 +449,12 @@ class XulaNoJtag(XulaMicro):
         return version >= 1.2
 
 
-
 if __name__ == '__main__':
-    import sys
 #    xula = Xula50(0)
 #    xula = Xula200(0)
     xula = Xula2lx25(0)
     board_info = xula.get_board_info()
-    print repr(board_info)
+    print(repr(board_info))
 
     xula.do_self_test()
 
@@ -467,10 +463,10 @@ if __name__ == '__main__':
         wr_data[i] = (i*75) & 0xff 
     wr_data.write_hex_file(sys.stdout)
 
-    print 'Write flash...'
+    print('Write flash...')
     xula.write_cfg_flash(wr_data, 0, 0x100)
 
-    print 'Read flash...'
+    print('Read flash...')
     rd_data = xula.read_cfg_flash(0, 0x100)
 
     rd_data.write_hex_file(sys.stdout)

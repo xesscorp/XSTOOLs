@@ -25,9 +25,7 @@ XESS extensions to the BitArray class of the bitstring module.
 """
 
 import logging
-from xserror import *
-import bitstring
-from bitstring import Bits, BitArray, BitStream, ConstBitStream
+from bitstring import BitArray
 from intelhex import IntelHex
 
 
@@ -35,41 +33,49 @@ class XsBitArray(BitArray):
 
     """Class for storing and manipulating bit vectors."""
 
-    # The underlying bitstring class stores a bitstring such as 0b110010 with the
-    # most-significant bit (1 in this case) in index position 0, and the least-significant
-    # bit (0 in this case) in the highest index position (5 in this case).
+    # The underlying bitstring class stores a bitstring such as 0b110010 with
+    # the most-significant bit (1 in this case) in index position 0, and the
+    # least-significant bit (0 in this case) in the highest index position (5 in
+    # this case).
     #
-    # The bitstrings for the XESS boards typically contain strings of JTAG TDI and TMS
-    # bits which are transmitted starting with the least-significant bit. This creates a
-    # problem if a bitstring like 0b110010 is to be transmitted and followed by another
-    # bitstring like 0b101011. Concatenating the bitstrings gives 0b110010101011, but the
-    # actual transmission order should be 010011110101. It would be easier if the bitstrings
-    # were concatenated in the reverse order as 101011110010 and then transmitted starting
-    # from the highest bit index and proceeding down to index 0. To do this while expressing
-    # the bit string concatenations in their more natural left-to-right order, the +, +=
-    # and append operations were redefined to do their operations in the reverse order.
+    # The bitstrings for the XESS boards typically contain strings of JTAG TDI
+    # and TMS bits which are transmitted starting with the least-significant
+    # bit. This creates a problem if a bitstring like 0b110010 is to be
+    # transmitted and followed by another bitstring like 0b101011. Concatenating
+    # the bitstrings gives 0b110010101011, but the actual transmission order
+    # should be 010011110101. It would be easier if the bitstrings were
+    # concatenated in the reverse order as 101011110010 and then transmitted
+    # starting from the highest bit index and proceeding down to index 0. To do
+    # this while expressing the bit string concatenations in their more natural
+    # left-to-right order, the +, += and append operations were redefined to do
+    # their operations in the reverse order.
     # So a + b with XsBitArrays gives the same result as b + a with BitArrays.
 
     def append(self, bits):
-        """Append the contents of a bitstring to this one, but in reverse order."""
-
+        """
+        Append the contents of a bitstring to this one, but in reverse order.
+        """
         return super(XsBitArray, self).prepend(bits)
 
     def prepend(self, bits):
-        """Prepend the contents of a bitstring to this one, but in reverse order."""
-
+        """
+        Prepend the contents of a bitstring to this one, but in reverse order.
+        """
         return super(XsBitArray, self).append(bits)
 
     def __add__(self, bits):
-        """Concatenate the contents of two bitstrings, but in the opposite order."""
+        """
+        Concatenate the contents of two bitstrings, but in the opposite order.
+        """
 
         b = self._copy()
         b.append(bits)
         return b
 
     def __radd__(self, bits):
-        """Concatenate the contents of two bitstrings, but in the opposite order."""
-
+        """
+        Concatenate the contents of two bitstrings, but in the opposite order.
+        """
         b = self._copy()
         b.prepend(bits)
         return b
@@ -152,5 +158,5 @@ if __name__ == '__main__':
     a = XsBitArray('0b00010')
     b = XsBitArray('0b1111001')
     c = a + b
-    print a, b, c
-    print repr(c.to_usb())
+    print(a, b, c)
+    print(repr(c.to_usb()))

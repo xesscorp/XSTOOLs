@@ -19,6 +19,3 @@
 
 """
 """
-
-from xsdutio import *
-from xsmemio import *

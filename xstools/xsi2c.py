@@ -23,8 +23,9 @@
 Class for interfacing to I2C devices using the I2C FPGA core
 found at http://opencores.org/project,i2c.
 """
-
-from xsmemio import *
+from xstools.xserror import XsMinorError
+from xstools.xshostio import DEFAULT_MODULE_ID, DEFAULT_XSUSB_ID
+from xstools.xsmemio import *
 
 # Constants for the I2C interface.
 
@@ -223,12 +224,12 @@ if __name__ == '__main__':
     i2c.wr_reg(0x0e, [0xf0])
     sys.exit(0)
     
-    print i2c.rd_reg(0x0e)
+    print(i2c.rd_reg(0x0e))
     i2c.wr_reg(0x0e, [7])
-    print i2c.rd_reg(0x0e)
+    print(i2c.rd_reg(0x0e))
     i2c.wr_reg(0x0e, [0])
-    print i2c.rd_reg(0x0e)
+    print(i2c.rd_reg(0x0e))
     i2c.wr_reg(0x02,[0x12, 0xc0])
-    print i2c.rd_reg(0x02,2)
-    print i2c.rd_reg(0x0d,1)
+    print(i2c.rd_reg(0x02,2))
+    print(i2c.rd_reg(0x0d,1))
     

@@ -39,11 +39,10 @@ except ImportError:
 
 import sys
 import os
-import string
 from argparse import ArgumentParser
-import xsboard as XSBOARD
-import xserror as XSERROR
-from __init__ import __version__
+import xstools.xsboard as XSBOARD
+import xstools.xserror as XSERROR
+from xstools import __version__
 
 SUCCESS = 0
 FAILURE = 1
@@ -101,7 +100,7 @@ def xstest():
                         continue
                     else:
                         sys.exit(FAILURE)
-                print "Success:", xs_board.name, "passed diagnostic test!"
+                print("Success:", xs_board.name, "passed diagnostic test!")
                 try:
                     winsound.MessageBeep()
                 except:

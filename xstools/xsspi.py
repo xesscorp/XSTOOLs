@@ -23,7 +23,7 @@
 Class for interfacing to SPI devices.
 """
 
-from xsmemio import *
+from xstools.xsmemio import *
 
 class XsSpi:
     """
@@ -100,20 +100,20 @@ if __name__ == '__main__':
     USB_ID = 0  # This is the USB index for the XuLA board connected to the host PC.
     SPI_ID = 0xf0
     spi = XsSpi(xsusb_id=USB_ID, module_id=SPI_ID)
-    print spi._memio._get_mem_widths()
+    print(spi._memio._get_mem_widths())
     import sys
     #sys.exit(0)
     
     spi.reset()
-    print spi._memio._get_mem_widths()
+    print(spi._memio._get_mem_widths())
     spi.send([1,2,3,4], stop=True)
-    print spi._memio._get_mem_widths()
+    print(spi._memio._get_mem_widths())
     spi.send([1], stop=True)
-    print spi._memio._get_mem_widths()
+    print(spi._memio._get_mem_widths())
     spi.send([1,2,3,4,5], stop=False)
-    print spi._memio._get_mem_widths()
+    print(spi._memio._get_mem_widths())
     spi.send([1], stop=False)
-    print spi._memio._get_mem_widths()
+    print(spi._memio._get_mem_widths())
     spi.reset()
-    print spi._memio._get_mem_widths()
+    print(spi._memio._get_mem_widths())
     

@@ -23,15 +23,14 @@
 USB interface class for XESS FPGA boards.
 """
 
-import time
+
 import logging
-import sys
 import os
 import math
 import struct
 import usb.core
 import usb.util
-from xserror import *
+from xstools.xserror import *
 
 class XsUsb:
 
@@ -291,7 +290,7 @@ class XsUsb:
             # fd = open(usb_device_filename, 'a+b')
             # fcntl.ioctl(fd, _IO(ord('U'), 20))
             # linux doesn't re-enumerate the USB port when reset(), so a manual disconnect/reconnect handles that.
-            print 'Please disconnect your XESS board ...',
+            print('Please disconnect your XESS board ...',)
             sys.stdout.flush()
         
         # Wait for the USB connection to disappear.
@@ -299,8 +298,8 @@ class XsUsb:
             pass
             
         if os.name != 'nt':
-            print 'thanks!'
-            print 'Please reconnect your XESS board ...',
+            print('thanks!')
+            print('Please reconnect your XESS board ...',)
             sys.stdout.flush()
             
         # Wait for the USB connection to re-establish itself.
@@ -309,7 +308,7 @@ class XsUsb:
             
         # Let's be polite to our linux friends.
         if os.name != 'nt':
-            print 'thanks!'
+            print('thanks!')
             sys.stdout.flush()
             
     def get_info(self):
@@ -342,14 +341,14 @@ if __name__ == '__main__':
         sys.stdout.write('Plug it in...\n')
         while True:
             n = XsUsb.get_num_xsusb()
-            print n
+            print(n)
             if n != 0:
                 break
         xsusb = XsUsb()
         sys.stdout.write('Pull it out...\n')
         while True:
             n = XsUsb.get_num_xsusb()
-            print n
+            print(n)
             if n == 0:
                 break
             

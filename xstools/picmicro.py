@@ -23,9 +23,7 @@
 PIC microcontroller classes.
 """
 
-import sys
-from xsusb import *
-from flashdev import *
+from xstools.flashdev import *
 
 
 class Pic18f14k50(FlashDevice):

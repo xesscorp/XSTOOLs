@@ -24,10 +24,9 @@
 USB <=> JTAG port interface for an XESS FPGA board.
 """
 
-import logging
-from xserror import *
-from xsbitarray import *
-from xsusb import XsUsb
+from xstools.xserror import *
+from xstools.xsbitarray import *
+from xstools.xsusb import XsUsb
 
 
 class XsJtag:
@@ -323,7 +322,7 @@ class XsJtag:
 if __name__ == '__main__':
     logging.root.setLevel(logging.DEBUG)
 
-    print '#XSUSB = %d' % XsUsb.get_num_xsusb()
+    print('#XSUSB = %d' % XsUsb.get_num_xsusb())
 
     # Create an object for sending JTAG through the USB link.
     xsjtag = XsJtag(XsUsb())
@@ -331,9 +330,9 @@ if __name__ == '__main__':
     idcode_instr = XsBitArray('0b001001')
     xsjtag.reset_tap()
     idcode = xsjtag.load_ir_then_dr(idcode_instr, None, 32)
-    print 'idcode instruction = %s' % idcode_instr
-    print 'idcode = %s' % idcode
+    print('idcode instruction = %s' % idcode_instr)
+    print('idcode = %s' % idcode)
     # Compare the ID code to the XC3S200A ID code.
     assert idcode.head(28) == XsBitArray('0b00000010001000011000000010010011').head(28)
     xsjtag.runtest(1000)
-    print '\n***Test passed!***'
+    print('\n***Test passed!***')

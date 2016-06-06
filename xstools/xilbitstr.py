@@ -23,13 +23,10 @@
 """
 Xilinx FPGA configuration bitstream object.
 """
+from bitstring import ConstBitStream
 
-import os
-import struct
-import logging
-import string
-from xserror import *
-from xsbitarray import *
+from xstools.xserror import *
+from xstools.xsbitarray import *
 
 
 class XilinxBitstream:
@@ -41,7 +38,7 @@ class XilinxBitstream:
         self.compile_date = None
         self.compile_time = None
         self.bits = None
-        if filename != None:
+        if filename is not None:
             self.from_file(filename=self.filename)
 
     def from_file(self, filename):

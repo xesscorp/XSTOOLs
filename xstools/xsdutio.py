@@ -22,9 +22,9 @@
 """
 Object for forcing inputs and reading outputs from a device-under-test (DUT).
 """
-
-import logging
-from xshostio import *
+from xstools.xsbitarray import XsBitArray
+from xstools.xserror import XsMinorError
+from xstools.xshostio import *
 
 
 class XsDutIo(XsHostIo):
@@ -215,16 +215,15 @@ if __name__ == '__main__':
         minuend = randint(0, 127)  # Get a random, positive byte...
         subtrahend = randint(0, 127)  # And subtract this random byte from it.
         diff = subtractor.Exec(minuend, subtrahend)  # Use the subtractor in FPGA.
-        print '%3d - %3d = %4d' % (minuend, subtrahend, diff.int),
+        print('%3d - %3d = %4d' % (minuend, subtrahend, diff.int))
         if diff.int == minuend - subtrahend:  # Compare Python result to FPGA's.
-            print '==> CORRECT!'  # Print this if the differences match.
+            print('==> CORRECT!')  # Print this if the differences match.
         else:
-            print '==> ERROR!!!'  # Oops! Something's wrong with the subtractor.
+            print('==> ERROR!!!')  # Oops! Something's wrong with the subtractor.
             
     blinker = 0
     blinker = XsDutIo(USB_ID, BLINKER_ID, [1], [1])
 
     while True: # Do this forever...
         led = blinker.Read() # Read the current state of the LED.
-        print 'LED: %1d\r' % led.unsigned, # Print the LED state and return.
-            
+        print('LED: %1d\r' % led.unsigned, )  # Print the LED state and return.

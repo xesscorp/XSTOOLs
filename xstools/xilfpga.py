@@ -24,11 +24,10 @@
 Xilinx FPGA objects - from generic to more-specific subclasses.
 """
 
-import logging
 import time
-from xserror import *
-from xsjtag import *
-from xilbitstr import *
+from xstools.xsjtag import *
+from xstools.xilbitstr import *
+from xstools.xsusb import XsUsb
 
 
 class XilinxFpga:
@@ -421,25 +420,25 @@ if __name__ == '__main__':
     fpga_index = 0
 
     fpga = fpgas[fpga_index][0]
-    print fpga.get_idcode()
+    print(fpga.get_idcode())
     if fpga.get_idcode() != fpga._IDCODE:
-        print 'ERROR'
+        print('ERROR')
     else:
-        print 'SUCCESS'
+        print('SUCCESS')
 
-    print 'Status =', fpga.get_status()
+    print('Status =', fpga.get_status())
 
     xsjtag.reset_tap()
     xsjtag.run_test_idle()
     xsusb.set_prog(1)
     xsusb.set_prog(0)
-    print 'Status =', fpga.get_status()
+    print('Status =', fpga.get_status())
     xsusb.set_prog(1)
     time.sleep(0.03)
 
-    print 'Status =', fpga.get_status()
+    print('Status =', fpga.get_status())
     t = time.clock()
     fpga.configure(bitstream=fpgas[fpga_index][1])
     t = time.clock() - t
-    print 'Time to download bitstream = %fs' % t
-    print 'Status =', fpga.get_status()
+    print('Time to download bitstream = %fs' % t)
+    print('Status =', fpga.get_status())

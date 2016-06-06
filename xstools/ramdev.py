@@ -23,11 +23,9 @@
 Classes for devices containing RAM memory.
 """
 
-import logging
-import struct
 from intelhex import IntelHex
-from xserror import *
-from xsmemio import *
+from xstools.xserror import *
+from xstools.xsmemio import *
 
 
 class RamDevice:

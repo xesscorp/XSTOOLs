@@ -43,11 +43,10 @@ except ImportError:
 
 import sys
 import os
-import string
 from argparse import ArgumentParser
-import xsboard as XSBOARD
-import xserror as XSERROR
-from __init__ import __version__
+import xstools.xsboard as XSBOARD
+import xstools.xserror as XSERROR
+from xstools import __version__
 
 SUCCESS = 0
 FAILURE = 1
@@ -107,13 +106,13 @@ def xsusbprg():
                 xs_board = XSBOARD.XsBoard.get_xsboard(args.usb, args.board)
                 try:
                     if args.verify == True:
-                        print 'Verifying microcontroller firmware against %s.' % args.filename
+                        print('Verifying microcontroller firmware against %s.' % args.filename)
                         xs_board.verify_firmware(args.filename)
-                        print 'Verification passed!'
+                        print('Verification passed!')
                     else:
-                        print 'Programming microcontroller firmware with %s.' % args.filename
+                        print('Programming microcontroller firmware with %s.' % args.filename)
                         xs_board.update_firmware(args.filename)
-                        print 'Programming completed!'
+                        print('Programming completed!')
                 except XSERROR.XsError as e:
                     try:
                         winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)

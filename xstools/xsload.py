@@ -42,11 +42,10 @@ into this program and the XSTOOLs classes and methods.
 
 import os
 import sys
-import string
 from argparse import ArgumentParser
-import xsboard as XSBOARD
-import xserror as XSERROR
-from __init__ import __version__
+import xstools.xsboard as XSBOARD
+import xstools.xserror as XSERROR
+from xstools import __version__
 
 SUCCESS = 0
 FAILURE = 1
@@ -115,16 +114,16 @@ def xsload():
                             bottom=args.upload[0],
                             top=args.upload[1])
                         hexfile_data.tofile(args.flash, format='hex')
-                        print "Success: Data in address range [{bottom},{top}] of serial flash on {board} uploaded to {file}!".format(
+                        print("Success: Data in address range [{bottom},{top}] of serial flash on {board} uploaded to {file}!".format(
                             bottom=args.upload[0],
                             top=args.upload[1],
                             board=xs_board.name,
-                            file=args.flash)
+                            file=args.flash))
                     else:
                         xs_board.write_cfg_flash(args.flash)
-                        print "Success: Data in {file} downloaded to serial flash on {board}!".format(
+                        print("Success: Data in {file} downloaded to serial flash on {board}!".format(
                             file=args.flash,
-                            board=xs_board.name)
+                            board=xs_board.name))
                 except XSERROR.XsError as e:
                     sys.exit(FAILURE)
 
@@ -135,25 +134,25 @@ def xsload():
                             bottom=args.upload[0],
                             top=args.upload[1])
                         hexfile_data.tofile(args.ram, format='hex')
-                        print "Success: Data in address range [{bottom},{top}] of RAM on {board} uploaded to {file}!".format(
+                        print("Success: Data in address range [{bottom},{top}] of RAM on {board} uploaded to {file}!".format(
                             bottom=args.upload[0],
                             top=args.upload[1],
                             board=xs_board.name,
-                            file=args.ram)
+                            file=args.ram))
                     else:
                         xs_board.write_sdram(args.ram)
-                        print "Success: Data in {file} downloaded to RAM on {board}!".format(
+                        print("Success: Data in {file} downloaded to RAM on {board}!".format(
                             file=args.flash,
-                            board=xs_board.name)
+                            board=xs_board.name))
                 except XSERROR.XsError as e:
                     sys.exit(FAILURE)
 
             if args.fpga:
                 try:
                     xs_board.configure(args.fpga)
-                    print "Success: Bitstream in {file} downloaded to FPGA on {board}!".format(
+                    print("Success: Bitstream in {file} downloaded to FPGA on {board}!".format(
                         file=args.fpga, 
-                        board=xs_board.name)
+                        board=xs_board.name))
                 except XSERROR.XsError as e:
                     sys.exit(FAILURE)
 

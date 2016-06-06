@@ -31,7 +31,7 @@ FAILURE = 1
 class XsError(Exception):
     def __init__(self, *args, **kwargs):
         Exception.__init__(self, *args, **kwargs)
-        print 'ERROR: %s' % args[0]
+        print('ERROR: %s' % args[0])
 
 
 class XsMinorError(XsError):
