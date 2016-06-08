@@ -28,7 +28,7 @@ import xstools.xserror as XSERROR
 import wx
 import wx.lib
 import wx.lib.intctrl as INTCTRL
-import wx.lib.flatnotebook as FNB
+import wx.lib.agw.flatnotebook as FNB
 import wx.lib.platebtn as PBTN
 import wx.lib.filebrowsebutton as FBB
 import wx.html
@@ -1231,18 +1231,18 @@ class GxsFlatNotebook(FNB.FlatNotebook):
         super(GxsFlatNotebook, self).__init__(parent, agwStyle=mystyle)
         self._port_panel = GxsPortPanel(self)
         self.AddPage(self._port_panel, 'Ports')
-        self._fpga_panel = GxsFpgaConfigPanel(self)
-        self.AddPage(self._fpga_panel, 'FPGA')
-        self._sdram_panel = GxsSdramPanel(self)
-        self.AddPage(self._sdram_panel, 'SDRAM')
-        self._flash_panel = GxsFlashPanel(self)
-        self.AddPage(self._flash_panel, 'Flash')
+        # self._fpga_panel = GxsFpgaConfigPanel(self)
+        # self.AddPage(self._fpga_panel, 'FPGA')
+        # self._sdram_panel = GxsSdramPanel(self)
+        # self.AddPage(self._sdram_panel, 'SDRAM')
+        # self._flash_panel = GxsFlashPanel(self)
+        # self.AddPage(self._flash_panel, 'Flash')
         self._test_panel = GxsBoardTestPanel(self)
         self.AddPage(self._test_panel, 'Test')
         self._flags_panel = GxsBoardFlagsPanel(self)
         self.AddPage(self._flags_panel, 'Flags')
-        self._uc_panel = GxsMicrocontrollerPanel(self)
-        self.AddPage(self._uc_panel, 'uC')
+        # self._uc_panel = GxsMicrocontrollerPanel(self)
+        # self.AddPage(self._uc_panel, 'uC')
 
 
 class MyFrame(wx.Frame):
