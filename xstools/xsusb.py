@@ -32,10 +32,9 @@ import usb.core
 import usb.util
 from xstools.xserror import *
 
+
 class XsUsb:
-
     """USB interface class for XESS FPGA board."""
-
     _VENDOR_ID = 0x04d8
     _PRODUCT_ID = 0xff8c
     _DEFAULT_ENDPOINT = 0x01
@@ -51,10 +50,12 @@ class XsUsb:
     WRITE_EEDATA_CMD = 0x05  # Write to the device EEPROM.
     READ_CONFIG_CMD = 0x06  # Read from the device configuration memory.
     WRITE_CONFIG_CMD = 0x07  # Write to the device configuration memory.
-    ID_BOARD_CMD = 0x31  # Flash the device LED to identify which device is being communicated with.
+    ID_BOARD_CMD = 0x31  # Flash the device LED to identify which device is
+    # being communicated with.
     UPDATE_LED_CMD = 0x32  # Change the state of the device LED.
     INFO_CMD = 0x40  # Get information about the USB interface.
-    SENSE_INVERTERS_CMD = 0x41  # Sense inverters on TCK and TDO pins of the secondary JTAG port.
+    SENSE_INVERTERS_CMD = 0x41  # Sense inverters on TCK and TDO pins of the
+    # secondary JTAG port.
     TMS_TDI_CMD = 0x42  # Send a single TMS and TDI bit.
     TMS_TDI_TDO_CMD = 0x43  # Send a single TMS and TDI bit and receive TDO bit.
     TDI_TDO_CMD = 0x44  # Send multiple TDI bits and receive multiple TDO bits.
@@ -67,8 +68,10 @@ class XsUsb:
     GET_TEST_VECTOR_CMD = 0x4b  # Read the current test vector being output.
     SET_OSC_FREQ_CMD = 0x4c  # Set the frequency of the DS1075 oscillator.
     ENABLE_RETURN_CMD = 0x4d  # Enable return of info in response to a command.
-    DISABLE_RETURN_CMD = 0x4e  # Disable return of info in response to a command.
-    JTAG_CMD = 0x4f  # Send multiple TMS & TDI bits while receiving multiple TDO bits.
+    DISABLE_RETURN_CMD = 0x4e  # Disable return of info in response to a
+    # command.
+    JTAG_CMD = 0x4f  # Send multiple TMS & TDI bits while receiving multiple TDO
+    # bits.
     FLASH_ONOFF_CMD = 0x50  # Enable/disable the FPGA configuration flash.
     AIO0_ADC_CMD = 0x60   # Do an ADC conversion on AIO0 (AN6 pin on pic)
     AIO1_ADC_CMD = 0x61   # Do an ADC conversion on AIO1 (AN11 pin on pic)
@@ -94,7 +97,8 @@ class XsUsb:
     
     # This array will store the currently-active XESS USB devices.
     _xsusb_devs = []
-    # This array stores discarded USB devices so their __del__ method doesn't kick in.
+    # This array stores discarded USB devices so their __del__ method doesn't
+    # kick in.
     _usb_discard_pile = []
 
     # Linux ioctl numbers made easy!

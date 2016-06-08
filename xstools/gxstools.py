@@ -76,8 +76,10 @@ class GxsHtmlWindow(wx.html.HtmlWindow):
 class GxsAboutBox(wx.Dialog):
     def __init__(self):
         super(GxsAboutBox, self).__init__(None, -1, 'About GXSTOOLs',
-                                          style=wx.DEFAULT_DIALOG_STYLE | wx.THICK_FRAME
-                                                | wx.RESIZE_BORDER | wx.TAB_TRAVERSAL)
+                                          style=wx.DEFAULT_DIALOG_STYLE |
+                                                wx.THICK_FRAME |
+                                                wx.RESIZE_BORDER |
+                                                wx.TAB_TRAVERSAL)
         hwin = GxsHtmlWindow(self, -1, size=(400, 200))
         aboutText = \
             """<p>Graphical XSTOOLs Utilities Version %s</p>"""
@@ -146,8 +148,8 @@ class GxsProgressDialog(wx.ProgressDialog):
         if 'style' not in kwargs:
             kwargs['style'] = wx.PD_CAN_ABORT | wx.PD_AUTO_HIDE | wx.PD_SMOOTH
         if 'message' not in kwargs:
-            kwargs[
-                'message'] = " " * 80  # This sets the width of the progress window.
+            # This sets the width of the progress window.
+            kwargs['message'] = " " * 80
         if 'maximum' not in kwargs:
             kwargs['maximum'] = 100
         pub.subscribe(self.on_phase_change, "Progress.Phase")
@@ -237,18 +239,16 @@ class GxsPortPanel(wx.Panel):
         global active_board
         active_board = None
 
-        self.SetToolTipString(
-            "Use this tab to select the port your XESS board is attached to.")
+        self.SetToolTip('Use this tab to select the port your XESS board is '
+                        'attached to.')
 
         self._port_list = wx.Choice(self)
-        # self._port_list.SetSelection(0)
-        self._port_list.SetToolTipString(
-            'Select a port with an attached XESS board')
+        self._port_list.SetToolTip('Select a port with an attached XESS board')
         self._port_list.Bind(wx.EVT_CHOICE, self.on_port_change)
 
         self._blink_button = wx.Button(self, label='Blink')
-        self._blink_button.SetToolTipString(
-            'Click to blink LED on the board attached to the selected port')
+        self._blink_button.SetToolTip('Click to blink LED on the board attached'
+                                      ' to the selected port')
         self._blink_button.Bind(wx.EVT_BUTTON, self.on_blink)
         self._blink_button.Disable()
 
@@ -1083,12 +1083,11 @@ class GxsBoardTestPanel(wx.Panel):
     def __init__(self, *args, **kwargs):
         super(GxsBoardTestPanel, self).__init__(*args, **kwargs)
 
-        self.SetToolTipString(
-            "Use this tab to run a diagnostic on your XESS board.")
+        self.SetToolTip('Use this tab to run a diagnostic on your XESS board.')
 
         self._test_button = wx.Button(self, label='Test')
-        self._test_button.SetToolTipString(
-            'Test the board attached to the selected port')
+        self._test_button.SetToolTip('Test the board attached to the selected '
+                                     'port')
         self.Bind(wx.EVT_BUTTON, self.on_test, self._test_button)
         pub.subscribe(self.handle_test_button, "Status.Change")
         self.handle_test_button(dummy=None)
@@ -1156,21 +1155,20 @@ class GxsBoardFlagsPanel(wx.Panel):
     def __init__(self, *args, **kwargs):
         super(GxsBoardFlagsPanel, self).__init__(*args, **kwargs)
 
-        self.SetToolTipString(
-            "Use this tab to set the flag bits in your XESS board.")
+        self.SetToolTip('Use this tab to set the flag bits in your XESS board.')
 
         self._aux_jtag_flag = wx.CheckBox(self,
                                           label='Enable auxiliary JTAG header')
-        self._aux_jtag_flag.SetToolTipString(
-            'Check to enable the auxiliary JTAG interface through the four-pin header')
+        self._aux_jtag_flag.SetToolTip('Check to enable the auxiliary JTAG '
+                                       'interface through the four-pin header')
         self.Bind(wx.EVT_CHECKBOX, self.on_aux_jtag, self._aux_jtag_flag)
         pub.subscribe(self.handle_aux_jtag_flag, "Status.Change")
         self.handle_aux_jtag_flag(dummy=None)
 
-        self._flash_flag = wx.CheckBox(self,
-                                       label='Enable FPGA access to the configuration flash')
-        self._flash_flag.SetToolTipString(
-            'Check to allow the FPGA to read/write the configuration flash')
+        lbl = 'Enable FPGA access to the configuration flash'
+        self._flash_flag = wx.CheckBox(self, label=lbl)
+        self._flash_flag.SetToolTip('Check to allow the FPGA to read/write the '
+                                    'configuration flash')
         self.Bind(wx.EVT_CHECKBOX, self.on_flash, self._flash_flag)
         pub.subscribe(self.handle_flash_flag, "Status.Change")
         self.handle_flash_flag(dummy=None)

@@ -30,11 +30,11 @@ from xstools.xilfpga import *
 from xstools.xsdutio import *
 from xstools.ramdev import *
 from xstools.picmicro import *
+from xstools.xsusb import XsUsb
+
 
 class XsBoard:
-
     """Class object for a generic XESS FPGA board."""
-    
     @classmethod
     def get_xsboard(cls, xsusb_id=0, xsboard_name=''):
         """Detect which type of XESS board is connected to a USB port."""
@@ -42,7 +42,8 @@ class XsBoard:
         if xsusb_id is None:
             return None
         
-        # All possible board types. XulaNoJtag must be first because it is impossible to query what type of FPGA it has.
+        # All possible board types. XulaNoJtag must be first because it is
+        # impossible to query what type of FPGA it has.
         board_classes = (XulaOldFmw, Xula50, Xula200, Xula2lx25, Xula2lx9, XulaNoJtag)      
 
         for c in board_classes:
@@ -61,15 +62,17 @@ class XsBoard:
         
 
 class XulaMicro(XsBoard):
-
-    """Class for XuLA-type boards that only includes methods of the microcontroller interface."""
-
+    """
+    Class for XuLA-type boards that only includes methods of the microcontroller
+    interface.
+    """
     def __init__(self, xsusb_id=0):
         # Create a USB interface for the board object.
-        self.xsusb = xstools.XsUsb(xsusb_id)
+        self.xsusb = XsUsb(xsusb_id)
         # Now attach a JTAG interface to the USB interface.
         self.xsjtag = XsJtag(self.xsusb)
-        # Instantiate microcontroller. (Override this in subclass if a different uC is used.)
+        # Instantiate microcontroller. (Override this in subclass if a different
+        # uC is used.)
         self.micro = Pic18f14k50(xsusb=self.xsusb)
 
     def reset(self):
@@ -78,15 +81,16 @@ class XulaMicro(XsBoard):
         self.xsusb.reset()
 
     def get_board_info(self):
-        """Return version information stored in the XESS board as a dictionary."""
-
+        """
+        Return version information stored in the XESS board as a dictionary.
+        """
         try:
             info = self.xsusb.get_info()
-        except XsError as e:
+        except XsError:
             try:
                 self.reset()
                 info = self.xsusb.get_info()
-            except XsError as e:
+            except XsError:
                 raise XsMajorError('Unable to get XESS board information.')
         if sum(info) & 0xff != 0:
             # Checksum failure.
@@ -132,11 +136,15 @@ class XulaMicro(XsBoard):
         self.micro.enter_reflash_mode()
         self.micro.program(hexfile)
         self.micro.enter_user_mode()
-        self.micro.disable_jtag_cable() # uC flash sometimes enables auxiliary JTAG cable, so make sure it's disabled.
+        # uC flash sometimes enables auxiliary JTAG cable, so make sure it's
+        # disabled.
+        self.micro.disable_jtag_cable()
         PUBSUB.sendMessage("Progress.Phase", phase="Firmware update done")
 
     def verify_firmware(self, hexfile):
-        """Compare the microcontroller firmware to the contents of a hex file."""
+        """
+        Compare the microcontroller firmware to the contents of a hex file.
+        """
         
         PUBSUB.sendMessage("Progress.Phase", phase="Verifying firmware")
         if hexfile == None:
@@ -186,7 +194,8 @@ class XulaBase(XulaMicro):
     
     def __init__(self, xsusb_id=0):
         XulaMicro.__init__(self, xsusb_id)
-        # Create a few attributes to indicate the presence of these devices on the board.
+        # Create a few attributes to indicate the presence of these devices on
+        # the board.
         self.cfg_flash = None  # The value doesn't matter. Just its existence.
         self.sdram = None
 
@@ -212,7 +221,8 @@ class XulaBase(XulaMicro):
         
         if test_bitstream == None:
             test_bitstream = self.test_bitstream
-        PUBSUB.sendMessage("Progress.Phase", phase="Downloading diagostic bitstream")
+        PUBSUB.sendMessage("Progress.Phase",
+                           phase="Downloading diagostic bitstream")
         self.configure(test_bitstream, silent=True)
         # Create a channel to query the results of the board test.
         dut = XsDutIo(xsjtag=self.xsjtag, module_id=self._TEST_MODULE_ID,

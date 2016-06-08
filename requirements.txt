@@ -1,5 +1,6 @@
 ###### Requirements without Version Specifiers ######
 http://wxpython.org/Phoenix/snapshot-builds/; sys_platform == 'darwin', python_version > '3.4'
 ###### Requirements with Version Specifiers ######
+pypubsub==3.3.0
+pyserial==2.7
 wheel==0.23.0
-# serial==2.7
