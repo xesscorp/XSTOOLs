@@ -35,12 +35,10 @@ class XsError(Exception):
 
 
 class XsMinorError(XsError):
-
     pass
 
 
 class XsMajorError(XsError):
-
     pass
 
 
@@ -51,5 +49,4 @@ class XsFatalError(XsError):
 
 
 class XsTerminate(Exception):
-
     pass

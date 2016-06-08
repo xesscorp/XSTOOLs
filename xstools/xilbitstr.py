@@ -53,7 +53,8 @@ class XilinxBitstream:
         initial_offset = bitfile.read(16).uint * 8
         bitfile.pos += initial_offset
         if bitfile.read(16).uint != 1:
-            raise XsMajorError("'%s' does not appear to be a bit file." % self.filename)
+            fmt = "'%s' does not appear to be a bit file."
+            raise XsMajorError(fmt % self.filename)
 
         # Field codes for the various fields of a Xilinx bitstream file.
         DESIGN_NAME_FC = 0x61
@@ -86,12 +87,18 @@ class XilinxBitstream:
             elif field_code == BITSTREAM_FC:
                 field_length = bitfile.read(32).uint * 8
                 self.bits = XsBitArray(bitfile.read(field_length))
-                self.bits.reverse()  # Reverse the config bits so the 1st bit to transmit is at the highest bit index.
+                # Reverse the config bits so the 1st bit to transmit is at the
+                # highest bit index.
+                self.bits.reverse()
             else:
-                raise XsMajorError("Unknown field %d at position %d in bit file '%s'." % (field_code, bitfile.pos - 8, self.filename))
+                msg = "Unknown field %d at position %d in bit file '%s'."
+                raise XsMajorError(msg % (field_code,
+                                          bitfile.pos - 8,
+                                          self.filename))
 
         logging.debug(
-            'Bitstream file %s with design %s was compiled for %s at %s on %s into a bitstream of length %d',
+            'Bitstream file %s with design %s was compiled for %s at %s on %s '
+            'into a bitstream of length %d',
             self.filename,
             self.design_name,
             self.device_type,
@@ -107,7 +114,8 @@ class XilinxBitstream:
         """Generate Intel hex object from bitstream."""
         
         PREAMBLE_LENGTH = 16
-        preamble = XsBitArray(bytes=b'\xff' * PREAMBLE_LENGTH, length = 8 * PREAMBLE_LENGTH)
+        preamble = XsBitArray(bytes=b'\xff'*PREAMBLE_LENGTH,
+                              length=8*PREAMBLE_LENGTH)
         bits = preamble + self.bits[:]
         bits.reverse()
         return bits.to_intel_hex()
