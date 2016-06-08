@@ -25,8 +25,11 @@ Xilinx FPGA objects - from generic to more-specific subclasses.
 """
 
 import time
-from xstools.xsjtag import *
-from xstools.xilbitstr import *
+
+from xstools.xilbitstr import XilinxBitstream
+from xstools.xsbitarray import XsBitArray
+from xstools.xserror import XsMinorError
+from xstools.xsjtag import XsJtag
 from xstools.xsusb import XsUsb
 
 

@@ -23,10 +23,10 @@
 """
 USB <=> JTAG port interface for an XESS FPGA board.
 """
+import logging
 
-from xstools.xserror import *
-from xstools.xsbitarray import *
-from xstools.xsusb import XsUsb
+from xstools.xsbitarray import XsBitArray
+from xstools.xsusb import XsMajorError, XsUsb
 
 
 class XsJtag:

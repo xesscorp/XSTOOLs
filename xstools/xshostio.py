@@ -23,8 +23,10 @@
 """
 Base object for performing USB I/O between XESS board and host PC.
 """
+import logging
+
 from xstools.xsbitarray import XsBitArray
-from xstools.xsjtag import *
+from xstools.xsjtag import XsJtag
 from xstools.xsusb import XsUsb
 
 DEFAULT_XSUSB_ID = 0

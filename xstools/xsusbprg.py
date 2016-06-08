@@ -35,18 +35,19 @@ This program was originally conceived and coded in C++ by Dave Vandenbout.
 Al Neissner re-wrote it in python. Dave then took ideas and bits of Al's
 code and integrated them into this program and the XSTOOLs classes and methods.
 """
+import sys
+import os
+from argparse import ArgumentParser
+
+from xstools.xsboard import XsBoard
+from xstools.xserror import XsError, XsFatalError
+from xstools.xsusb import XsUsb
+from xstools import __version__
 
 try:
     import winsound
 except ImportError:
     pass
-
-import sys
-import os
-from argparse import ArgumentParser
-import xstools.xsboard as XSBOARD
-import xstools.xserror as XSERROR
-from xstools import __version__
 
 SUCCESS = 0
 FAILURE = 1
@@ -55,7 +56,7 @@ FAILURE = 1
 def xsusbprg():
 
     try:
-        num_boards = XSBOARD.XsUsb.get_num_xsusb()
+        num_boards = XsUsb.get_num_xsusb()
 
         p = ArgumentParser(
             description=
@@ -103,9 +104,9 @@ def xsusbprg():
 
         while (True):
             if num_boards > 0:
-                xs_board = XSBOARD.XsBoard.get_xsboard(args.usb, args.board)
+                xs_board = XsBoard.get_xsboard(args.usb, args.board)
                 try:
-                    if args.verify == True:
+                    if args.verify:
                         print('Verifying microcontroller firmware against %s.' % args.filename)
                         xs_board.verify_firmware(args.filename)
                         print('Verification passed!')
@@ -113,14 +114,14 @@ def xsusbprg():
                         print('Programming microcontroller firmware with %s.' % args.filename)
                         xs_board.update_firmware(args.filename)
                         print('Programming completed!')
-                except XSERROR.XsError as e:
+                except XsError:
                     try:
                         winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
                     except:
                         pass
                     if args.multiple:
                         xs_board.xsusb.disconnect()
-                        while XSBOARD.XsUsb.get_num_xsusb() != 0:
+                        while XsUsb.get_num_xsusb() != 0:
                             pass
                         continue
                     else:
@@ -131,14 +132,14 @@ def xsusbprg():
                     pass
                 if args.multiple:
                     xs_board.xsusb.disconnect()
-                    while XSBOARD.XsUsb.get_num_xsusb() != 0:
+                    while XsUsb.get_num_xsusb() != 0:
                         pass
                     continue
                 else:
                     sys.exit(SUCCESS)
                     
             elif not args.multiple:
-                XSERROR.XsFatalError("No XESS Boards found!")
+                XsFatalError("No XESS Boards found!")
 
     except SystemExit as e:
         os._exit(SUCCESS)

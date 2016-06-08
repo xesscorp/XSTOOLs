@@ -23,11 +23,13 @@
 Class for interfacing to I2C devices using the I2C FPGA core
 found at http://opencores.org/project,i2c.
 """
+import logging
+
 from xstools.xserror import XsMinorError
 from xstools.xshostio import DEFAULT_MODULE_ID, DEFAULT_XSUSB_ID
-from xstools.xsmemio import *
 
 # Constants for the I2C interface.
+from xstools.xsmemio import XsMemIo
 
 _ACK = 0  # I2C acknowledge level.
 _NACK = 1  # I2C no-acknowledge level.
@@ -35,7 +37,8 @@ _NACK = 1  # I2C no-acknowledge level.
 _READ_OP = 1  # I2C read operation.
 _WRITE_OP = 0  # I2C write operation.
 
-# I2C module register addresses from page 4 of http://opencores.org/svnget,i2c?file=%2Ftrunk%2F%2Fdoc%2Fi2c_specs.pdf
+# I2C module register addresses from page 4 of
+# http://opencores.org/svnget,i2c?file=%2Ftrunk%2F%2Fdoc%2Fi2c_specs.pdf
 
 _PRERlo = 0x00  # Lower byte of clock prescale register.
 _PRERhi = 0x01  # Upper byte of clock prescaler register.

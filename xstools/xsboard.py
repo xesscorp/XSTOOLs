@@ -23,14 +23,20 @@
 Classes for types of XESS FPGA boards.
 """
 import os
+import time
+
+from pubsub import pub as PUBSUB
 
 import xstools
-from pubsub import pub as PUBSUB
-from xstools.xilfpga import *
-from xstools.xsdutio import *
-from xstools.ramdev import *
-from xstools.picmicro import *
-from xstools.xsusb import XsUsb
+from xstools.flashdev import W25X
+from xstools.picmicro import Pic18f14k50
+from xstools.ramdev import Sdram_8MB, Sdram_32MB
+from xstools.xilfpga import Xc3s50avq100, Xc3s200avq100, Xc6slx25ftg256, \
+    Xc6slx9ftg256
+from xstools.xsdutio import XsDutIo
+from xstools.xserror import XsMajorError, XsError
+from xstools.xsjtag import XsJtag
+from xstools.xsusb import XsUsb, XsMinorError
 
 
 class XsBoard:
@@ -419,6 +425,7 @@ class Xula2lx9(Xula2):
 class XulaOldFmw(XulaMicro):
     """XuLA with old firmware so the JTAG port is not usable."""
     name = 'XuLA UNKNOWN'
+
     def __init__(self, xsusb_id=0):
         XulaMicro.__init__(self, xsusb_id)
         

@@ -21,10 +21,8 @@
 # **********************************************************************
 
 import os
-import xstools
-import xstools.xsboard as XSBOARD
-import xstools.xsusb as XSUSB
-import xstools.xserror as XSERROR
+from threading import Thread
+
 import wx
 import wx.lib
 import wx.lib.intctrl as INTCTRL
@@ -33,13 +31,14 @@ import wx.lib.platebtn as PBTN
 import wx.lib.filebrowsebutton as FBB
 import wx.html
 from pubsub import pub
-from threading import Thread
-from xstools import __version__
+
+from xstools import __version__, install_dir
+from xstools import xsboard, xserror, xsusb
 
 # ********************* Globals ***********************************
 active_board = None
 port_thread = None
-icon_dir = os.path.join(xstools.install_dir, 'icons')
+icon_dir = os.path.join(install_dir, 'icons')
 
 
 # ===============================================================
@@ -55,7 +54,7 @@ def disconnect():
 def reconnect():
     global active_board
     if active_board is not None:
-        active_board = XSBOARD.XsBoard.get_xsboard(active_board.xsusb._xsusb_id)
+        active_board = xsboard.XsBoard.get_xsboard(active_board.xsusb._xsusb_id)
 
 
 # ===============================================================
@@ -275,16 +274,16 @@ class GxsPortPanel(wx.Panel):
 
         # Only check the USB port if no child thread is using it.
         global port_thread
-        if port_thread != None:
+        if port_thread is not None:
             if port_thread.is_alive() is False:
                 port_thread = None
                 force_check = True
-        if port_thread != None:
+        if port_thread is not None:
             return
 
         global active_board
 
-        xsusb_ports = XSUSB.XsUsb.get_xsusb_ports()
+        xsusb_ports = xsusb.XsUsb.get_xsusb_ports()
         num_boards = len(xsusb_ports)
         # print "# boards = %d" % num_boards
 
@@ -314,7 +313,7 @@ class GxsPortPanel(wx.Panel):
                         self._port_list.SetSelection(0)
                     else:
                         self._port_list.SetSelection(xsusb_id)
-                active_board = XSBOARD.XsBoard.get_xsboard(
+                active_board = xsboard.XsBoard.get_xsboard(
                     self._port_list.GetSelection())
                 wx.PostEvent(self._port_list,
                              wx.PyCommandEvent(wx.EVT_CHOICE.typeId, wx.ID_ANY))
@@ -324,10 +323,10 @@ class GxsPortPanel(wx.Panel):
 
         # Only check the USB port if no child thread is using it.
         global port_thread
-        if port_thread != None:
+        if port_thread is not None:
             if port_thread.is_alive() is False:
                 port_thread = None
-        if port_thread != None:
+        if port_thread is not None:
             return
 
         global active_board
@@ -339,7 +338,7 @@ class GxsPortPanel(wx.Panel):
         else:
             GxsPortPanel.active_port_id = port_id
             active_port_name = 'USB%d' % GxsPortPanel.active_port_id
-        active_board = XSBOARD.XsBoard.get_xsboard(GxsPortPanel.active_port_id)
+        active_board = xsboard.XsBoard.get_xsboard(GxsPortPanel.active_port_id)
         active_board_name = getattr(active_board, 'name', '')
         if hasattr(active_board, 'micro'):
             self._blink_button.Enable()
@@ -546,10 +545,10 @@ class GxsFlashDownloadThread(Thread):
             active_board.write_cfg_flash(self._dnld_file)
             wx.MessageBox('Success!', msg_box_title,
                           wx.OK | wx.ICON_INFORMATION)
-        except XSERROR.XsTerminate as e:
+        except xserror.XsTerminate as e:
             wx.MessageBox('Cancelled.', msg_box_title,
                           wx.OK | wx.ICON_INFORMATION)
-        except XSERROR.XsError as e:
+        except xserror.XsError as e:
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
         finally:
             pub.sendMessage("Flash.Cleanup")
@@ -575,10 +574,10 @@ class GxsFlashUploadThread(Thread):
                 self._upld_file, format='hex')
             wx.MessageBox('Success!', msg_box_title,
                           wx.OK | wx.ICON_INFORMATION)
-        except XSERROR.XsTerminate as e:
+        except xserror.XsTerminate as e:
             wx.MessageBox('Cancelled.', msg_box_title,
                           wx.OK | wx.ICON_INFORMATION)
-        except XSERROR.XsError as e:
+        except xserror.XsError as e:
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
         finally:
             pub.sendMessage("Flash.Cleanup")
@@ -602,10 +601,10 @@ class GxsFlashEraseThread(Thread):
             active_board.erase_cfg_flash(self._low_addr, self._high_addr)
             wx.MessageBox('Success!', msg_box_title,
                           wx.OK | wx.ICON_INFORMATION)
-        except XSERROR.XsTerminate as e:
+        except xserror.XsTerminate as e:
             wx.MessageBox('Cancelled.', msg_box_title,
                           wx.OK | wx.ICON_INFORMATION)
-        except XSERROR.XsError as e:
+        except xserror.XsError as e:
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
         finally:
             pub.sendMessage("Flash.Cleanup")
@@ -784,10 +783,10 @@ class GxsSdramDownloadThread(Thread):
             active_board.write_sdram(self._dnld_file)
             wx.MessageBox('Success!', msg_box_title,
                           wx.OK | wx.ICON_INFORMATION)
-        except XSERROR.XsTerminate as e:
+        except xserror.XsTerminate as e:
             wx.MessageBox('Cancelled.', msg_box_title,
                           wx.OK | wx.ICON_INFORMATION)
-        except XSERROR.XsError as e:
+        except xserror.XsError as e:
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
         finally:
             pub.sendMessage("Sdram.Cleanup")
@@ -813,10 +812,10 @@ class GxsSdramUploadThread(Thread):
                 self._upld_file, format='hex')
             wx.MessageBox('Success!', msg_box_title,
                           wx.OK | wx.ICON_INFORMATION)
-        except XSERROR.XsTerminate as e:
+        except xserror.XsTerminate as e:
             wx.MessageBox('Cancelled.', msg_box_title,
                           wx.OK | wx.ICON_INFORMATION)
-        except XSERROR.XsError as e:
+        except xserror.XsError as e:
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
         finally:
             pub.sendMessage("Sdram.Cleanup")
@@ -840,10 +839,10 @@ class GxsSdramEraseThread(Thread):
             active_board.erase_sdram(self._low_addr, self._high_addr)
             wx.MessageBox('Success!', msg_box_title,
                           wx.OK | wx.ICON_INFORMATION)
-        except XSERROR.XsTerminate as e:
+        except xserror.XsTerminate as e:
             wx.MessageBox('Cancelled.', msg_box_title,
                           wx.OK | wx.ICON_INFORMATION)
-        except XSERROR.XsError as e:
+        except xserror.XsError as e:
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
         finally:
             pub.sendMessage("Sdram.Cleanup")
@@ -943,10 +942,10 @@ class GxsFpgaDownloadThread(Thread):
             active_board.configure(self._config_file)
             wx.MessageBox('Success!', msg_box_title,
                           wx.OK | wx.ICON_INFORMATION)
-        except XSERROR.XsTerminate as e:
+        except xserror.XsTerminate as e:
             wx.MessageBox('Cancelled.', msg_box_title,
                           wx.OK | wx.ICON_INFORMATION)
-        except XSERROR.XsError as e:
+        except xserror.XsError as e:
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
         finally:
             pub.sendMessage("Fpga.Cleanup")
@@ -1065,10 +1064,10 @@ class GxsMcuDownloadThread(Thread):
                             dummy=None)  # Update flag settings because of new uC firmware.
             wx.MessageBox('Success!', msg_box_title,
                           wx.OK | wx.ICON_INFORMATION)
-        except XSERROR.XsTerminate as e:
+        except xserror.XsTerminate as e:
             wx.MessageBox('Cancelled.', msg_box_title,
                           wx.OK | wx.ICON_INFORMATION)
-        except XSERROR.XsError as e:
+        except xserror.XsError as e:
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
         finally:
             pub.sendMessage("Micro.Cleanup")
@@ -1135,16 +1134,14 @@ class GxsBoardTestThread(Thread):
         try:
             reconnect()
             active_board.do_self_test()
-            wx.MessageBox('Success!', msg_box_title,
-                          wx.OK | wx.ICON_INFORMATION)
-        except XSERROR.XsTerminate as e:
-            wx.MessageBox('Cancelled.', msg_box_title,
-                          wx.OK | wx.ICON_INFORMATION)
-        except XSERROR.XsError as e:
+            wx.MessageBox('Success!', msg_box_title, wx.OK | wx.ICON_INFORMATION)
+        except xserror.XsTerminate:
+            wx.MessageBox('Cancelled.', msg_box_title, wx.OK | wx.ICON_INFORMATION)
+        except xserror.XsError as e:
             wx.MessageBox(str(e), msg_box_title, wx.OK | wx.ICON_ERROR)
         finally:
             disconnect()
-            pub.sendMessage("Test.Cleanup")
+            pub.sendMessage('Test.Cleanup')
 
 
 # ===============================================================

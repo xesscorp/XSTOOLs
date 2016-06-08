@@ -23,7 +23,8 @@
 PIC microcontroller classes.
 """
 
-from xstools.flashdev import *
+from xstools.flashdev import FlashDevice
+from xstools.xserror import XsMajorError
 
 
 class Pic18f14k50(FlashDevice):

@@ -115,7 +115,8 @@ class XsBitArray(BitArray):
         #       USB buffer bit order: | b7 b6 b5 b4 b3 b2 b1 b0 | b15 b14 b13 b12 b11 b10 b9 b8 |
         # So this function pads the bit string so it consists of complete bytes, converts
         # the bitstring into bytes, and finally reverses the order of the bytes.
-        bits = self + XsBitArray((8 - self.len % 8) % 8)  # Pad the bitstring to make complete bytes.
+        # Pad the bitstring to make complete bytes.
+        bits = self + XsBitArray((8 - self.len % 8) % 8)
         return bits.tobytes()[::-1]  # Convert bit string to bytes and reverse their order.
 
     @staticmethod
@@ -127,9 +128,11 @@ class XsBitArray(BitArray):
         # The bytes sent by XESS boards contain the first received bit in the least-significant bit
         # of the first byte as follows:
         #       USB buffer bit order: | b7 b6 b5 b4 b3 b2 b1 b0 | b15 b14 b13 b12 b11 b10 b9 b8 |
-        # This has to be converted into a bit string with the first received bit at the highest index like so:
+        # This has to be converted into a bit string with the first received bit at the highest
+        # index like so:
         #       XsBitArray order: | b15 b14 b13 b12 b11 b10 b9 b8 | b7 b6 b5 b4 b3 b2 b1 b0 |
-        # So this function reverses the byte order, creates a bit string, and then cuts it to length.
+        # So this function reverses the byte order, creates a bit string, and then cuts it to
+        # length.
         bits = XsBitArray(bytes=usb_bytes[::-1])  # Create a bit string from the reversed USB bytes.
         return bits[-length:]
         
@@ -139,7 +142,6 @@ class XsBitArray(BitArray):
         ih = IntelHex()
         ih.frombytes([ord(b) for b in self.tobytes()])
         return ih
-        
 
     def __getattr__(self, name):
         """Return the unsigned, integer or string representation of a bit array."""

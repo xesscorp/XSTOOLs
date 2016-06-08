@@ -28,12 +28,13 @@ a COM/serial port and the USB port of a XuLA board.
 import serial
 import logging
 from argparse import ArgumentParser
-import xstools.xscomm as XSCOMM
 from xstools import __version__
+from xstools.xscomm import XsComm
 
 
 def usb2serial():
-    p = ArgumentParser(description='Transfer bytes between a COM/serial port and the USB port of a XuLA board.')
+    desc = 'Transfer bytes between a COM/serial port and the USB port of a XuLA board.'
+    p = ArgumentParser(description=desc)
 
     p.add_argument('-c', '--comport', type=int, default=1,
                    metavar='COMPORT#',
@@ -54,7 +55,7 @@ def usb2serial():
     else:
         logger.setLevel(1000)
 
-    xscomm = XSCOMM.XsComm(xsusb_id=args.usb, module_id=args.comm_module)
+    xscomm = XsComm(xsusb_id=args.usb, module_id=args.comm_module)
     xscomm.send_break()
     xscomm.get_levels()
 
@@ -63,9 +64,11 @@ def usb2serial():
     print("Serial port = ", sercomm.name)
 
     break_pattern = [0x00, 0xFF, 0x00]  # Serial data pattern indicating break signal.
-    break_buf = [0x11 for i in range(len(break_pattern))]  # Initialize with garbage.
+    break_buf = [0x11] * len(break_pattern)  # Initialize with garbage.
+    # break_buf = [0x11 for i in range(len(break_pattern))]  # Initialize with garbage.
+
     def break_found(buf):
-        '''Detect a break pattern in the serial data stream.'''
+        """Detect a break pattern in the serial data stream."""
         global break_buf
         for b in buf:
             break_buf.append(b)

@@ -31,18 +31,19 @@ using this program, type xstest -h.
 This program was originally conceived and written in C++ by Dave
 Vandenbout and then ported to python.
 """
+import os
+import sys
+from argparse import ArgumentParser
+
+from xstools import __version__
+from xstools.xsboard import XsBoard
+from xstools.xserror import XsError, XsFatalError
+from xstools.xsusb import XsUsb
 
 try:
     import winsound
 except ImportError:
     pass
-
-import sys
-import os
-from argparse import ArgumentParser
-import xstools.xsboard as XSBOARD
-import xstools.xserror as XSERROR
-from xstools import __version__
 
 SUCCESS = 0
 FAILURE = 1
@@ -51,7 +52,7 @@ FAILURE = 1
 def xstest():
 
     try:
-        num_boards = XSBOARD.XsUsb.get_num_xsusb()
+        num_boards = XsUsb.get_num_xsusb()
 
         p = ArgumentParser(description='Run self-test on an XESS board.')
 
@@ -82,20 +83,20 @@ def xstest():
             
         args = p.parse_args()
 
-        while (True):
-            num_boards = XSBOARD.XsUsb.get_num_xsusb()
+        while True:
+            num_boards = XsUsb.get_num_xsusb()
             if num_boards > 0:
-                xs_board = XSBOARD.XsBoard.get_xsboard(args.usb, args.board)
+                xs_board = XsBoard.get_xsboard(args.usb, args.board)
                 try:
                     xs_board.do_self_test()
-                except XSERROR.XsError as e:
+                except XsError:
                     try:
                         winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
                     except:
                         pass
                     if args.multiple:
                         xs_board.xsusb.disconnect()
-                        while XSBOARD.XsUsb.get_num_xsusb() != 0:
+                        while XsUsb.get_num_xsusb() != 0:
                             pass
                         continue
                     else:
@@ -107,13 +108,13 @@ def xstest():
                     pass
                 if args.multiple:
                     xs_board.xsusb.disconnect()
-                    while XSBOARD.XsUsb.get_num_xsusb() != 0:
+                    while XsUsb.get_num_xsusb() != 0:
                         pass
                     continue
                 else:
                     sys.exit(SUCCESS)
             elif not args.multiple:
-                XSERROR.XsFatalError("No XESS Boards found!")
+                XsFatalError("No XESS Boards found!")
 
     except SystemExit as e:
         os._exit(SUCCESS)

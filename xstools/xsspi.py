@@ -22,8 +22,11 @@
 """
 Class for interfacing to SPI devices.
 """
+import logging
 
-from xstools.xsmemio import *
+from xstools.xshostio import DEFAULT_XSUSB_ID, DEFAULT_MODULE_ID
+from xstools.xsmemio import XsMemIo
+
 
 class XsSpi:
     """

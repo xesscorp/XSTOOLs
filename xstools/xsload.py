@@ -43,9 +43,9 @@ into this program and the XSTOOLs classes and methods.
 import os
 import sys
 from argparse import ArgumentParser
-import xstools.xsboard as XSBOARD
-import xstools.xserror as XSERROR
 from xstools import __version__
+from xstools.xsboard import XsBoard
+from xstools.xsusb import XsUsb, XsError, XsFatalError
 
 SUCCESS = 0
 FAILURE = 1
@@ -54,7 +54,7 @@ FAILURE = 1
 def xsload():
 
     try:
-        num_boards = XSBOARD.XsUsb.get_num_xsusb()
+        num_boards = XsUsb.get_num_xsusb()
 
         p = ArgumentParser(
             description=
@@ -105,7 +105,7 @@ def xsload():
         args = p.parse_args()
 
         if num_boards > 0:
-            xs_board = XSBOARD.XsBoard.get_xsboard(args.usb, args.board)
+            xs_board = XsBoard.get_xsboard(args.usb, args.board)
 
             if args.flash:
                 try:
@@ -124,7 +124,7 @@ def xsload():
                         print("Success: Data in {file} downloaded to serial flash on {board}!".format(
                             file=args.flash,
                             board=xs_board.name))
-                except XSERROR.XsError as e:
+                except XsError:
                     sys.exit(FAILURE)
 
             if args.ram:
@@ -144,7 +144,7 @@ def xsload():
                         print("Success: Data in {file} downloaded to RAM on {board}!".format(
                             file=args.flash,
                             board=xs_board.name))
-                except XSERROR.XsError as e:
+                except XsError:
                     sys.exit(FAILURE)
 
             if args.fpga:
@@ -153,12 +153,12 @@ def xsload():
                     print("Success: Bitstream in {file} downloaded to FPGA on {board}!".format(
                         file=args.fpga, 
                         board=xs_board.name))
-                except XSERROR.XsError as e:
+                except XsError:
                     sys.exit(FAILURE)
 
             sys.exit(SUCCESS)
         else:
-            XSERROR.XsFatalError("No XESS Boards found!")
+            XsFatalError("No XESS Boards found!")
 
     except SystemExit as e:
         os._exit(SUCCESS)

@@ -23,10 +23,12 @@
 """
 Xilinx FPGA configuration bitstream object.
 """
+import logging
+
 from bitstring import ConstBitStream
 
-from xstools.xserror import *
-from xstools.xsbitarray import *
+from xstools.xsbitarray import XsBitArray
+from xstools.xserror import XsMajorError
 
 
 class XilinxBitstream:
@@ -92,9 +94,7 @@ class XilinxBitstream:
                 self.bits.reverse()
             else:
                 msg = "Unknown field %d at position %d in bit file '%s'."
-                raise XsMajorError(msg % (field_code,
-                                          bitfile.pos - 8,
-                                          self.filename))
+                raise XsMajorError(msg % (field_code, bitfile.pos - 8, self.filename))
 
         logging.debug(
             'Bitstream file %s with design %s was compiled for %s at %s on %s '

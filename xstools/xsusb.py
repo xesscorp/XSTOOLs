@@ -25,12 +25,15 @@ USB interface class for XESS FPGA boards.
 
 
 import logging
-import os
 import math
+import os
 import struct
+import sys
+
 import usb.core
 import usb.util
-from xstools.xserror import *
+
+from xstools.xserror import XsMajorError, XsMinorError, XsTerminate
 
 
 class XsUsb:
@@ -127,9 +130,9 @@ class XsUsb:
     _IOC_READ = 2
 
     def _IOC(dir, type, nr, size):
-        if isinstance(size, str) or isinstance(size, unicode):
+        if isinstance(size, str):
             size = struct.calcsize(size)
-        return dir  << _IOC_DIRSHIFT  | \
+        return dir << _IOC_DIRSHIFT | \
                type << _IOC_TYPESHIFT | \
                nr   << _IOC_NRSHIFT   | \
                size << _IOC_SIZESHIFT
@@ -146,13 +149,13 @@ class XsUsb:
         # Get the currently-active XESS USB devices.
         # The find() routine throws exceptions under linux when XESS boards are
         # connected/reconnected, so catch the exceptions.
-        while(True):
+        while True:
             try:
                 devs = list(usb.core.find(idVendor=cls._VENDOR_ID,
                                           idProduct=cls._PRODUCT_ID, find_all=True))
-                break # Exit the loop once find() completes without an exception.
+                break  # Exit the loop once find() completes without an exception.
             except usb.core.USBError:
-                pass # Keep trying until no exceptions occur.
+                pass  # Keep trying until no exceptions occur.
             
         # Compare them to the previous set of active XESS USB devices.
         for i in range(len(devs)):
@@ -186,7 +189,7 @@ class XsUsb:
         """Initiate a USB connection to an XESS board."""
 
         devs = XsUsb.get_xsusb_ports()
-        if devs == []:
+        if not devs:
             raise XsMinorError('XESS USB device could not be found.')
         self._xsusb_id = xsusb_id
         self._dev = devs[xsusb_id]
@@ -206,9 +209,7 @@ class XsUsb:
 
         logging.debug('OUT => (%d) %s', len(bytes), str([bin(x | 0x100)[3:] for x in bytes]))
         timeout = self._calc_time_out(len(bytes))
-        if self._dev.write(usb.util.ENDPOINT_OUT | self._endpoint,
-                           bytes, timeout=timeout) \
-            != len(bytes):
+        if self._dev.write(usb.util.ENDPOINT_OUT | self._endpoint, bytes, timeout=timeout) != len(bytes):
             raise XsMajorError('Failed to write required number of bytes over the USB link')
 
     def read(self, num_bytes=0):
@@ -341,7 +342,7 @@ class XsUsb:
 
 if __name__ == '__main__':
     # Get the number of XESS USB devices out there.
-    while(True):
+    while True:
         sys.stdout.write('Plug it in...\n')
         while True:
             n = XsUsb.get_num_xsusb()

@@ -22,14 +22,18 @@
 """
 Object for forcing inputs and reading outputs from a device-under-test (DUT).
 """
+import logging
+
 from xstools.xsbitarray import XsBitArray
 from xstools.xserror import XsMinorError
-from xstools.xshostio import *
+from xstools.xshostio import XsHostIo, DEFAULT_XSUSB_ID, DEFAULT_MODULE_ID
 
 
 class XsDutIo(XsHostIo):
 
-    """Object for forcing inputs and reading outputs from a device-under-test (DUT)."""
+    """
+    Object for forcing inputs and reading outputs from a device-under-test (DUT).
+    """
 
     # DUT opcodes.
     _NOP_OPCODE   = XsBitArray('0b00')
@@ -188,8 +192,8 @@ class XsDut(XsDutIo):
         dut_input_widths=None,
         dut_output_widths=None,
         ):
-
-        # The __init__ function of the old XsDut class had the argument positions of the input and output width lists reversed.
+        # The __init__ function of the old XsDut class had the argument positions of the input and
+        # output width lists reversed.
         XsDutIo.__init__(self, xsusb_id, module_id, dut_output_widths, dut_input_widths)
 
 

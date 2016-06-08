@@ -22,10 +22,12 @@
 """
 Classes for devices containing RAM memory.
 """
-
+import struct
 from intelhex import IntelHex
-from xstools.xserror import *
-from xstools.xsmemio import *
+
+from xstools.xserror import XsMinorError
+from xstools.xshostio import DEFAULT_XSUSB_ID, DEFAULT_MODULE_ID
+from xstools.xsmemio import XsMemIo
 
 
 class RamDevice:

@@ -24,9 +24,11 @@ Classes for devices containing flash memory.
 """
 
 from intelhex import IntelHex
-from xstools.xserror import *
-from xstools.xsspi import *
-from xstools.xilbitstr import *
+
+from xstools.xilbitstr import XilinxBitstream
+from xstools.xserror import XsMinorError, XsMajorError
+from xstools.xshostio import DEFAULT_MODULE_ID, DEFAULT_XSUSB_ID
+from xstools.xsspi import XsSpi
 
 
 class FlashDevice:
@@ -135,18 +137,19 @@ class FlashDevice:
 
         
 _MODULE_ID = 0xf0  # Default module ID for JTAG interface to serial configuration flash.
-        
+
+
 class W25X(FlashDevice):
     """Winbond serial flash memory."""
     
     device_name_prefix = 'W25X'
     mfg_id = 0xef
     chip_info = {
-        0x3011:{'size':2**20, 'name':'10'},
-        0x3012:{'size':2**21, 'name':'20'}, 
-        0x3013:{'size':2**22, 'name':'40'}, 
-        0x3014:{'size':2**23, 'name':'80'},
-        0x4014:{'size':2**23, 'name':'80'}, # This is actually for a W25Q80 serial flash.
+        0x3011: {'size': 2**20, 'name': '10'},
+        0x3012: {'size': 2**21, 'name': '20'},
+        0x3013: {'size': 2**22, 'name': '40'},
+        0x3014: {'size': 2**23, 'name': '80'},
+        0x4014: {'size': 2**23, 'name': '80'},  # This is actually for a W25Q80 serial flash.
         }
 
     _START_ADDR = 0x00000
@@ -161,14 +164,9 @@ class W25X(FlashDevice):
     _CHIP_ERASE_CMD = 0xc7
     _PAGE_PROGRAM_CMD = 0x02
     _FAST_READ_CMD = 0x0b
-    
 
-    def __init__(
-        self,
-        xsusb_id=DEFAULT_XSUSB_ID,
-        module_id=DEFAULT_MODULE_ID,
-        xsjtag=None
-        ):
+    def __init__(self, xsusb_id=DEFAULT_XSUSB_ID, module_id=DEFAULT_MODULE_ID, xsjtag=None):
+        super().__init__()
         self._spi = XsSpi(xsjtag=xsjtag, module_id=module_id)
         mfg_id, jedec_id = self.get_chip_id()
         if mfg_id != self.mfg_id:
@@ -199,7 +197,7 @@ class W25X(FlashDevice):
         self._spi.send(self._WRITE_ENABLE_CMD, stop=True)
         self._spi.send(self._CHIP_ERASE_CMD, stop=True)
         self._spi.send(self._READ_STATUS_CMD, stop=False)
-        while(self._is_busy()):
+        while self._is_busy():
             pass
         self._spi.reset()
         
@@ -209,7 +207,7 @@ class W25X(FlashDevice):
         self._spi.send(self._addr_bytes(addr), stop=False)
         self._spi.send(data, stop=True)
         self._spi.send(self._READ_STATUS_CMD, stop=False)
-        while(self._is_busy()):
+        while self._is_busy():
             pass
         self._spi.reset()
 

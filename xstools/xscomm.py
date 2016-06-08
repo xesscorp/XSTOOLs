@@ -22,10 +22,11 @@
 """
 Class for managing communication streams to/from the FPGA.
 """
+import logging
 from functools import reduce
 
 from xstools.xshostio import DEFAULT_MODULE_ID, DEFAULT_XSUSB_ID
-from xstools.xsmemio import *
+from xstools.xsmemio import XsMemIo
 
 
 class XsCommException(Exception):

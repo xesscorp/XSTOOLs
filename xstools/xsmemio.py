@@ -24,9 +24,13 @@
 Class for reading and writing memory or registers in the FPGA
 of an XESS board through the USB port.
 """
-
+import logging
 import struct
-from xstools.xshostio import *
+
+from bitstring import BitArray
+
+from xstools.xsbitarray import XsBitArray
+from xstools.xshostio import DEFAULT_XSUSB_ID, DEFAULT_MODULE_ID, XsHostIo
 
 
 class XsMemIo(XsHostIo):
@@ -78,7 +82,7 @@ class XsMemIo(XsHostIo):
 
         # The data width is in the last half of the bit array.
         data_width = params.pop_field(self._SIZE_RESULT_LENGTH / 2).unsigned
-        return (address_width, data_width)
+        return address_width, data_width
 
     def read(self, begin_address, num_of_reads=1, return_type=XsBitArray()):
         """Return a list of bit arrays read from memory.

@@ -32,6 +32,7 @@ using this program, type xsflags -h.
 This program was originally conceived and written in C++ by Dave
 Vandenbout and then ported to python.
 """
+from xstools.xserror import XsError, XsFatalError
 
 try:
     import winsound
@@ -41,8 +42,7 @@ except ImportError:
 import os
 import sys
 from argparse import ArgumentParser
-import xstools.xsboard as XSBOARD
-import xstools.xserror as XSERROR
+from xstools import xsboard
 from xstools import __version__
 
 SUCCESS = 0
@@ -52,7 +52,7 @@ FAILURE = 1
 def xsflags():
 
     try:
-        num_boards = XSBOARD.XsUsb.get_num_xsusb()
+        num_boards = xsboard.XsUsb.get_num_xsusb()
 
         p = ArgumentParser(
             description='Change configuration flags on an XESS board.')
@@ -98,7 +98,7 @@ def xsflags():
 
         if num_boards > 0:
 
-            xs_board = XSBOARD.XsBoard.get_xsboard(args.usb, args.board)
+            xs_board = xsboard.XsBoard.get_xsboard(args.usb, args.board)
 
             try:
                 if args.jtag == 'on':
@@ -120,15 +120,15 @@ def xsflags():
                     (flag == True and 'enabled.') or
                     (flag == False and 'disabled.')))
 
-            except XSERROR.XsError as e:
+            except XsError:
                 pass
 
         else:
-            XSERROR.XsFatalError("No XESS Boards found!")
+            XsFatalError("No XESS Boards found!")
 
         sys.exit(SUCCESS)
         
-    except SystemExit as e:
+    except SystemExit:
         os._exit(SUCCESS)
 
 
