@@ -42,14 +42,13 @@ class XsDutIo(XsHostIo):
     _SIZE_OPCODE  = XsBitArray('0b01')  # Get number of inputs and outputs of DUT.
     _SIZE_RESULT_LENGTH = 16  # Length of _SIZE_OPCODE result.
 
-    def __init__(
-        self,
-        xsusb_id=DEFAULT_XSUSB_ID,
-        module_id=DEFAULT_MODULE_ID,
-        dut_output_widths=None,
-        dut_input_widths=None,
-        xsjtag=None,
-        ):
+    def __init__(self,
+                 xsusb_id=DEFAULT_XSUSB_ID,
+                 module_id=DEFAULT_MODULE_ID,
+                 dut_output_widths=None,
+                 dut_input_widths=None,
+                 xsjtag=None,
+                 ):
         """Setup a DUT I/O object.
         
         xsusb_id = The ID for the USB port.
@@ -62,13 +61,13 @@ class XsDutIo(XsHostIo):
         # Setup the super-class object.
         XsHostIo.__init__(self, xsusb_id=xsusb_id, module_id=module_id, xsjtag=xsjtag)
         # Get the number of inputs and outputs of the DUT.
-        (self.total_dut_input_width, self.total_dut_output_width) = self._get_io_widths()
+        self.total_dut_input_width, self.total_dut_output_width = self._get_io_widths()
         logging.debug('# DUT input bits = %d' % self.total_dut_input_width)
         logging.debug('# DUT output bits = %d' % self.total_dut_output_width)
         assert self.total_dut_output_width != 0
         assert self.total_dut_input_width != 0
 
-        if dut_input_widths == None:
+        if dut_input_widths is None:
             # If no DUT input widths are provided, then make a single-element
             # list containing just the total number of DUT input bits.
             self._dut_input_widths = [self.total_dut_input_width]
@@ -88,7 +87,7 @@ class XsDutIo(XsHostIo):
             assert total_width == self.total_dut_input_width
         else:
             raise XsMinorError('Unknown type of input width list.')
-        if dut_output_widths == None:
+        if dut_output_widths is None:
             # If no DUT output widths are provided, then make a single-element
             # list containing just the total number of DUT output bits.
             self._dut_output_widths = [self.total_dut_output_width]
@@ -111,20 +110,20 @@ class XsDutIo(XsHostIo):
 
     def _get_io_widths(self):
         """Return the (total_dut_input_width, total_dut_output_width) of the DUT."""
-
-        SKIP_CYCLES = 1  # Skip cycles between issuing command and reading back result.
+        skip_cycles = 1  # Skip cycles between issuing command and reading back result.
 
         # Send the opcode and then read back the bits with the DUT's #inputs and #outputs.
-        params = self.send_rcv(payload=self._SIZE_OPCODE,
-                               num_result_bits=self._SIZE_RESULT_LENGTH + SKIP_CYCLES)
-        params.pop_field(SKIP_CYCLES)  # Remove the skipped cycles.
+        num_result_bits = self._SIZE_RESULT_LENGTH + skip_cycles
+        params = self.send_rcv(payload=self._SIZE_OPCODE, num_result_bits=num_result_bits)
+        params.pop_field(skip_cycles)  # Remove the skipped cycles.
 
         # The number of DUT inputs is in the first half of the bit array.
-        total_dut_input_width = params.pop_field(self._SIZE_RESULT_LENGTH / 2).unsigned
+        half_len = int(self._SIZE_RESULT_LENGTH / 2)
+        total_dut_input_width = params.pop_field(half_len).unsigned
 
         # The number of DUT outputs is in the last half of the bit array.
-        total_dut_output_width = params.pop_field(self._SIZE_RESULT_LENGTH / 2).unsigned
-        return (total_dut_input_width, total_dut_output_width)
+        total_dut_output_width = params.pop_field(half_len).unsigned
+        return total_dut_input_width, total_dut_output_width
 
     def read(self):
         """Return a list of bit arrays for the DUT output fields."""
@@ -184,24 +183,15 @@ class XsDutIo(XsHostIo):
 
 
 class XsDut(XsDutIo):
-
-    def __init__(
-        self,
-        xsusb_id=DEFAULT_XSUSB_ID,
-        module_id=DEFAULT_MODULE_ID,
-        dut_input_widths=None,
-        dut_output_widths=None,
-        ):
+    def __init__(self, xsusb_id=DEFAULT_XSUSB_ID, module_id=DEFAULT_MODULE_ID,
+                 dut_input_widths=None, dut_output_widths=None):
         # The __init__ function of the old XsDut class had the argument positions of the input and
         # output width lists reversed.
         XsDutIo.__init__(self, xsusb_id, module_id, dut_output_widths, dut_input_widths)
 
 
 if __name__ == '__main__':
-
-    #logging.root.setLevel(logging.DEBUG)
-
-    from random import *  # Import some random number generator routines.
+    from random import randint  # Import some random number generator routines.
 
     USB_ID = 0  # USB port index for the XuLA board connected to the host PC.
 
@@ -224,10 +214,10 @@ if __name__ == '__main__':
             print('==> CORRECT!')  # Print this if the differences match.
         else:
             print('==> ERROR!!!')  # Oops! Something's wrong with the subtractor.
-            
+
     blinker = 0
     blinker = XsDutIo(USB_ID, BLINKER_ID, [1], [1])
 
-    while True: # Do this forever...
-        led = blinker.Read() # Read the current state of the LED.
+    while True:  # Do this forever...
+        led = blinker.Read()  # Read the current state of the LED.
         print('LED: %1d\r' % led.unsigned, )  # Print the LED state and return.
