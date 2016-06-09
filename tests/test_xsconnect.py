@@ -10,11 +10,8 @@ Tests for `xstools` module.
 
 import unittest
 
-from xstools import xstools
-
 
 class TestXstools(unittest.TestCase):
-
     def setUp(self):
         pass
 
