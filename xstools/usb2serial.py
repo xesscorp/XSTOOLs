@@ -40,7 +40,8 @@ def usb2serial():
                    metavar='COMPORT#',
                    help='The COM port number.')
     p.add_argument('-u', '--usb', type=int, default=0, metavar='N',
-                   help='The USB port number for the XESS XuLA board. If you only have one board, then use 0.')
+                   help='The USB port number for the XESS XuLA board. If you '
+                        'only have one board, then use 0.')
     p.add_argument('-m', '--comm_module', type=int, default=253, metavar='MODULE#',
                    help='The ID of the comm module in the XuLA attached to the USB port.')
     p.add_argument('-d', '--debug', action='store_true',
@@ -84,13 +85,15 @@ def usb2serial():
         if sercomm_waiting > 0:
             xscomm_free = xscomm.get_send_buffer_space()
             n = min(sercomm_waiting, xscomm_free)
-            if n>0:
-                logger.debug('sercomm_waiting = %d, xscomm_free = %d' % (sercomm_waiting, xscomm_free))
+            if n > 0:
+                fmt = 'sercomm_waiting = %d, xscomm_free = %d'
+                logger.debug(fmt % (sercomm_waiting, xscomm_free))
                 buf = sercomm.read(n)
                 buf = [ord(c) for c in buf]
                 logger.debug('%s: %s' % (sercomm.name, ' '.join(['%02x' % b for b in buf])))
                 xscomm.send(buf)
-                if break_found(buf) and n==3: # Reset string should be the only thing in the buffer.
+                # Reset string should be the only thing in the buffer.
+                if break_found(buf) and n == 3:
                     xscomm.send_break()
                     logger.debug('Reset sent.')
             
@@ -98,9 +101,9 @@ def usb2serial():
         xscomm_waiting = xscomm.get_recv_buffer_length()
         if xscomm_waiting > 0:
             logger.debug('xscomm_waiting = %d' % xscomm_waiting)
-            #buf = [chr(d.unsigned) for d in xscomm.receive(num_words=xscomm_waiting, always_list=True)]
             buf = [chr(d.unsigned) for d in xscomm.receive(always_list=True)]
-            logger.debug('USB%d,%02x: %s' % (args.usb, args.comm_module, ' '.join(['%02x' % ord(b) for b in buf])))
+            msg = (args.usb, args.comm_module, ' '.join(['%02x' % ord(b) for b in buf]))
+            logger.debug('USB%d,%02x: %s' % msg)
             sercomm.write(buf)
 
             

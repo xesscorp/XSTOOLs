@@ -26,11 +26,11 @@ from threading import Thread
 import wx
 import wx.html
 import wx.lib
-import wx.lib.agw.flatnotebook as FNB
-import wx.lib.filebrowsebutton as FBB
-import wx.lib.intctrl as INTCTRL
-import wx.lib.platebtn as PBTN
+import wx.lib.agw.flatnotebook as fnb
+import wx.lib.filebrowsebutton as fbb
+import wx.lib.platebtn as pbtn
 from pubsub import pub
+from wx.lib import intctrl
 
 from xstools import __version__, install_dir
 from xstools import xsboard, xserror, xsusb
@@ -179,11 +179,12 @@ class GxsProgressDialog(wx.ProgressDialog):
 # File browser that maintains its history.
 # ===============================================================
 
-class DnDFilePickerCtrl(FBB.FileBrowseButtonWithHistory, wx.FileDropTarget):
+class DnDFilePickerCtrl(fbb.FileBrowseButtonWithHistory, wx.FileDropTarget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # self.SetDropTarget(self)
-        # self.SetDefaultAction(wx.DragCopy)  # Show '+' icon when hovering over this field.
+        # Show '+' icon when hovering over this field.
+        # self.SetDefaultAction(wx.DragCopy)
 
     def GetPath(self, add_to_history=False):
         current_value = self.GetValue()
@@ -239,8 +240,8 @@ class GxsPortPanel(wx.Panel):
         self._port_list.Bind(wx.EVT_CHOICE, self.on_port_change)
 
         self._blink_button = wx.Button(self, label='Blink')
-        self._blink_button.SetToolTip('Click to blink LED on the board attached'
-                                      ' to the selected port')
+        self._blink_button.SetToolTip('Click to blink LED on the board '
+                                      'attached to the selected port')
         self._blink_button.Bind(wx.EVT_BUTTON, self.on_blink)
         self._blink_button.Disable()
 
@@ -290,8 +291,8 @@ class GxsPortPanel(wx.Panel):
                 self._port_list.Clear()
                 if active_board is not None:
                     active_board = None
-                wx.PostEvent(self._port_list,
-                             wx.PyCommandEvent(wx.EVT_CHOICE.typeId, wx.ID_ANY))
+                event = wx.PyCommandEvent(wx.EVT_CHOICE.typeId, wx.ID_ANY)
+                wx.PostEvent(self._port_list, event)
             else:
                 self._port_list.Clear()
                 for i in range(0, num_boards):
@@ -308,8 +309,8 @@ class GxsPortPanel(wx.Panel):
                         self._port_list.SetSelection(xsusb_id)
                 active_board = xsboard.XsBoard.get_xsboard(
                     self._port_list.GetSelection())
-                wx.PostEvent(self._port_list,
-                             wx.PyCommandEvent(wx.EVT_CHOICE.typeId, wx.ID_ANY))
+                event = wx.PyCommandEvent(wx.EVT_CHOICE.typeId, wx.ID_ANY)
+                wx.PostEvent(self._port_list, event)
                 disconnect()
 
     def on_port_change(self, event):
@@ -339,7 +340,7 @@ class GxsPortPanel(wx.Panel):
             self._blink_button.Disable()
         pub.sendMessage("Status.Port", port=active_port_name)
         pub.sendMessage("Status.Board", board=active_board_name)
-        pub.sendMessage("Status.Change", dummy=None)
+        pub.sendMessage('Status.Change', dummy=None)
         disconnect()
 
     def on_blink(self, event):
@@ -369,21 +370,20 @@ class GxsFlashPanel(wx.Panel):
         # self._dnld_file_picker = DnDFilePickerCtrl(self, wildcard=file_wildcard,
         # style=wx.FLP_OPEN | wx.FLP_FILE_MUST_EXIST | wx.FLP_USE_TEXTCTRL | wx.FLP_SMALL)
         # self._dnld_file_picker.SetToolTip('File to download to %s' % mem_type)
-        self._dnld_file_picker = DnDFilePickerCtrl(parent=self,
-                                                   labelText='',
-                                                   buttonText='Browse',
-                                                   toolTip='File to download to %s' % mem_type,
-                                                   dialogTitle='Select file to download to %s' % mem_type,
-                                                   fileMask=file_wildcard,
-                                                   fileMode=wx.FD_OPEN)
+        kwargs = dict(parent=self, labelText='', buttonText='Browse', fileMask=file_wildcard)
+        # Download file picker
+        down_kwargs = kwargs.copy()
+        down_kwargs['toolTip'] = 'File to download to %s' % mem_type
+        down_kwargs['dialogTitle'] = 'Select file to download to %s' % mem_type
+        down_kwargs['fileMode'] = wx.FD_OPEN
+        self._dnld_file_picker = DnDFilePickerCtrl(**down_kwargs)
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_download_button, self._dnld_file_picker)
-        self._upld_file_picker = DnDFilePickerCtrl(parent=self,
-                                                   labelText='',
-                                                   buttonText='Browse',
-                                                   toolTip='File to upload from %s' % mem_type,
-                                                   dialogTitle='Select file to store %s contents' % mem_type,
-                                                   fileMask=file_wildcard,
-                                                   fileMode=wx.FD_SAVE)
+        # Upload file picker
+        up_kwargs = kwargs.copy()
+        up_kwargs['toolTip'] = 'File to upload from %s' % mem_type
+        up_kwargs['dialogTitle'] = 'Select file to store %s contents' % mem_type
+        up_kwargs['fileMode'] = wx.FD_SAVE
+        self._upld_file_picker = DnDFilePickerCtrl(**up_kwargs)
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_upload_button, self._upld_file_picker)
 
         stop_logging = wx.LogNull()  # This stops warnings about the color profile of the PNG files.
@@ -394,35 +394,33 @@ class GxsFlashPanel(wx.Panel):
             wx.BITMAP_TYPE_PNG)
         del stop_logging
 
-        self._dnld_button = PBTN.PlateButton(self)
+        self._dnld_button = pbtn.PlateButton(self)
         self._dnld_button.SetBitmap(down_arrow_bmp)
         self._dnld_button.SetBitmapDisabled(down_arrow_disabled_bmp)
         self._dnld_button.SetToolTip('Start download to %s' % mem_type)
         self.Bind(wx.EVT_BUTTON, self.on_download, self._dnld_button)
-        pub.subscribe(self.handle_download_button, "Status.Change")
+        pub.subscribe(self.handle_download_button, 'Status.Change')
         self.handle_download_button(dummy=None)
 
-        self._upld_button = PBTN.PlateButton(self)
+        self._upld_button = pbtn.PlateButton(self)
         self._upld_button.SetBitmap(down_arrow_bmp)
         self._upld_button.SetBitmapDisabled(down_arrow_disabled_bmp)
         self._upld_button.SetToolTip('Start upload from %s' % mem_type)
         self.Bind(wx.EVT_BUTTON, self.on_upload, self._upld_button)
-        pub.subscribe(self.handle_upload_button, "Status.Change")
+        pub.subscribe(self.handle_upload_button, 'Status.Change')
         self.handle_upload_button(dummy=None)
 
         self._erase_button = wx.Button(self, label='Erase')
         self._erase_button.SetToolTip(
             'Click to erase %s between the upper and lower addresses' % mem_type)
         self._erase_button.Bind(wx.EVT_BUTTON, self.on_erase)
-        pub.subscribe(self.handle_erase_button, "Status.Change")
+        pub.subscribe(self.handle_erase_button, 'Status.Change')
         self.handle_erase_button(dummy=None)
 
-        self._hi_addr_ctrl = INTCTRL.IntCtrl(self)
-        self._hi_addr_ctrl.SetToolTip(
-            'Enter upper %s address here' % mem_type)
-        self._lo_addr_ctrl = INTCTRL.IntCtrl(self)
-        self._lo_addr_ctrl.SetToolTip(
-            'Enter lower %s address here' % mem_type)
+        self._hi_addr_ctrl = intctrl.IntCtrl(self)
+        self._hi_addr_ctrl.SetToolTip('Enter upper %s address here' % mem_type)
+        self._lo_addr_ctrl = intctrl.IntCtrl(self)
+        self._lo_addr_ctrl.SetToolTip('Enter lower %s address here' % mem_type)
 
         addr_vsizer = wx.BoxSizer(wx.VERTICAL)
         addr_vsizer.Add(self._hi_addr_ctrl)
@@ -612,32 +610,31 @@ class GxsSdramPanel(wx.Panel):
 
         mem_type = 'SDRAM'
 
-        self.SetToolTip(
-            'Use this tab to transfer data to/from the %s on your XESS board.' % mem_type)
+        tt_fmt = 'Use this tab to transfer data to/from the %s on your XESS board.'
+        self.SetToolTip(tt_fmt % mem_type)
 
         # file_wildcard = 'Intel Hex (*.hex)|*.hex|Motorola EXO (*.exo)|*.exo|XESS (*.xes)|*.xes'
         file_wildcard = 'Intel Hex (*.hex)|*.hex'
-
-        self._dnld_file_picker = DnDFilePickerCtrl(parent=self,
-                                                   labelText='',
-                                                   buttonText='Browse',
-                                                   toolTip='File to download to %s' % mem_type,
-                                                   dialogTitle='Select file to download to %s' % mem_type,
-                                                   fileMask=file_wildcard,
-                                                   fileMode=wx.FD_OPEN)
+        kwargs = dict(parent=self, labelText='', buttonText='Browse', fileMask=file_wildcard)
+        # Download file picker
+        down_kwargs = kwargs.copy()
+        down_kwargs['toolTip'] = 'File to download to %s' % mem_type
+        down_kwargs['dialogTitle'] = 'Select file to download to %s' % mem_type
+        down_kwargs['fileMode'] = wx.FD_OPEN
+        self._dnld_file_picker = DnDFilePickerCtrl(**down_kwargs)
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_download_button,
                   self._dnld_file_picker)
-        self._upld_file_picker = DnDFilePickerCtrl(parent=self,
-                                                   labelText='',
-                                                   buttonText='Browse',
-                                                   toolTip='File to upload from %s' % mem_type,
-                                                   dialogTitle='Select file to store %s contents' % mem_type,
-                                                   fileMask=file_wildcard,
-                                                   fileMode=wx.FD_SAVE)
+        # Upload file picker
+        up_kwargs = kwargs.copy()
+        up_kwargs['toolTip'] = 'File to upload from %s' % mem_type
+        up_kwargs['dialogTitle'] = 'Select file to store %s contents' % mem_type
+        up_kwargs['fileMode'] = wx.FD_SAVE
+        self._upld_file_picker = DnDFilePickerCtrl(**up_kwargs)
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_upload_button,
                   self._upld_file_picker)
 
-        stop_logging = wx.LogNull()  # This stops warnings about the color profile of the PNG files.
+        # This stops warnings about the color profile of the PNG files.
+        stop_logging = wx.LogNull()
         down_arrow_bmp = wx.Bitmap(os.path.join(icon_dir, 'down_arrow.png'),
                                    wx.BITMAP_TYPE_PNG)
         down_arrow_disabled_bmp = wx.Bitmap(
@@ -645,32 +642,26 @@ class GxsSdramPanel(wx.Panel):
             wx.BITMAP_TYPE_PNG)
         del stop_logging
 
-        self._dnld_button = PBTN.PlateButton(self)
+        self._dnld_button = pbtn.PlateButton(self)
         self._dnld_button.SetBitmap(down_arrow_bmp)
         self._dnld_button.SetBitmapDisabled(down_arrow_disabled_bmp)
         self._dnld_button.SetToolTip('Start download to %s' % mem_type)
         self.Bind(wx.EVT_BUTTON, self.on_download, self._dnld_button)
-        pub.subscribe(self.handle_download_button, "Status.Change")
+        pub.subscribe(self.handle_download_button, 'Status.Change')
         self.handle_download_button(dummy=None)
 
-        self._upld_button = PBTN.PlateButton(self)
+        self._upld_button = pbtn.PlateButton(self)
         self._upld_button.SetBitmap(down_arrow_bmp)
         self._upld_button.SetBitmapDisabled(down_arrow_disabled_bmp)
         self._upld_button.SetToolTip('Start upload from %s' % mem_type)
         self.Bind(wx.EVT_BUTTON, self.on_upload, self._upld_button)
-        pub.subscribe(self.handle_upload_button, "Status.Change")
+        pub.subscribe(self.handle_upload_button, 'Status.Change')
         self.handle_upload_button(dummy=None)
 
-        # self._erase_button = wx.Button(self, label='Erase')
-        # self._erase_button.SetToolTip('Click to erase memory between the upper and lower addresses')
-        # self._erase_button.Bind(wx.EVT_BUTTON, self.on_erase)
-        # pub.subscribe(self.handle_erase_button, "Status.Change")
-        # self.handle_erase_button(dummy=None)
-
-        self._hi_addr_ctrl = INTCTRL.IntCtrl(self)
+        self._hi_addr_ctrl = intctrl.IntCtrl(self)
         self._hi_addr_ctrl.SetToolTip(
             'Enter upper %s address here' % mem_type)
-        self._lo_addr_ctrl = INTCTRL.IntCtrl(self)
+        self._lo_addr_ctrl = intctrl.IntCtrl(self)
         self._lo_addr_ctrl.SetToolTip(
             'Enter lower %s address here' % mem_type)
 
@@ -678,8 +669,6 @@ class GxsSdramPanel(wx.Panel):
         addr_vsizer.Add(self._hi_addr_ctrl)
         addr_vsizer.Add(wx.StaticText(self, label='Upper Address'), 0,
                         wx.CENTER)
-        # addr_vsizer.AddStretchSpacer()
-        # addr_vsizer.Add(self._erase_button)
         addr_vsizer.AddStretchSpacer()
         addr_vsizer.Add(wx.StaticText(self, label='Lower Address'), 0,
                         wx.CENTER)
@@ -868,7 +857,7 @@ class GxsFpgaConfigPanel(wx.Panel):
             wx.BITMAP_TYPE_PNG)
         del stop_logging
 
-        self._dnld_button = PBTN.PlateButton(self)
+        self._dnld_button = pbtn.PlateButton(self)
         self._dnld_button.SetBitmap(down_arrow_bmp)
         self._dnld_button.SetBitmapDisabled(down_arrow_disabled_bmp)
         self._dnld_button.SetToolTip('Start download to FPGA')
@@ -953,13 +942,14 @@ class GxsMicrocontrollerPanel(wx.Panel):
 
         file_wildcard = 'object file (*.hex)|*.hex'
 
-        self._dnld_file_picker = DnDFilePickerCtrl(parent=self,
-                                                   labelText='',
-                                                   buttonText='Browse',
-                                                   toolTip='Hex object file to download to microcontroller',
-                                                   dialogTitle='Select hex object file to download to microcontroller',
-                                                   fileMask=file_wildcard,
-                                                   fileMode=wx.FD_OPEN)
+        kwargs = dict(parent=self,
+                      labelText='',
+                      buttonText='Browse',
+                      toolTip='Hex object file to download to microcontroller',
+                      dialogTitle='Select hex object file to download to microcontroller',
+                      fileMask=file_wildcard,
+                      fileMode=wx.FD_OPEN)
+        self._dnld_file_picker = DnDFilePickerCtrl(**kwargs)
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.handle_download_button, self._dnld_file_picker)
 
         stop_logging = wx.LogNull()  # This stops warnings about the color profile of the PNG files.
@@ -970,13 +960,13 @@ class GxsMicrocontrollerPanel(wx.Panel):
             wx.BITMAP_TYPE_PNG)
         del stop_logging
 
-        self._dnld_button = PBTN.PlateButton(self)
+        self._dnld_button = pbtn.PlateButton(self)
         self._dnld_button.SetBitmap(down_arrow_bmp)
         self._dnld_button.SetBitmapDisabled(down_arrow_disabled_bmp)
         self._dnld_button.SetToolTip(
             'Start download to microcontroller flash')
         self.Bind(wx.EVT_BUTTON, self.on_download, self._dnld_button)
-        pub.subscribe(self.handle_download_button, "Status.Change")
+        pub.subscribe(self.handle_download_button, 'Status.Change')
         self.handle_download_button(dummy=None)
 
         stop_logging = wx.LogNull()  # This stops warnings about the color profile of the PNG files.
@@ -1009,7 +999,8 @@ class GxsMicrocontrollerPanel(wx.Panel):
                                        caption="WARNING!",
                                        message="""WARNING!
 
-It's possible to render the board inoperable if you download the wrong firmware into the microcontroller.
+It's possible to render the board inoperable if you download the wrong firmware
+into the microcontroller.
 
 ARE YOU SURE YOU WANT TO DO THIS!?!?
 """,
@@ -1046,7 +1037,7 @@ class GxsMcuDownloadThread(Thread):
         try:
             reconnect()
             active_board.update_firmware(self._fmw_obj_file)
-            pub.sendMessage("Status.Change",
+            pub.sendMessage('Status.Change',
                             dummy=None)  # Update flag settings because of new uC firmware.
             wx.MessageBox('Success!', msg_box_title,
                           wx.OK | wx.ICON_INFORMATION)
@@ -1074,7 +1065,7 @@ class GxsBoardTestPanel(wx.Panel):
         self._test_button.SetToolTip('Test the board attached to the selected '
                                      'port')
         self.Bind(wx.EVT_BUTTON, self.on_test, self._test_button)
-        pub.subscribe(self.handle_test_button, "Status.Change")
+        pub.subscribe(self.handle_test_button, 'Status.Change')
         self.handle_test_button(dummy=None)
 
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -1145,7 +1136,7 @@ class GxsBoardFlagsPanel(wx.Panel):
         self._aux_jtag_flag.SetToolTip('Check to enable the auxiliary JTAG '
                                        'interface through the four-pin header')
         self.Bind(wx.EVT_CHECKBOX, self.on_aux_jtag, self._aux_jtag_flag)
-        pub.subscribe(self.handle_aux_jtag_flag, "Status.Change")
+        pub.subscribe(self.handle_aux_jtag_flag, 'Status.Change')
         self.handle_aux_jtag_flag(dummy=None)
 
         lbl = 'Enable FPGA access to the configuration flash'
@@ -1153,7 +1144,7 @@ class GxsBoardFlagsPanel(wx.Panel):
         self._flash_flag.SetToolTip('Check to allow the FPGA to read/write the '
                                     'configuration flash')
         self.Bind(wx.EVT_CHECKBOX, self.on_flash, self._flash_flag)
-        pub.subscribe(self.handle_flash_flag, "Status.Change")
+        pub.subscribe(self.handle_flash_flag, 'Status.Change')
         self.handle_flash_flag(dummy=None)
 
         vsizer = wx.BoxSizer(wx.VERTICAL)
@@ -1206,9 +1197,9 @@ class GxsBoardFlagsPanel(wx.Panel):
 # ===============================================================
 # GXSTOOLs FlatNotebook for holding tabs.
 # ===============================================================
-class GxsFlatNotebook(FNB.FlatNotebook):
+class GxsFlatNotebook(fnb.FlatNotebook):
     def __init__(self, parent):
-        mystyle = FNB.FNB_FF2 | FNB.FNB_NO_X_BUTTON | FNB.FNB_NO_NAV_BUTTONS | FNB.FNB_SMART_TABS
+        mystyle = fnb.FNB_FF2 | fnb.FNB_NO_X_BUTTON | fnb.FNB_NO_NAV_BUTTONS | fnb.FNB_SMART_TABS
         super(GxsFlatNotebook, self).__init__(parent, agwStyle=mystyle)
         self._port_panel = GxsPortPanel(self)
         self.AddPage(self._port_panel, 'Ports')
