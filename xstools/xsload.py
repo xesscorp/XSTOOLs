@@ -45,63 +45,66 @@ import sys
 from argparse import ArgumentParser
 from xstools import __version__
 from xstools.xsboard import XsBoard
-from xstools.xsusb import XsUsb, XsError, XsFatalError
+from xstools.xserror import XsError, XsFatalError
+from xstools.xsusb import XsUsb
 
 SUCCESS = 0
 FAILURE = 1
 
 
-def xsload():
+def xsload_parser(num_boards):
+    p = ArgumentParser(
+        description='Program a bitstream file into the FPGA on an XESS board.'
+    )
 
+    p.add_argument(
+        '--fpga',
+        type=str,
+        metavar='FILE.BIT',
+        help='The name of the bitstream file to load into the FPGA.')
+    p.add_argument(
+        '--flash',
+        type=str,
+        metavar='FILE.HEX',
+        help='The name of the file to down/upload to/from the serial '
+             'configuration flash.')
+    p.add_argument(
+        '--ram',
+        type=str,
+        metavar='FILE.HEX',
+        help='The name of the file to down/upload to/from the RAM.')
+    p.add_argument(
+        '-u', '--upload',
+        nargs=2,
+        type=int,
+        default=0,
+        metavar=('LOWER', 'UPPER'),
+        help='Upload from RAM or flash the data between the lower and upper '
+             'addresses.')
+    p.add_argument(
+        '--usb',
+        type=int,
+        default=0,
+        choices=range(num_boards),
+        help='The USB port number for the XESS board. If you only have one '
+             'board, then use 0.')
+    p.add_argument(
+        '-b', '--board',
+        type=str.lower,
+        default='none',
+        choices=['xula-50', 'xula-200', 'xula2-lx9', 'xula2-lx25'])
+    p.add_argument(
+        '-v', '--version',
+        action='version',
+        version='%(prog)s ' + __version__,
+        help='Print the version number of this program and exit.')
+    return p
+
+
+def xsload():
     try:
         num_boards = XsUsb.get_num_xsusb()
-
-        p = ArgumentParser(
-            description=
-            'Program a bitstream file into the FPGA on an XESS board.')
-
-        p.add_argument(
-            '--fpga',
-            type=str,
-            metavar='FILE.BIT',
-            help='The name of the bitstream file to load into the FPGA.')
-        p.add_argument(
-            '--flash',
-            type=str,
-            metavar='FILE.HEX',
-            help=
-            'The name of the file to down/upload to/from the serial configuration flash.')
-        p.add_argument(
-            '--ram',
-            type=str,
-            metavar='FILE.HEX',
-            help='The name of the file to down/upload to/from the RAM.')
-        p.add_argument(
-            '-u', '--upload',
-            nargs=2,
-            type=int,
-            default=0,
-            metavar=('LOWER', 'UPPER'),
-            help=
-            'Upload from RAM or flash the data between the lower and upper addresses.')
-        p.add_argument(
-            '--usb',
-            type=int,
-            default=0,
-            choices=range(num_boards),
-            help=
-            'The USB port number for the XESS board. If you only have one board, then use 0.')
-        p.add_argument(
-            '-b', '--board',
-            type=str.lower,
-            default='none',
-            choices=['xula-50', 'xula-200', 'xula2-lx9', 'xula2-lx25'])
-        p.add_argument(
-            '-v', '--version',
-            action='version',
-            version='%(prog)s ' + __version__,
-            help='Print the version number of this program and exit.')
-
+        p = xsload_parser(num_boards=num_boards)
         args = p.parse_args()
 
         if num_boards > 0:
@@ -160,7 +163,7 @@ def xsload():
         else:
             XsFatalError("No XESS Boards found!")
 
-    except SystemExit as e:
+    except SystemExit:
         os._exit(SUCCESS)
 
 

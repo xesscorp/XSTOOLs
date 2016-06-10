@@ -25,7 +25,7 @@ Classes for types of XESS FPGA boards.
 import os
 import time
 
-from pubsub import pub as PUBSUB
+from pubsub import pub
 
 import xstools
 from xstools.flashdev import W25X
@@ -137,7 +137,7 @@ class XulaMicro(XsBoard):
     def update_firmware(self, hexfile=None):
         """Re-flash microcontroller with new firmware from hex file."""
 
-        PUBSUB.sendMessage(_PHASE, phase='Updating firmware')
+        pub.sendMessage(_PHASE, phase='Updating firmware')
         if hexfile is None:
             hexfile = self.firmware
         self.micro.enter_reflash_mode()
@@ -146,20 +146,20 @@ class XulaMicro(XsBoard):
         # uC flash sometimes enables auxiliary JTAG cable, so make sure it's
         # disabled.
         self.micro.disable_jtag_cable()
-        PUBSUB.sendMessage(_PHASE, phase='Firmware update done')
+        pub.sendMessage(_PHASE, phase='Firmware update done')
 
     def verify_firmware(self, hexfile):
         """
         Compare the microcontroller firmware to the contents of a hex file.
         """
         
-        PUBSUB.sendMessage(_PHASE, phase='Verifying firmware')
+        pub.sendMessage(_PHASE, phase='Verifying firmware')
         if hexfile is None:
             hexfile = self.firmware
         self.micro.enter_reflash_mode()
         self.micro.verify(hexfile)
         self.micro.enter_user_mode()
-        PUBSUB.sendMessage(_PHASE, phase='Firmware verification done')
+        pub.sendMessage(_PHASE, phase='Firmware verification done')
         
     def set_aux_jtag_flag(self, flag):
         if not flag:
@@ -207,7 +207,7 @@ class XulaBase(XulaMicro):
     def configure(self, bitstream, silent=False):
         """Configure the FPGA on the board with a bitstream."""
 
-        PUBSUB.sendMessage(_PHASE, phase='Downloading bitstream')
+        pub.sendMessage(_PHASE, phase='Downloading bitstream')
         # Clear any configuration already in the FPGA.
         self.xsusb.set_prog(1)
         self.xsusb.set_prog(0)
@@ -215,7 +215,7 @@ class XulaBase(XulaMicro):
         time.sleep(0.03)  # Wait for FPGA to clear.
         # Configure the FPGA with the bitstream.
         self.fpga.configure(bitstream)
-        PUBSUB.sendMessage(_PHASE, phase='Download complete')
+        pub.sendMessage(_PHASE, phase='Download complete')
         
     def do_self_test(self, test_bitstream=None):
         """Load the FPGA with a bitstream to test the board."""
@@ -226,7 +226,7 @@ class XulaBase(XulaMicro):
         
         if test_bitstream is None:
             test_bitstream = self.test_bitstream
-        PUBSUB.sendMessage(_PHASE,
+        pub.sendMessage(_PHASE,
                            phase='Downloading diagostic bitstream')
         self.configure(test_bitstream, silent=True)
         # Create a channel to query the results of the board test.
@@ -235,7 +235,7 @@ class XulaBase(XulaMicro):
         # Assert and release the reset for the testing circuit.
         dut.write(1)
         dut.write(0)
-        PUBSUB.sendMessage(_PHASE, phase='Writing SDRAM')
+        pub.sendMessage(_PHASE, phase='Writing SDRAM')
         prev_progress = TEST_START
         while True:
             [progress, failed, signature] = dut.read()
@@ -244,69 +244,69 @@ class XulaBase(XulaMicro):
                 raise XsMajorError(self.name + msg)
             if progress.unsigned != prev_progress:
                 if progress.unsigned == TEST_READ:
-                    PUBSUB.sendMessage(_PHASE, phase='Reading SDRAM')
+                    pub.sendMessage(_PHASE, phase='Reading SDRAM')
                 if failed.unsigned == 1:
-                    PUBSUB.sendMessage(_PHASE, phase='Test Done')
+                    pub.sendMessage(_PHASE, phase='Test Done')
                     raise XsMinorError(self.name + ' failed diagnostic test.')
                 elif progress.unsigned == TEST_DONE:
-                    PUBSUB.sendMessage(_PHASE, phase='Test Done')
+                    pub.sendMessage(_PHASE, phase='Test Done')
                     return  # Test passed!
             prev_progress = progress.unsigned
         
     def read_cfg_flash(self, bottom, top):
-        PUBSUB.sendMessage(_PHASE, phase='Configuring FPGA for reading '
-                                         'configuration flash')
+        pub.sendMessage(_PHASE, phase='Configuring FPGA for reading '
+                                      'configuration flash')
         self.configure(self.cfg_flash_bitstream, silent=True)
-        PUBSUB.sendMessage(_PHASE, phase='Reading configuration flash')
+        pub.sendMessage(_PHASE, phase='Reading configuration flash')
         self.cfg_flash = self.create_cfg_flash()
         hex_data = self.cfg_flash.read(bottom, top)
-        PUBSUB.sendMessage(_PHASE, phase='Configuration flash read done')
+        pub.sendMessage(_PHASE, phase='Configuration flash read done')
         return hex_data
         
     def write_cfg_flash(self, hexfile, bottom=None, top=None):
-        PUBSUB.sendMessage(_PHASE, phase='Configuring FPGA for writing '
+        pub.sendMessage(_PHASE, phase='Configuring FPGA for writing '
                                          'configuration flash')
         self.configure(self.cfg_flash_bitstream, silent=True)
-        PUBSUB.sendMessage(_PHASE, phase='Erasing configuration flash')
+        pub.sendMessage(_PHASE, phase='Erasing configuration flash')
         self.cfg_flash = self.create_cfg_flash()
         self.cfg_flash.erase()
-        PUBSUB.sendMessage(_PHASE, phase='Writing configuration flash')
+        pub.sendMessage(_PHASE, phase='Writing configuration flash')
         self.cfg_flash.write(hexfile, bottom, top)
-        PUBSUB.sendMessage(_PHASE, phase='Configuration flash write done')
+        pub.sendMessage(_PHASE, phase='Configuration flash write done')
         
     def erase_cfg_flash(self, bottom, top):
-        PUBSUB.sendMessage(_PHASE, phase='Configuring FPGA for erasing '
+        pub.sendMessage(_PHASE, phase='Configuring FPGA for erasing '
                                          'configuration flash')
         self.configure(self.cfg_flash_bitstream, silent=True)
-        PUBSUB.sendMessage(_PHASE, phase='Erasing configuration flash')
+        pub.sendMessage(_PHASE, phase='Erasing configuration flash')
         self.cfg_flash = self.create_cfg_flash()
         self.cfg_flash.erase()
-        PUBSUB.sendMessage(_PHASE, phase='Configuration flash erase done')
+        pub.sendMessage(_PHASE, phase='Configuration flash erase done')
         
     def read_sdram(self, bottom, top):
-        PUBSUB.sendMessage(_PHASE, phase='Configuring FPGA for reading SDRAM')
+        pub.sendMessage(_PHASE, phase='Configuring FPGA for reading SDRAM')
         self.configure(self.sdram_bitstream, silent=True)
-        PUBSUB.sendMessage(_PHASE, phase='Reading SDRAM')
+        pub.sendMessage(_PHASE, phase='Reading SDRAM')
         self.sdram = self.create_sdram()
         hex_data = self.sdram.read(bottom, top)
-        PUBSUB.sendMessage(_PHASE, phase='SDRAM read done')
+        pub.sendMessage(_PHASE, phase='SDRAM read done')
         return hex_data
     
     def write_sdram(self, hexfile, bottom=None, top=None):
-        PUBSUB.sendMessage(_PHASE, phase='Configuring FPGA for writing SDRAM')
+        pub.sendMessage(_PHASE, phase='Configuring FPGA for writing SDRAM')
         self.configure(self.sdram_bitstream, silent=True)
-        PUBSUB.sendMessage(_PHASE, phase='Writing SDRAM')
+        pub.sendMessage(_PHASE, phase='Writing SDRAM')
         self.sdram = self.create_sdram()
         self.sdram.write(hexfile, bottom, top)
-        PUBSUB.sendMessage(_PHASE, phase='SDRAM write done')
+        pub.sendMessage(_PHASE, phase='SDRAM write done')
         
     def erase_sdram(self, bottom, top):
-        PUBSUB.sendMessage(_PHASE, phase='Configuring FPGA for erasing SDRAM')
+        pub.sendMessage(_PHASE, phase='Configuring FPGA for erasing SDRAM')
         self.configure(self.sdram_bitstream, silent=True)
-        PUBSUB.sendMessage(_PHASE, phase='Erasing SDRAM')
+        pub.sendMessage(_PHASE, phase='Erasing SDRAM')
         self.sdram = self.create_sdram()
         self.sdram.erase(bottom, top)
-        PUBSUB.sendMessage(_PHASE, phase='SDRAM erase done')
+        pub.sendMessage(_PHASE, phase='SDRAM erase done')
         return
 
 

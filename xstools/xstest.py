@@ -49,37 +49,39 @@ SUCCESS = 0
 FAILURE = 1
 
 
+def xstest_parser(num_boards):
+    p = ArgumentParser(description='Run self-test on an XESS board.')
+
+    p.add_argument(
+        '-u', '--usb',
+        type=int,
+        default=0,
+        choices=range(num_boards),
+        help=('The USB port number for the XESS board. If you only have one '
+              'board, then use 0.'))
+    p.add_argument(
+        '-b', '--board',
+        type=str.lower,
+        default='none',
+        choices=['xula-50', 'xula-200', 'xula2-lx9', 'xula2-lx25'])
+    p.add_argument(
+        '-m', '--multiple',
+        action='store_const',
+        const=True,
+        default=False,
+        help=
+        'Run the self-test each time a board is detected on the USB port.')
+    p.add_argument(
+        '-v', '--version',
+        action='version',
+        version='%(prog)s ' + __version__,
+        help='Print the version number of this program and exit.')
+    return p
+
+
 def xstest():
-
     try:
-        num_boards = XsUsb.get_num_xsusb()
-
-        p = ArgumentParser(description='Run self-test on an XESS board.')
-
-        p.add_argument(
-            '-u', '--usb',
-            type=int,
-            default=0,
-            choices=range(num_boards),
-            help=
-            'The USB port number for the XESS board. If you only have one board, then use 0.')
-        p.add_argument(
-            '-b', '--board',
-            type=str.lower,
-            default='none',
-            choices=['xula-50', 'xula-200', 'xula2-lx9', 'xula2-lx25'])
-        p.add_argument(
-            '-m', '--multiple',
-            action='store_const',
-            const=True,
-            default=False,
-            help=
-            'Run the self-test each time a board is detected on the USB port.')
-        p.add_argument(
-            '-v', '--version',
-            action='version',
-            version='%(prog)s ' + __version__,
-            help='Print the version number of this program and exit.')
+        p = xstest_parser(num_boards=XsUsb.get_num_xsusb())
             
         args = p.parse_args()
 
