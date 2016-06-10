@@ -82,7 +82,7 @@ def xstest_parser(num_boards):
 def xstest():
     try:
         p = xstest_parser(num_boards=XsUsb.get_num_xsusb())
-            
+
         args = p.parse_args()
 
         while True:
@@ -103,7 +103,7 @@ def xstest():
                         continue
                     else:
                         sys.exit(FAILURE)
-                print("Success:", xs_board.name, "passed diagnostic test!")
+                print('Success:', xs_board.name, 'passed diagnostic test!')
                 try:
                     winsound.MessageBeep()
                 except:
@@ -116,10 +116,9 @@ def xstest():
                 else:
                     sys.exit(SUCCESS)
             elif not args.multiple:
-                XsFatalError("No XESS Boards found!")
-
-    except SystemExit as e:
-        os._exit(SUCCESS)
+                XsFatalError('No XESS Boards found!')
+    except SystemExit:
+        os.exit(SUCCESS)
 
 
 if __name__ == '__main__':

@@ -35,14 +35,14 @@ This program was originally conceived and coded in C++ by Dave Vandenbout.
 Al Neissner re-wrote it in python. Dave then took ideas and bits of Al's
 code and integrated them into this program and the XSTOOLs classes and methods.
 """
-import sys
 import os
+import sys
 from argparse import ArgumentParser
 
+from xstools import __version__
 from xstools.xsboard import XsBoard
 from xstools.xserror import XsError, XsFatalError
 from xstools.xsusb import XsUsb
-from xstools import __version__
 
 try:
     import winsound
@@ -53,65 +53,68 @@ SUCCESS = 0
 FAILURE = 1
 
 
-def xsusbprg():
+def xsusbprg_parser(num_boards):
+    desc = 'Program a firmware hex file into the microcontroller on an XESS ' \
+           'board.'
+    p = ArgumentParser(description=desc)
 
+    p.add_argument(
+        '-f', '--filename',
+        type=str,
+        default=None,
+        metavar='FILE.HEX',
+        help='The name of the firmware hex file.')
+    p.add_argument(
+        '-u', '--usb',
+        type=int,
+        default=0,
+        choices=range(num_boards),
+        help='The USB port number for the XESS board. If you only have one '
+             'board, then use 0.')
+    p.add_argument(
+        '-b', '--board',
+        type=str.lower,
+        default='none',
+        choices=['xula-50', 'xula-200', 'xula2-lx9', 'xula2-lx25'])
+    p.add_argument(
+        '-m', '--multiple',
+        action='store_const',
+        const=True,
+        default=False,
+        help='Program multiple boards each time a board is detected on the USB '
+             'port.')
+    p.add_argument(
+        '--verify',
+        action='store_const',
+        const=True,
+        default=False,
+        help='Verify the microcontroller flash against the firmware hex file.')
+    p.add_argument(
+        '-v', '--version',
+        action='version',
+        version='%(prog)s ' + __version__,
+        help='Print the version number of this program and exit.')
+    return p
+
+
+def xsusbprg():
     try:
         num_boards = XsUsb.get_num_xsusb()
-
-        p = ArgumentParser(
-            description=
-            'Program a firmware hex file into the microcontroller on an XESS board.')
-
-        p.add_argument(
-            '-f', '--filename',
-            type=str,
-            default=None,
-            metavar='FILE.HEX',
-            help='The name of the firmware hex file.')
-        p.add_argument(
-            '-u', '--usb',
-            type=int,
-            default=0,
-            choices=range(num_boards),
-            help=
-            'The USB port number for the XESS board. If you only have one board, then use 0.')
-        p.add_argument(
-            '-b', '--board',
-            type=str.lower,
-            default='none',
-            choices=['xula-50', 'xula-200', 'xula2-lx9', 'xula2-lx25'])
-        p.add_argument(
-            '-m', '--multiple',
-            action='store_const',
-            const=True,
-            default=False,
-            help=
-            'Program multiple boards each time a board is detected on the USB port.')
-        p.add_argument(
-            '--verify',
-            action='store_const',
-            const=True,
-            default=False,
-            help=
-            'Verify the microcontroller flash against the firmware hex file.')
-        p.add_argument(
-            '-v', '--version',
-            action='version',
-            version='%(prog)s ' + __version__,
-            help='Print the version number of this program and exit.')
-            
+        p = xsusbprg_parser(num_boards=num_boards)
         args = p.parse_args()
 
-        while (True):
+        while True:
             if num_boards > 0:
                 xs_board = XsBoard.get_xsboard(args.usb, args.board)
                 try:
                     if args.verify:
-                        print('Verifying microcontroller firmware against %s.' % args.filename)
+                        msg = 'Verifying microcontroller firmware against %s.'
+                        print(msg % args.filename)
                         xs_board.verify_firmware(args.filename)
                         print('Verification passed!')
                     else:
-                        print('Programming microcontroller firmware with %s.' % args.filename)
+                        msg = 'Programming microcontroller firmware with %s.'
+                        print(msg % args.filename)
                         xs_board.update_firmware(args.filename)
                         print('Programming completed!')
                 except XsError:
@@ -137,7 +140,7 @@ def xsusbprg():
                     continue
                 else:
                     sys.exit(SUCCESS)
-                    
+
             elif not args.multiple:
                 XsFatalError("No XESS Boards found!")
 

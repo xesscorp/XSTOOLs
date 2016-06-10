@@ -242,12 +242,14 @@ class Xc3s(XilinxFpga):
         time.sleep(0.001)
 
         # Now download the bitstream.
-        self.xsjtag.load_ir_then_dr(instruction=self._CFG_IN_INSTR, data=bitstream.bits)
+        self.xsjtag.load_ir_then_dr(instruction=self._CFG_IN_INSTR,
+                                    data=bitstream.bits)
 
         # Bitstream downloaded, now startup the FPGA.
         self.xsjtag.load_ir_then_dr(instruction=self._JSTART_INSTR)
         self.xsjtag.runtest(num_tcks=12)
-        self.xsjtag.load_ir_then_dr(instruction=self._JSTART_INSTR, data=XsBitArray(22))
+        self.xsjtag.load_ir_then_dr(instruction=self._JSTART_INSTR,
+                                    data=XsBitArray(22))
         self.xsjtag.reset_tap()
 
     def get_status(self):

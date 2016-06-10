@@ -112,10 +112,8 @@ class XilinxBitstream:
         
     def to_intel_hex(self):
         """Generate Intel hex object from bitstream."""
-        
-        PREAMBLE_LENGTH = 16
-        preamble = XsBitArray(bytes=b'\xff'*PREAMBLE_LENGTH,
-                              length=8*PREAMBLE_LENGTH)
+        preamble_len = 16  # bytes
+        preamble = XsBitArray(bytes=b'\xff'*preamble_len, length=8*preamble_len)
         bits = preamble + self.bits[:]
         bits.reverse()
         return bits.to_intel_hex()

@@ -58,7 +58,8 @@ class XsMemIo(XsHostIo):
         """
 
         # Setup the super-class object.
-        XsHostIo.__init__(self, xsjtag=xsjtag, xsusb_id=xsusb_id, module_id=module_id)
+        XsHostIo.__init__(self, xsjtag=xsjtag, xsusb_id=xsusb_id,
+                          module_id=module_id)
 
         # Get the number of inputs and outputs of the DUT.
         (self.address_width, self.data_width) = self._get_mem_widths()
@@ -69,10 +70,11 @@ class XsMemIo(XsHostIo):
 
     def _get_mem_widths(self):
         """Return the (address_width, data_width) of the memory."""
+        # Skip cycles between issuing command and reading back result.
+        SKIP_CYCLES = 1
 
-        SKIP_CYCLES = 1  # Skip cycles between issuing command and reading back result.
-
-        # Send the opcode and then read back the bits with the memory's address and data width.
+        # Send the opcode and then read back the bits with the memory's address
+        # and data width.
         params = self.send_rcv(payload=self._SIZE_OPCODE,
                                num_result_bits=self._SIZE_RESULT_LENGTH + SKIP_CYCLES)
         params.pop_field(SKIP_CYCLES)  # Remove the skipped cycles.
@@ -89,7 +91,8 @@ class XsMemIo(XsHostIo):
         
         begin_address = memory address of first read.
         num_of_reads = number of memory reads to perform.
-        return_type = instance of the type of data to return. Negative integer=signed; positive integer=unsigned.
+        return_type = instance of the type of data to return. Negative
+        integer=signed; positive integer=unsigned.
         """
 
         # Start the payload with the READ_OPCODE.
@@ -98,14 +101,17 @@ class XsMemIo(XsHostIo):
         # Append the memory address to the payload.
         payload += XsBitArray(uint=begin_address, length=self.address_width)
 
-        # Send the opcode and beginning address and then read back the memory data.
-        # The number of values read back is one more than requested because the first value
-        # returned is crap since the memory isn't ready to respond.
+        # Send the opcode and beginning address and then read back the memory
+        # data. The number of values read back is one more than requested
+        # because the first value returned is crap since the memory isn't ready
+        # to respond.
         result = self.send_rcv(payload=payload,
                                num_result_bits=self.data_width * (num_of_reads + 1))
 
-        if num_of_reads == 1: # Return the result bit array if there's only a single read.
-            result.pop_field(self.data_width)  # Remove the first data value which is crap.
+        # Return the result bit array if there's only a single read.
+        if num_of_reads == 1:
+            # Remove the first data value which is crap.
+            result.pop_field(self.data_width)
             if isinstance(return_type, XsBitArray):
                 return result
             else:
@@ -113,14 +119,19 @@ class XsMemIo(XsHostIo):
                     return result.int
                 else:
                     return result.uint
-        else: # Otherwise, return a list of bit arrays with data_width bits by partitioning the result bit array.
+        # Otherwise, return a list of bit arrays with data_width bits by
+        # partitioning the result bit array.
+        else:
             w = self.data_width
             l = result.length
             if isinstance(return_type, XsBitArray):
                 # Chop the bit array into an array of smaller bit arrays.
-                # Start from the far end, skip the first data value which is crap, and then proceed to the beginning.
+                # Start from the far end, skip the first data value which is
+                # crap, and then proceed to the beginning.
                 return [result[i:i+w] for i in range(l-2*w,-w,-w)]
-            else: # Return type is not a bit array, so convert bit arrays into integers.
+            # Return type is not a bit array, so convert bit arrays into
+            # integers.
+            else:
                 try:
                     # If word width is not byte-sized, then raise exception and
                     # use the slower method.
@@ -134,15 +145,15 @@ class XsMemIo(XsHostIo):
                     alignment = '>'
                     n_words = l // w  # Number of words in the bit array.
                     fmt = '{}{}{}'.format(alignment, n_words, w_type)
-                    # Get bytes from bit array, form them into integers and reverse
-                    # their order so index [0] corresponds to lowest memory address.
-                    # (Skip first integer because it's crap.)
+                    # Get bytes from bit array, form them into integers and
+                    # reverse their order so index [0] corresponds to lowest
+                    # memory address. (Skip first integer because it's crap.)
                     return struct.unpack(fmt, result.bytes)[-2::-1]
                 except KeyError:
                     # Slower method:
-                    #     Chop the bit array into an array of smaller bit arrays.
-                    #     Start from the far end, skip the first data value 
-                    #     which is crap, and then proceed to the beginning.
+                    #   Chop the bit array into an array of smaller bit arrays.
+                    #   Start from the far end, skip the first data value
+                    #   which is crap, and then proceed to the beginning.
                     results = [result[i:i+w] for i in range(l-2*w,-w,-w)]
                     if return_type < 0 :
                         results = [d.int for d in results]
@@ -155,7 +166,8 @@ class XsMemIo(XsHostIo):
         
         begin_address = memory address of first write.
         data = list of bit arrays or integers.
-        data_type = instance of data that is stored in the data array. Negative integer=signed; positive integer=unsigned.
+        data_type = instance of data that is stored in the data array. Negative
+        integer=signed; positive integer=unsigned.
         """
 
         if data_type is None:
@@ -225,9 +237,11 @@ if __name__ == '__main__':
     ##################################################################
     """)
 
-    USB_ID = 0  # This is the USB index for the XuLA board connected to the host PC.
+    # This is the USB index for the XuLA board connected to the host PC.
+    USB_ID = 0
     RAND_ID = 1  # This is the identifier for the RNG in the FPGA.
-    rand = XsMem(USB_ID, RAND_ID)  # Create an object for reading/writing the register.
+    # Create an object for reading/writing the register.
+    rand = XsMem(USB_ID, RAND_ID)
 
     PERIOD = 2 ** rand.data_width  # Number of random numbers to read.
     rand.write(0, [0x80])

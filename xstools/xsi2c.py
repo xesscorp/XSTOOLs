@@ -68,8 +68,9 @@ _SR_IF = 0  # True when an interrupt is pending.
 class XsI2c:
     """
     This class instantiates an object that will communicate through the JTAG
-    port of the FPGA to an I2C master core found at http://opencores.org/project,i2c.
-    The I2C master can communicate with I2C slaves external to the FPGA.
+    port of the FPGA to an I2C master core found at
+    http://opencores.org/project,i2c. The I2C master can communicate with I2C
+    slaves external to the FPGA.
     """
 
     def __init__(
@@ -119,13 +120,15 @@ class XsI2c:
     def _send_i2c_address(self, op):
         """Transmit I2C slave address along with R/W operation bit."""
 
-        # The address is created by shifting the I2C address and setting the LSB with the read/write opcode.
+        # The address is created by shifting the I2C address and setting the
+        # LSB with the read/write opcode.
         address = self._i2c_address << 1 & 0xfe | op
 
         # Write the address into the transmit register.
         self._memio.write(_TXR, [address])
 
-        # Set the START condition for an I2C transfer and initiate the transmission of the I2C address.
+        # Set the START condition for an I2C transfer and initiate the
+        # transmission of the I2C address.
         self._memio.write(_CR, [1 << _CR_STA | 1 << _CR_WR])
         self._check_for_ack()
 
@@ -212,13 +215,13 @@ class XsI2c:
 
 
 if __name__ == '__main__':
-    import sys
     import random
     from bitarray import *
     from scipy import *
     from pylab import *
 
-    USB_ID = 0  # This is the USB index for the XuLA board connected to the host PC.
+    # This is the USB index for the XuLA board connected to the host PC.
+    USB_ID = 0
     I2C_ID = 0xff
     i2c = XsI2c(xsusb_id=USB_ID, module_id=I2C_ID, i2c_address=0x58)
     

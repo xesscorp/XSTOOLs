@@ -102,6 +102,14 @@ def xsload_parser(num_boards):
 
 
 def xsload():
+    up_ser_fmt = 'Success: Data in address range [{bottom},{top}] of serial ' \
+                 'flash on {board} uploaded to {file}!'
+    dn_ser_fmt = 'Success: Data in {file} downloaded to serial flash on ' \
+                 '{board}!'
+    up_ram_fmt = 'Success: Data in address range [{bottom},{top}] of RAM on ' \
+                 '{board} uploaded to {file}!'
+    dn_ram_fmt = 'Success: Data in {file} downloaded to RAM on {board}!'
+    bit_fmt = 'Success: Bitstream in {file} downloaded to FPGA on {board}!'
     try:
         num_boards = XsUsb.get_num_xsusb()
         p = xsload_parser(num_boards=num_boards)
@@ -117,14 +125,14 @@ def xsload():
                             bottom=args.upload[0],
                             top=args.upload[1])
                         hexfile_data.tofile(args.flash, format='hex')
-                        print("Success: Data in address range [{bottom},{top}] of serial flash on {board} uploaded to {file}!".format(
+                        print(up_ser_fmt.format(
                             bottom=args.upload[0],
                             top=args.upload[1],
                             board=xs_board.name,
                             file=args.flash))
                     else:
                         xs_board.write_cfg_flash(args.flash)
-                        print("Success: Data in {file} downloaded to serial flash on {board}!".format(
+                        print(dn_ser_fmt.format(
                             file=args.flash,
                             board=xs_board.name))
                 except XsError:
@@ -137,14 +145,14 @@ def xsload():
                             bottom=args.upload[0],
                             top=args.upload[1])
                         hexfile_data.tofile(args.ram, format='hex')
-                        print("Success: Data in address range [{bottom},{top}] of RAM on {board} uploaded to {file}!".format(
+                        print(up_ram_fmt.format(
                             bottom=args.upload[0],
                             top=args.upload[1],
                             board=xs_board.name,
                             file=args.ram))
                     else:
                         xs_board.write_sdram(args.ram)
-                        print("Success: Data in {file} downloaded to RAM on {board}!".format(
+                        print(dn_ram_fmt.format(
                             file=args.flash,
                             board=xs_board.name))
                 except XsError:
@@ -153,7 +161,7 @@ def xsload():
             if args.fpga:
                 try:
                     xs_board.configure(args.fpga)
-                    print("Success: Bitstream in {file} downloaded to FPGA on {board}!".format(
+                    print(bit_fmt.format(
                         file=args.fpga, 
                         board=xs_board.name))
                 except XsError:

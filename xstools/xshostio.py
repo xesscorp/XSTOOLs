@@ -46,7 +46,10 @@ class XsHostIo:
         module_id=DEFAULT_MODULE_ID,
         xsjtag=None
         ):
-        """Setup the parameters for the USB I/O link between the PC and the XESS board."""
+        """
+        Setup the parameters for the USB I/O link between the PC and the XESS
+        board.
+        """
 
         self._xsusb_id = xsusb_id
         if isinstance(module_id, int):
@@ -68,13 +71,22 @@ class XsHostIo:
         self.xsjtag.reset_tap()  # Reset TAP FSM to test-logic-reset state.
 
         # Send TAP FSM to the shift-ir state.
-        self.xsjtag.go_thru_tap_states('Run-Test/Idle', 'Select-DR-Scan', 'Select-IR-Scan', 'Capture-IR', 'Shift-IR')
+        self.xsjtag.go_thru_tap_states('Run-Test/Idle',
+                                       'Select-DR-Scan',
+                                       'Select-IR-Scan',
+                                       'Capture-IR',
+                                       'Shift-IR')
 
-        # Now enter the USER1 JTAG instruction into the IR and go to the exit1-ir state.
+        # Now enter the USER1 JTAG instruction into the IR and go to the
+        # exit1-ir state.
         self.xsjtag.shift_tdi(tdi=self.user_instr, do_exit_shift=True)
 
-        # USER instruction is now active, so transfer to the shift-dr state where data transfers will occur.
-        self.xsjtag.go_thru_tap_states('Update-IR', 'Select-DR-Scan', 'Capture-DR', 'Shift-DR')
+        # USER instruction is now active, so transfer to the shift-dr state
+        # where data transfers will occur.
+        self.xsjtag.go_thru_tap_states('Update-IR',
+                                       'Select-DR-Scan',
+                                       'Capture-DR',
+                                       'Shift-DR')
         self.xsjtag.flush()
 
     def reset(self):
@@ -83,12 +95,17 @@ class XsHostIo:
         self.initialize()
 
     def send_rcv(self, payload, num_result_bits):
-        """Send a bit array payload and then return a results bit array with num_result_bits."""
+        """
+        Send a bit array payload and then return a results bit array with
+        num_result_bits.
+        """
+        fmt = 'Send {0} bits. Receive {1} bits'
+        logging.debug(fmt.format(payload.len, num_result_bits))
 
-        logging.debug('Send ' + str(payload.len) + ' bits. Receive ' + str(num_result_bits) + ' bits.')
-
-        # Create the TDI bit array by concatenating the module ID, number of bits in the payload, and the payload bits.
-        tdi_bits = self.module_id + XsBitArray(uint=payload.len + num_result_bits, length=32) + payload
+        # Create the TDI bit array by concatenating the module ID, number of
+        # bits in the payload, and the payload bits.
+        uint = payload.len + num_result_bits
+        tdi_bits = self.module_id + XsBitArray(uint=uint, length=32) + payload
 
         logging.debug('Module ID = ' + repr(self.module_id))
         logging.debug('payload = ' + repr(payload))
@@ -104,7 +121,6 @@ class XsHostIo:
 
 
 if __name__ == '__main__':
-
     logging.root.setLevel(logging.DEBUG)
 
     USB_ID = 0  # USB port index for the XuLA board connected to the host PC.

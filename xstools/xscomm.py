@@ -80,20 +80,24 @@ class XsComm:
         return reduce(lambda s, d: s*256+d.unsigned, reversed(self._memio.read(self._UP_USED_ADDR, 4)), 0)
 
     def get_levels(self):
-        """Get the amount of space available in the FPGA to receive data and the amount of data
-        waiting in the FPGA to be transmitted."""
-        print("available = %d  waiting = %d" % (self.get_send_buffer_space(), self.get_recv_buffer_length()))
+        """
+        Get the amount of space available in the FPGA to receive data and the
+        amount of data waiting in the FPGA to be transmitted."""
+        print("available = %d  waiting = %d" % (self.get_send_buffer_space(),
+                                                self.get_recv_buffer_length()))
         
     def send_break(self):
         """Send a break command."""
         self._memio.write(self._BREAK_ADDR, [0])
 
     def send(self, buffer, wait=True):
-        """Send buffer contents through the comm channel to the FPGA.
+        """
+        Send buffer contents through the comm channel to the FPGA.
 
         Keyword arguments:
         buffer -- List of words or a single integer to send to the FPGA.
-        wait -- If true, wait until space is available in the FPGA to accept the buffer (default True).
+        wait -- If true, wait until space is available in the FPGA to accept the
+        buffer (default True).
         """
 
         if isinstance(buffer, int):
@@ -114,13 +118,17 @@ class XsComm:
             space_avail = self.get_send_buffer_space()
 
     def receive(self, num_words=None, wait=True, drain=True, always_list=False):
-        """Return a buffer of data received from the FPGA through the comm channel.
+        """
+        Return a buffer of data received from the FPGA through the comm channel.
 
         Keyword arguments:
         num_words -- The number of words to get from the FPGA (default None).
-        wait -- If true, wait until the number of words requested is available (default True).
-        drain -- If true and num_words==None, then take everything currently stored in the FPGA transmit buffer (default True).
-        always_list -- If true, always return a list even if there is only one word in it.
+        wait -- If true, wait until the number of words requested is available
+        (default True).
+        drain -- If true and num_words==None, then take everything currently
+        stored in the FPGA transmit buffer (default True).
+        always_list -- If true, always return a list even if there is only one
+        word in it.
         """
 
         num_words_avail = self.get_recv_buffer_length()
@@ -136,7 +144,9 @@ class XsComm:
             num_words_needed = num_words
             while num_words_needed > 0:
                 if num_words_avail is not 0:
-                    buffer.extend(self._memio.read(self._FIFO_ADDR, min(num_words_needed, num_words_avail)))
+                    buffer.extend(self._memio.read(self._FIFO_ADDR,
+                                                   min(num_words_needed,
+                                                       num_words_avail)))
                     num_words_needed = num_words - len(buffer)
                 num_words_avail = self.get_recv_buffer_length()
         
@@ -147,9 +157,11 @@ class XsComm:
 if __name__ == '__main__':
     # logging.root.setLevel(logging.DEBUG)
 
-    print('\n', '='*70, "\nThe FPGA should be freshly loaded before running this test script!\n", '='*70, '\n')
+    msg = 'The FPGA should be freshly loaded before running this test script!'
+    print('\n', '='*70, '\n', msg, '\n', '='*70, '\n')
 
-    USB_ID = 0  # This is the USB index for the XuLA board connected to the host PC.
+    # This is the USB index for the XuLA board connected to the host PC.
+    USB_ID = 0
     comm = XsComm(xsusb_id=USB_ID)
     print(comm._memio._get_mem_widths())
     
