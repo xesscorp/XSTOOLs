@@ -1,10 +1,12 @@
+# pip install --user --trusted-host wxpython.org -r requirements.txt
 ###### Requirements without Version Specifiers ######
-http://wxpython.org/Phoenix/snapshot-builds/; sys_platform == 'darwin', python_version > '3.4'
+# TODO: replicate pip command
+# pip install --user --trusted-host wxpython.org --pre -f http://wxpython.org/Phoenix/snapshot-builds/ wxPython_Phoenix
+http://wxpython.org/Phoenix/snapshot-builds/wxPython_Phoenix-3.0.3.dev2076+9cbca77-cp27-cp27m-macosx_10_6_intel.whl; sys_platform == 'darwin' and python_version < '3.0.0'
 ###### Requirements with Version Specifiers ######
 bitstring==3.1.5
-# futures==0.15.2 # Consider using to cover Python2
+future==0.15.2; python_version < '3.0.0'
 intelhex==2.1
 pypubsub==3.3.0
 pyserial==2.7
 pyusb==1.0.0
-# wheel==0.23.0

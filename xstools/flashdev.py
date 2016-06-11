@@ -22,6 +22,8 @@
 """
 Classes for devices containing flash memory.
 """
+# Python2 compatibility through future package
+from builtins import super
 
 from intelhex import IntelHex
 
