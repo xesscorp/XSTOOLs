@@ -41,7 +41,6 @@ class Pic18f14k50(FlashDevice):
     _READ_BLK_SZ = 16
 
     def __init__(self, xsusb=None):
-        super().__init__()
         self._xsusb = xsusb
         self._msg = 'Incorrect command echo in %s.'
 

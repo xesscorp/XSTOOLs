@@ -20,8 +20,12 @@
 #   (c)2012 - X Engineering Software Systems Corp. (www.xess.com)
 # **********************************************************************
 
+# Python2 compatibility through future package
+from builtins import super
+
 import os
 from threading import Thread
+
 
 import wx
 import wx.html
