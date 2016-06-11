@@ -3,10 +3,17 @@ import shutil
 import subprocess
 import sys
 
-import setuptools
-from setuptools import setup
-
 import xstools
+
+if sys.version_info < (2, 6) or (3, 0) <= sys.version_info < (3, 4):
+    raise RuntimeError("Python version 2.6, 2.7 or >= 3.4 required.")
+
+# Prefer setuptools over distutils
+try:
+    import setuptools
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
 
 with open('README.rst') as readme_file:
     readme = readme_file.read()
@@ -53,13 +60,15 @@ setup(
     # Don't set include_package_data to True! Then it only includes data files under version
     # control.
     #    include_package_data=True,
-    package_data={'xstools': ['xula*/*.bit', 'xula*/*.hex', '*.rules', 'icons/*.png']},
+    package_data={
+        'xstools': ['xula*/*.bit', 'xula*/*.hex', '*.rules', 'icons/*.png']
+    },
     install_requires=requirements,
     license='GPLv2+',
     zip_safe=False,
-    keywords='xstools',
+    keywords='xstools FPGA',
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',  # 'Development Status :: 3 - Alpha',
+        'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)',
         'Natural Language :: English',
