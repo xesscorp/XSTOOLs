@@ -9,6 +9,11 @@ class TestXSBitArray(unittest.TestCase):
         self.assertEqual(arr.head(), XsBitArray('0b1'))
         self.assertNotEqual(arr.head(), XsBitArray('0b0'))
 
+    def test_tail(self):
+        arr = XsBitArray('0b01')
+        self.assertEqual(arr.tail(), XsBitArray('0b0'))
+        self.assertNotEqual(arr.tail(), XsBitArray('0b1'))
+
     def test_to_usb(self):
         a_arr = XsBitArray('0b00010')
         b_arr = XsBitArray('0b1111001')
