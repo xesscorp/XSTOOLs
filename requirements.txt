@@ -2,7 +2,8 @@
 ###### Requirements without Version Specifiers ######
 # TODO: replicate pip command
 # pip install --user --trusted-host wxpython.org --pre -f http://wxpython.org/Phoenix/snapshot-builds/ wxPython_Phoenix
-http://wxpython.org/Phoenix/snapshot-builds/wxPython_Phoenix-3.0.3.dev2076+9cbca77-cp27-cp27m-macosx_10_6_intel.whl; sys_platform == 'darwin' and python_version < '3.0.0'
+http://wxpython.org/Phoenix/snapshot-builds/wxPython_Phoenix-3.0.3.dev2076+9cbca77-cp27-cp27m-macosx_10_6_intel.whl; sys_platform == 'darwin' and python_version == '2.7.0'
+http://wxpython.org/Phoenix/snapshot-builds/wxPython_Phoenix-3.0.3.dev2076+9cbca77-cp35-cp35m-macosx_10_6_intel.whl; sys_platform == 'darwin' and python_version == '3.5'
 ###### Requirements with Version Specifiers ######
 bitstring==3.1.5
 future==0.15.2; python_version < '3.0.0'
