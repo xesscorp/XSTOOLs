@@ -118,7 +118,7 @@ def xstest():
             elif not args.multiple:
                 XsFatalError('No XESS Boards found!')
     except SystemExit:
-        os.exit(SUCCESS)
+        sys.exit(SUCCESS)
 
 
 if __name__ == '__main__':
