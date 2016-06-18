@@ -21,3 +21,32 @@ Features
 * Command-line tools for configuring the FPGA, uploading/downloading the
   serial flash and SDRAM, and running diagnostics on the board.
 * GUI tool that performs the same functions as the command-line tools.
+
+Installation
+--------------------------------
+
+XSTOOLs utilities use [PyUSB](https://walac.github.io/pyusb/). PyUSB relies on a
+native system library for USB access. Instructions below will cover tested
+libraries.
+
+Install for a single user with the following commands:
+
+* Windows:
+```
+pip install --user -r requirements.txt
+python setup.py install --home=$HOME
+```
+
+* Mac OS X: [HomeBrew](http://brew.sh/) is a great choice for installing system
+libraries.
+```
+brew install libusb
+pip install --user -r requirements.txt
+python setup.py install --home=$HOME
+```
+* Linux: You must install [wxPython Phoenix](https://github.com/wxWidgets/Phoenix/blob/master/README.rst)
+from source.
+```
+pip install --user -r requirements.txt
+python setup.py install --home=$HOME
+```
