@@ -32,21 +32,22 @@ libraries.
 Install for a single user with the following commands:
 
 * Windows:
-```
+``
 pip install --user -r requirements.txt
 python setup.py install --home=$HOME
-```
+``
 
 * Mac OS X: [HomeBrew](http://brew.sh/) is a great choice for installing system
 libraries.
-```
+``
 brew install libusb
 pip install --user -r requirements.txt
 python setup.py install --home=$HOME
-```
-* Linux: You must install [wxPython Phoenix](https://github.com/wxWidgets/Phoenix/blob/master/README.rst)
+``
+
+* Linux: You must install [[wxPython Phoenix](https://github.com/wxWidgets/Phoenix/blob/master/README.rst)]
 from source.
-```
+``
 pip install --user -r requirements.txt
 python setup.py install --home=$HOME
-```
+``
