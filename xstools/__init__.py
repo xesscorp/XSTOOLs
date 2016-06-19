@@ -6,4 +6,4 @@ install_dir = os.path.dirname(__file__)
 
 __author__ = 'XESS Corporation'
 __email__ = 'info@xess.com'
-__version__ = '0.1.31'
+__version__ = '0.1.31-python3-dev'
