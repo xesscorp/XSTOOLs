@@ -1,6 +1,8 @@
-from tkinter import messagebox, Menu, Tk, TOP, SUNKEN, W, X, BOTTOM, Image, LEFT, \
-    NW, StringVar
+from tkinter import *
+from tkinter import messagebox
 from tkinter.ttk import *
+
+from PIL import ImageTk
 
 _BLUE = '#2c4484'
 _YELLOW = '#fadd67'
@@ -30,6 +32,16 @@ def port_frame(master):
     return frame
 
 
+def fpga_frame(master):
+    frame = Frame(master=master)
+    photo = ImageTk.PhotoImage(file='icons/fpga.png')
+    photo_label = Label(master=frame, image=photo)
+    photo_label.config()
+    photo_label.image = photo
+    photo_label.pack(side=TOP)
+    return frame
+
+
 if __name__ == '__main__':
     root = Tk()
 
@@ -46,7 +58,7 @@ if __name__ == '__main__':
 
     tab_texts = [
         ('Ports', port_frame),
-        ('FPGA', None),  # {'image': ImageTk.PhotoImage(Image.open('icons/fpga.png'))}),
+        ('FPGA', fpga_frame),
         ('SDRAM', None),
         ('Flash', None),
         ('Test', None),
