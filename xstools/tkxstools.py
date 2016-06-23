@@ -4,6 +4,8 @@ from tkinter.ttk import *
 
 from PIL import ImageTk
 
+from xstools import xsboard
+
 _BLUE = '#2c4484'
 _YELLOW = '#fadd67'
 _GOLDEN_YELLOW = '#c09853'
@@ -11,6 +13,13 @@ _GOLDEN_YELLOW = '#c09853'
 
 def do_nothing():
     print('do nothing called')
+
+
+def on_blink():
+    # TODO: Avoid exception if nothing connected
+    board = xsboard.XsBoard.get_xsboard(xsusb_id=0, xsboard_name='xula2-lx25')
+    print(board)
+    print(board.get_board_info())
 
 
 def about_dialog():
@@ -27,7 +36,7 @@ def port_frame(master):
     var.set(usb0)
     port_optmenu = OptionMenu(frame, var, usb0)
     port_optmenu.pack(side=LEFT)
-    blink_button = Button(master=frame, text='Blink', command=do_nothing)
+    blink_button = Button(master=frame, text='Blink', command=on_blink)
     blink_button.pack(side=LEFT)
     return frame
 
@@ -42,19 +51,20 @@ def fpga_frame(master):
     return frame
 
 
-if __name__ == '__main__':
-    root = Tk()
+def application(master):
+    master.title('XESS Board Tools')
 
-    root.title('XESS Board Tools')
-
-    menu = Menu(master=root)
-    root.config(menu=menu)
+    menu = Menu(master=master)
+    master.config(menu=menu)
 
     children = menu.children
 
     sub_menu = Menu()
     menu.add_cascade(label='XSTools', menu=sub_menu)
     sub_menu.add_command(label='About', command=about_dialog)
+
+    # TODO: Write coroutine (generator) to check for boards while maintaining
+    # GUI responsiveness
 
     tab_texts = [
         ('Ports', port_frame),
@@ -66,18 +76,21 @@ if __name__ == '__main__':
         ('uC', None),
     ]
 
-    nb = Notebook(master=root, width=100, height=100)  # , activefg=_YELLOW
+    nb = Notebook(master=master, width=100, height=100)  # , activefg=_YELLOW
     for tab_text, fn in tab_texts:
         if fn is None:
-            tab = Frame(master=root)
+            tab = Frame(master=master)
         else:
-            tab = fn(master=root)
+            tab = fn(master=master)
         nb.add(tab, text=tab_text)
     nb.pack(side=TOP)
 
     status_kwargs = dict(relief=SUNKEN, anchor=W)  # bg=_BLUE, bd=1, fg='white',
     txt = 'Port: USB0 Board: XuLA2-LX25'
-    status = Label(master=root, text=txt, **status_kwargs)
+    status = Label(master=master, text=txt, **status_kwargs)
     status.pack(side=BOTTOM, fill=X)
 
+if __name__ == '__main__':
+    root = Tk()
+    application(master=root)
     root.mainloop()
