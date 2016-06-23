@@ -80,10 +80,11 @@ class XsMemIo(XsHostIo):
         params.pop_field(SKIP_CYCLES)  # Remove the skipped cycles.
 
         # The address width is in the first half of the bit array.
-        address_width = params.pop_field(self._SIZE_RESULT_LENGTH / 2).unsigned
+        half_len = self._SIZE_RESULT_LENGTH // 2  # Python 2 and 3
+        address_width = params.pop_field(half_len).unsigned
 
         # The data width is in the last half of the bit array.
-        data_width = params.pop_field(self._SIZE_RESULT_LENGTH / 2).unsigned
+        data_width = params.pop_field(half_len).unsigned
         return address_width, data_width
 
     def read(self, begin_address, num_of_reads=1, return_type=XsBitArray()):
@@ -128,7 +129,7 @@ class XsMemIo(XsHostIo):
                 # Chop the bit array into an array of smaller bit arrays.
                 # Start from the far end, skip the first data value which is
                 # crap, and then proceed to the beginning.
-                return [result[i:i+w] for i in range(l-2*w,-w,-w)]
+                return [result[i:i+w] for i in range(l-2*w, -w, -w)]
             # Return type is not a bit array, so convert bit arrays into
             # integers.
             else:
@@ -139,7 +140,7 @@ class XsMemIo(XsHostIo):
                         raise KeyError
                     # If word width is not 1, 2, 4 or 8 bytes wide, then an
                     # exception occurs and the slower method is used.
-                    w_type = {1:'B', 2:'H', 4:'I', 8:'Q'}[w // 8]
+                    w_type = {1: 'B', 2: 'H', 4: 'I', 8: 'Q'}[w // 8]
                     if return_type < 0:
                         w_type = str.lower(w_type)
                     alignment = '>'
@@ -154,8 +155,8 @@ class XsMemIo(XsHostIo):
                     #   Chop the bit array into an array of smaller bit arrays.
                     #   Start from the far end, skip the first data value
                     #   which is crap, and then proceed to the beginning.
-                    results = [result[i:i+w] for i in range(l-2*w,-w,-w)]
-                    if return_type < 0 :
+                    results = [result[i:i+w] for i in range(l-2*w, -w, -w)]
+                    if return_type < 0:
                         results = [d.int for d in results]
                     else:
                         results = [d.uint for d in results]
