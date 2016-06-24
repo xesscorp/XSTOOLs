@@ -975,13 +975,13 @@ class GxsMicrocontrollerPanel(wx.Panel):
 
         self.SetSizer(hsizer)
 
-    def handle_download_button(self, dummy):
+    def handle_download_button(self, _):
         if self._dnld_file_picker.GetPath() and hasattr(ACTIVE_BOARD, 'micro'):
             self._dnld_button.Enable()
         else:
             self._dnld_button.Disable()
 
-    def on_download(self, event):
+    def on_download(self, _):
         confirm_dlg = wx.MessageDialog(parent=self,
                                        caption="WARNING!",
                                        message="""WARNING!
@@ -1067,13 +1067,13 @@ class GxsBoardTestPanel(wx.Panel):
 
         self.SetSizer(vsizer)
 
-    def handle_test_button(self, dummy):
+    def handle_test_button(self, _):
         if hasattr(ACTIVE_BOARD, 'fpga'):
             self._test_button.Enable()
         else:
             self._test_button.Disable()
 
-    def on_test(self, event):
+    def on_test(self, _):
         pub.subscribe(self.cleanup, "Test.Cleanup")
         self._test_progress = GxsProgressDialog(title="Run Board Diagnostic",
                                                 parent=self)
@@ -1148,7 +1148,7 @@ class GxsBoardFlagsPanel(wx.Panel):
 
         self.SetSizer(hsizer)
 
-    def handle_aux_jtag_flag(self, dummy):
+    def handle_aux_jtag_flag(self, _):
         reconnect()
         if hasattr(ACTIVE_BOARD, 'micro'):
             self._aux_jtag_flag.Enable()
@@ -1158,7 +1158,7 @@ class GxsBoardFlagsPanel(wx.Panel):
             self._aux_jtag_flag.SetValue(False)
         disconnect()
 
-    def handle_flash_flag(self, dummy):
+    def handle_flash_flag(self, _):
         reconnect()
         if hasattr(ACTIVE_BOARD, 'micro'):
             self._flash_flag.Enable()
@@ -1168,14 +1168,14 @@ class GxsBoardFlagsPanel(wx.Panel):
             self._flash_flag.SetValue(False)
         disconnect()
 
-    def on_aux_jtag(self, event):
+    def on_aux_jtag(self, _):
         reconnect()
         self._aux_jtag_flag.SetValue(ACTIVE_BOARD.toggle_aux_jtag_flag())
         disconnect()
-        pub.sendMessage("Port.Check",
-                        force_check=True)  # Because port will change if JTAG feature changes.
+        # Because port will change if JTAG feature changes.
+        pub.sendMessage('Port.Check', force_check=True)
 
-    def on_flash(self, event):
+    def on_flash(self, _):
         reconnect()
         self._flash_flag.SetValue(ACTIVE_BOARD.toggle_flash_flag())
         disconnect()

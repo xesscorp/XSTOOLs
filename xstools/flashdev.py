@@ -42,17 +42,19 @@ class FlashDevice:
         pass
         
     def _floor_blk_addr(self, addr, blk_sz):
-        return addr & ((1<<32) - blk_sz)
+        return addr & ((1 << 32) - blk_sz)
         
     def _ceil_blk_addr(self, addr, blk_sz):
         return ((addr + blk_sz - 1) // blk_sz) * blk_sz
         
     def _set_blk_bounds(self, bottom, top, blk_sz):
-        bottom = self._START_ADDR if (bottom == None or bottom < self._START_ADDR) else self._floor_blk_addr(bottom, blk_sz)
-        top = self._END_ADDR if (top == None or top >= self._END_ADDR) else self._ceil_blk_addr(top, blk_sz)
+        use_start_addr = bottom is None or bottom < self._START_ADDR
+        bottom = self._START_ADDR if use_start_addr else self._floor_blk_addr(bottom, blk_sz)
+        use_end_addr = top is None or top >= self._END_ADDR
+        top = self._END_ADDR if use_end_addr else self._ceil_blk_addr(top, blk_sz)
         if bottom > top:
             raise XsMinorError('Bottom address is greater than the top address.')
-        return (bottom, top)
+        return bottom, top
 
     def erase(self, bottom=None, top=None):
         """Erase a section of the flash."""
@@ -65,36 +67,39 @@ class FlashDevice:
         """Download a hexfile into a section of the flash.
         THE FLASH MUST ALREADY BE ERASED FOR THIS TO WORK CORRECTLY!
         """
-
-        # If the argument is not already a hex data object, then it must be a file name, so read the hex data from it.
+        # If the argument is not already a hex data object, then it must be a
+        # file name, so read the hex data from it.
         if not isinstance(hexfile, IntelHex):
             try:
                 hexfile_data = IntelHex(hexfile)
                 hexfile = hexfile_data
             except:
-                # OK, didn't read as an Intel hex file, so try reading it as a Xilinx bitstream file.
+                # OK, didn't read as an Intel hex file, so try reading it as a
+                # Xilinx bitstream file.
                 try:
                     bitstream_data = XilinxBitstream(hexfile)
                     hexfile = bitstream_data.to_intel_hex()
                 except:
                     # Error: neither an Intel hex or Xilinx bitstream file.
-                    raise XsMajorError('Unable to convert file %s for writing to %s flash.'
-                                    % (hexfile, self.device_name))
+                    fmt = 'Unable to convert file %s for writing to %s flash.'
+                    raise XsMajorError(fmt % (hexfile, self.device_name))
                                     
-        if bottom == None:
+        if bottom is None:
             bottom = hexfile.minaddr()
-        if top == None:
+        if top is None:
             top = hexfile.maxaddr()
         # hex data must be empty if min and/or max address is undefined.
-        if bottom == None or top == None:
-            bottom, top = (0,0)
+        if bottom is None or top is None:
+            bottom, top = (0, 0)
 
         (bottom, top) = self._set_blk_bounds(bottom, top, self._WRITE_BLK_SZ)
         for addr in range(bottom, top, self._WRITE_BLK_SZ):
-            # The tobinarray() method fills unused array locations with 0xFF so the flash at those
-            # addresses will stay unprogrammed.
-            data_blk = bytearray(hexfile.tobinarray(start=addr, size=self._WRITE_BLK_SZ))
-            # Don't write data blocks that only contain the value 0xFF (erased value of flash).
+            # The tobinarray() method fills unused array locations with 0xFF so
+            # the flash at those addresses will stay unprogrammed.
+            data_blk = bytearray(hexfile.tobinarray(start=addr,
+                                                    size=self._WRITE_BLK_SZ))
+            # Don't write data blocks that only contain the value 0xFF (erased
+            # value of flash).
             if data_blk.count(chr(0xff)) != self._WRITE_BLK_SZ:
                 self.write_blk(addr, data_blk)
 
@@ -111,8 +116,8 @@ class FlashDevice:
 
     def verify(self, hexfile, bottom=None, top=None):
         """Verify the program in the flash matches the hex file."""
-
-        # If the argument is not already a hex data object, then it must be a file name, so read the hex data from it.
+        # If the argument is not already a hex data object, then it must be a
+        # file name, so read the hex data from it.
         if not isinstance(hexfile, IntelHex):
             try:
                 hexfile_data = IntelHex(hexfile)
