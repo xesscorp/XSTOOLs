@@ -122,6 +122,11 @@ class XilinxBitstream:
         bits.reverse()
         return bits.to_intel_hex()
 
+    def __str__(self):
+        keys = ['device_type', 'design_name', 'compile_date', 'compile_time']
+        members = [(k, self.__dict__[k]) for k in keys]
+        return '{}: {}'.format(self.__class__, members)
+
 
 if __name__ == '__main__':
     logging.root.setLevel(logging.DEBUG)
