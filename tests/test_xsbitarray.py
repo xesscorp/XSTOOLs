@@ -23,5 +23,7 @@ class TestXSBitArray(unittest.TestCase):
 
     def test_to_intel_hex(self):
         arr = XsBitArray('0b01')
-        # TODO: What should this output?
         hex_arr = arr.to_intel_hex()
+        binstr = hex_arr.tobinstr()
+        # TODO: What should this output?
+        self.assertEqual(binstr, b'@')
