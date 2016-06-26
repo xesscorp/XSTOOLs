@@ -31,5 +31,4 @@ class ExampleTest(unittest.TestCase):
             hex_fp = b.firmware
             ih = IntelHex(hex_fp)
             self.assertEqual(ih.minaddr(), 2048)
-            # Python 2: 3145741; Python 3: 314571 ???
-            self.assertEqual(ih.maxaddr(), 314571)
+            self.assertEqual(ih.maxaddr(), 3145741)
