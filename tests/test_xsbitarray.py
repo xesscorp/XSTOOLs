@@ -20,3 +20,8 @@ class TestXSBitArray(unittest.TestCase):
         c_arr = a_arr + b_arr
         self.assertEqual(c_arr, XsBitArray('0xf22'))
         self.assertEqual(c_arr.to_usb(), b'"\x0f')
+
+    def test_to_intel_hex(self):
+        arr = XsBitArray('0b01')
+        # TODO: What should this output?
+        hex_arr = arr.to_intel_hex()

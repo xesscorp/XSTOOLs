@@ -149,7 +149,7 @@ class XsBitArray(BitArray):
     def to_intel_hex(self):
         """Create an IntelHex object from a bitstring."""
         ih = IntelHex()
-        ih.frombytes([ord(b) for b in self.tobytes()])
+        ih.frombytes(self.tobytes())
         return ih
 
     def __getattr__(self, name):

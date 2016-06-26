@@ -100,7 +100,7 @@ class FlashDevice:
                                                     size=self._WRITE_BLK_SZ))
             # Don't write data blocks that only contain the value 0xFF (erased
             # value of flash).
-            if data_blk.count(chr(0xff)) != self._WRITE_BLK_SZ:
+            if data_blk.count(b'\xff') != self._WRITE_BLK_SZ:
                 self.write_blk(addr, data_blk)
 
     def read(self, bottom=None, top=None):
@@ -123,27 +123,34 @@ class FlashDevice:
                 hexfile_data = IntelHex(hexfile)
                 hexfile = hexfile_data
             except:
-                raise XsMajorError('Unable to open hex file %s for verifying %s flash.'
-                                    % (hexfile, self.device_name))
+                msg = 'Unable to open hex file %s for verifying %s flash.'
+                raise XsMajorError(msg % (hexfile, self.device_name))
 
         (bottom, top) = self._set_blk_bounds(bottom, top, self._WRITE_BLK_SZ)
         flash = self.read(bottom, top)
-        errors = [(a, flash[a], hexfile[a]) for a in
-                  sorted(hexfile.todict().keys()) if flash[a]
-                  != hexfile[a] and bottom <= a < top]
-        if len(errors) > 0:
-            raise XsMajorError('%s flash != hex file at %d locations starting at address 0x%04x (0x%02x != 0x%02x)'
-                                % (self.device_name, len(errors), errors[0][0], errors[0][1], errors[0][2]))
+        # Organize errors, if any
+        errors = []
+        for a in sorted(hexfile.todict().keys()):
+            if flash[a] != hexfile[a] and bottom <= a < top:
+                continue
+            errors.append((a, flash[a], hexfile[a]))
+        if errors:
+            msg_fmt = '%s flash != hex file at %d locations starting at ' \
+                      'address 0x%04x (0x%02x != 0x%02x)'
+            msg = msg_fmt % (self.device_name, len(errors), errors[0][0],
+                             errors[0][1], errors[0][2])
+            raise XsMajorError(msg)
 
     def program(self, hexfile, bottom=None, top=None):
-        """Erase, write and verify the flash with the contents of the hex file."""
-
+        """
+        Erase, write and verify the flash with the contents of the hex file.
+        """
         self.erase(bottom, top)
         self.write(hexfile, bottom, top)
         self.verify(hexfile, bottom, top)
 
-        
-_MODULE_ID = 0xf0  # Default module ID for JTAG interface to serial configuration flash.
+# Default module ID for JTAG interface to serial configuration flash.
+_MODULE_ID = 0xf0
 
 
 class W25X(FlashDevice):
@@ -156,7 +163,8 @@ class W25X(FlashDevice):
         0x3012: {'size': 2**21, 'name': '20'},
         0x3013: {'size': 2**22, 'name': '40'},
         0x3014: {'size': 2**23, 'name': '80'},
-        0x4014: {'size': 2**23, 'name': '80'},  # This is actually for a W25Q80 serial flash.
+        # This is actually for a W25Q80 serial flash.
+        0x4014: {'size': 2**23, 'name': '80'},
         }
 
     _START_ADDR = 0x00000
@@ -172,12 +180,13 @@ class W25X(FlashDevice):
     _PAGE_PROGRAM_CMD = 0x02
     _FAST_READ_CMD = 0x0b
 
-    def __init__(self, xsusb_id=DEFAULT_XSUSB_ID, module_id=DEFAULT_MODULE_ID, xsjtag=None):
+    def __init__(self, module_id=DEFAULT_MODULE_ID, xsjtag=None):
         super().__init__()
         self._spi = XsSpi(xsjtag=xsjtag, module_id=module_id)
         mfg_id, jedec_id = self.get_chip_id()
         if mfg_id != self.mfg_id:
-            raise XsMajorError('Incorrect manufacturer identifier for the W25X serial flash.')
+            msg = 'Incorrect manufacturer identifier for the W25X serial flash.'
+            raise XsMajorError(msg)
         self.chip_size = self.get_chip_size(jedec_id)
         self._END_ADDR = self.chip_size // 8
         self._ERASE_BLK_SZ = self._END_ADDR
@@ -186,11 +195,12 @@ class W25X(FlashDevice):
     def get_chip_id(self):
         self._spi.send(self._JEDEC_ID_CMD, stop=False)
         (mfg_id, jedec_id_hi, jedec_id_lo) = self._spi.receive(num_data=3, stop=True)
-        return (mfg_id.uint, (jedec_id_lo + jedec_id_hi).uint)
-        
+        return mfg_id.uint, (jedec_id_lo + jedec_id_hi).uint
+
     def get_chip_size(self, jedec_id):
-        if jedec_id not in self.chip_info :
-            raise XsMajorError('Incorrect JEDEC identifier for the W25X serial flash.')
+        if jedec_id not in self.chip_info:
+            msg = 'Incorrect JEDEC identifier for the W25X serial flash.'
+            raise XsMajorError(msg)
         return self.chip_info[jedec_id]['size']
         
     def _is_busy(self):
@@ -222,7 +232,8 @@ class W25X(FlashDevice):
         """Return the hex data stored in a section of the flash."""
 
         if bottom > top:
-            raise XsMinorError('Bottom address is greater than the top address.')
+            msg = 'Bottom address is greater than the top address.'
+            raise XsMinorError(msg)
         self._spi.send(self._FAST_READ_CMD, stop=False)
         self._spi.send(self._addr_bytes(bottom), stop=False)
         self._spi.send([0], stop=False)
@@ -232,9 +243,10 @@ class W25X(FlashDevice):
         return hex_data
         
 if __name__ == '__main__':
-    USB_ID = 0  # This is the USB index for the XuLA board connected to the host PC.
+    # This is the USB index for the XuLA board connected to the host PC.
+    USB_ID = 0
     SPI_ID = 0xf0
-    flash = W25X(xsusb_id=USB_ID, module_id=SPI_ID)
+    flash = W25X(module_id=SPI_ID)
     mfg_id, jedec_id = flash.get_chip_id()
     print('%x %x' % (mfg_id, jedec_id))
     print('%x' % flash.get_chip_size(jedec_id))
