@@ -25,5 +25,16 @@ class TestXSBitArray(unittest.TestCase):
         arr = XsBitArray('0b01')
         hex_arr = arr.to_intel_hex()
         binstr = hex_arr.tobinstr()
+        # Getting an error here in IntelHex 2.1 on Python 2
+        # Traceback (most recent call last):
+        #   File "/Users/xilinx/code/XSTOOLs/tests/test_xsbitarray.py", line 27, in test_to_intel_hex
+        #     binstr = hex_arr.tobinstr()
+        #   File "/Users/xilinx/.local/lib/python2.7/site-packages/intelhex/__init__.py", line 375, in tobinstr
+        #     return self._tobinstr_really(start, end, pad, size)
+        #   File "/Users/xilinx/.local/lib/python2.7/site-packages/intelhex/__init__.py", line 378, in _tobinstr_really
+        #     return asbytes(self._tobinarray_really(start, end, pad, size).tostring())
+        #   File "/Users/xilinx/.local/lib/python2.7/site-packages/intelhex/__init__.py", line 352, in _tobinarray_really
+        #     bin.append(self._buf.get(i, pad))
+        # TypeError: an integer is required
         # TODO: What should this output?
         self.assertEqual(binstr, b'@')

@@ -74,22 +74,22 @@ class XilinxBitstream:
                 field_length = bitfile.read(16).uint * 8
                 # Get the string but clip-off the NUL character at the end.
                 self.design_name = bitfile.read(field_length).tobytes()[:-1]
-                self.design_name = str(self.design_name, 'utf-8')
+                self.design_name = str(self.design_name)  # Python 2 and 3
             elif field_code == DEVICE_TYPE_FC:
                 field_length = bitfile.read(16).uint * 8
                 # Get the string but clip-off the NUL character at the end.
                 self.device_type = bitfile.read(field_length).tobytes()[:-1]
-                self.device_type = str(self.device_type, 'utf-8')
+                self.device_type = str(self.device_type)  # Python 2 and 3
             elif field_code == COMPILE_DATE_FC:
                 field_length = bitfile.read(16).uint * 8
                 # Get the string but clip-off the NUL character at the end.
                 self.compile_date = bitfile.read(field_length).tobytes()[:-1]
-                self.compile_date = str(self.compile_date, 'utf-8')
+                self.compile_date = str(self.compile_date)  # Python 2 and 3
             elif field_code == COMPILE_TIME_FC:
                 field_length = bitfile.read(16).uint * 8
                 # Get the string but clip-off the NUL character at the end.
                 self.compile_time = bitfile.read(field_length).tobytes()[:-1]
-                self.compile_time = str(self.compile_time, 'utf-8')
+                self.compile_time = str(self.compile_time)  # Python 2 and 3
             elif field_code == BITSTREAM_FC:
                 field_length = bitfile.read(32).uint * 8
                 self.bits = XsBitArray(bitfile.read(field_length))

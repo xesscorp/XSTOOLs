@@ -22,25 +22,20 @@
 """
 Classes for devices containing flash memory.
 """
-# Python2 compatibility through future package
-from builtins import super
-
 from intelhex import IntelHex
 
 from xstools.xilbitstr import XilinxBitstream
 from xstools.xserror import XsMinorError, XsMajorError
-from xstools.xshostio import DEFAULT_MODULE_ID, DEFAULT_XSUSB_ID
+from xstools.xshostio import DEFAULT_MODULE_ID
 from xstools.xsspi import XsSpi
 
 
 class FlashDevice:
-
     """Generic flash memory object."""
 
     def __init__(self):
-        """Initialize the serial flash."""
         pass
-        
+
     def _floor_blk_addr(self, addr, blk_sz):
         return addr & ((1 << 32) - blk_sz)
         
@@ -181,7 +176,6 @@ class W25X(FlashDevice):
     _FAST_READ_CMD = 0x0b
 
     def __init__(self, module_id=DEFAULT_MODULE_ID, xsjtag=None):
-        super().__init__()
         self._spi = XsSpi(xsjtag=xsjtag, module_id=module_id)
         mfg_id, jedec_id = self.get_chip_id()
         if mfg_id != self.mfg_id:
