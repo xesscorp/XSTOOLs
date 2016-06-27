@@ -18,8 +18,9 @@ class ExampleTest(unittest.TestCase):
         bitstreams = ['cfg_flash', 'sdram', 'test']
         for b, exp_bit_len in board_bit_lengths:
             for bs in bitstreams:
+                xbs = XilinxBitstream()
                 fp = getattr(b, bs + '_bitstream')
-                xbs = XilinxBitstream(fp)
+                xbs.from_file(fp)
                 self.assertEqual(len(xbs.bits), exp_bit_len)
                 ih = xbs.to_intel_hex()
                 self.assertEqual(ih.minaddr(), 0)

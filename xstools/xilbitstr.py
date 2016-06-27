@@ -49,13 +49,17 @@ class XilinxBitstream:
 
     def from_file(self, filename):
         """Load a bitstream from .bit file."""
-
         try:
-            bitfile = ConstBitStream(filename=filename)
+            self.filename = filename
+            with open(filename, 'rb') as file_obj:
+                bitfile = ConstBitStream(auto=file_obj)
+                self._extract_fields(bitfile)
         except:
             raise XsMajorError("Unable to open file '%s'" % filename)
-        self.filename = filename
 
+        return True
+
+    def _extract_fields(self, bitfile):
         initial_offset = bitfile.read(16).uint * 8
         bitfile.pos += initial_offset
         if bitfile.read(16).uint != 1:
@@ -115,8 +119,6 @@ class XilinxBitstream:
             self.bits.len,
             )
         logging.debug('Bitstream start = %s', self.bits[0:1024])
-
-        return True
         
     def to_intel_hex(self):
         """Generate Intel hex object from bitstream."""
