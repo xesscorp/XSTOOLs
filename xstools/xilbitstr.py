@@ -36,6 +36,12 @@ from xstools.xserror import XsMajorError
 
 
 class XilinxBitstream:
+    # Field codes for the various fields of a Xilinx bitstream file.
+    DESIGN_NAME_FC = 0x61
+    DEVICE_TYPE_FC = 0x62
+    COMPILE_DATE_FC = 0x63
+    COMPILE_TIME_FC = 0x64
+    BITSTREAM_FC = 0x65
 
     def __init__(self, filename=None):
         self.filename = filename
@@ -66,47 +72,41 @@ class XilinxBitstream:
             fmt = "'%s' does not appear to be a bit file."
             raise XsMajorError(fmt % self.filename)
 
-        # Field codes for the various fields of a Xilinx bitstream file.
-        DESIGN_NAME_FC = 0x61
-        DEVICE_TYPE_FC = 0x62
-        COMPILE_DATE_FC = 0x63
-        COMPILE_TIME_FC = 0x64
-        BITSTREAM_FC = 0x65
-
         # Extract the fields from the bitstream file.
         while True:
             if bitfile.pos == bitfile.len:
                 break  # EOF
             field_code = bitfile.read(8).uint
-            if field_code == DESIGN_NAME_FC:
+            if field_code == self.DESIGN_NAME_FC:
                 field_length = bitfile.read(16).uint * 8
                 # Get the string but clip-off the NUL character at the end.
                 self.design_name = bitfile.read(field_length).tobytes()[:-1]
                 self.design_name = str(self.design_name, 'utf-8')
-            elif field_code == DEVICE_TYPE_FC:
+            elif field_code == self.DEVICE_TYPE_FC:
                 field_length = bitfile.read(16).uint * 8
                 # Get the string but clip-off the NUL character at the end.
                 self.device_type = bitfile.read(field_length).tobytes()[:-1]
                 self.device_type = str(self.device_type, 'utf-8')
-            elif field_code == COMPILE_DATE_FC:
+            elif field_code == self.COMPILE_DATE_FC:
                 field_length = bitfile.read(16).uint * 8
                 # Get the string but clip-off the NUL character at the end.
                 self.compile_date = bitfile.read(field_length).tobytes()[:-1]
                 self.compile_date = str(self.compile_date, 'utf-8')
-            elif field_code == COMPILE_TIME_FC:
+            elif field_code == self.COMPILE_TIME_FC:
                 field_length = bitfile.read(16).uint * 8
                 # Get the string but clip-off the NUL character at the end.
                 self.compile_time = bitfile.read(field_length).tobytes()[:-1]
                 self.compile_time = str(self.compile_time, 'utf-8')
-            elif field_code == BITSTREAM_FC:
+            elif field_code == self.BITSTREAM_FC:
                 field_length = bitfile.read(32).uint * 8
                 self.bits = XsBitArray(bitfile.read(field_length))
                 # Reverse the config bits so the 1st bit to transmit is at the
                 # highest bit index.
                 self.bits.reverse()
             else:
-                msg = "Unknown field %d at position %d in bit file '%s'."
-                raise XsMajorError(msg % (field_code, bitfile.pos - 8, self.filename))
+                msg_fmt = "Unknown field %d at position %d in bit file '%s'."
+                msg = msg_fmt % (field_code, bitfile.pos - 8, self.filename)
+                raise XsMajorError(msg)
 
         logging.debug(
             'Bitstream file %s with design %s was compiled for %s at %s on %s '
