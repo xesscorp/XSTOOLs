@@ -31,7 +31,6 @@ using this program, type xstest -h.
 This program was originally conceived and written in C++ by Dave
 Vandenbout and then ported to python.
 """
-import os
 import sys
 from argparse import ArgumentParser
 

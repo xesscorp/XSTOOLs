@@ -255,8 +255,8 @@ class GxsPortPanel(wx.Panel):
         self._port_list.Bind(wx.EVT_CHOICE, self.on_port_change)
 
         self._blink_button = wx.Button(self, label='Blink')
-        self._blink_button.SetToolTip('Click to blink LED on the board '
-                                      'attached to the selected port')
+        tt = 'Click to blink LED on the board attached to the selected port'
+        self._blink_button.SetToolTip(tt)
         self._blink_button.Bind(wx.EVT_BUTTON, self.on_blink)
         self._blink_button.Disable()
 
@@ -887,8 +887,8 @@ class GxsFpgaConfigPanel(wx.Panel):
 
     def on_download(self, event):
         pub.subscribe(self.cleanup, 'Fpga.Cleanup')
-        self._download_progress = GxsProgressDialog(
-            title="Download Bitstream to FPGA", parent=self)
+        title = 'Download Bitstream to FPGA'
+        self._download_progress = GxsProgressDialog(title=title, parent=self)
         GxsFpgaDownloadThread(self._dnld_file_picker.GetPath(add_to_history=True))
 
     def cleanup(self):
@@ -1172,8 +1172,8 @@ class GxsBoardFlagsPanel(wx.Panel):
         reconnect()
         self._aux_jtag_flag.SetValue(ACTIVE_BOARD.toggle_aux_jtag_flag())
         disconnect()
-        pub.sendMessage("Port.Check",
-                        force_check=True)  # Because port will change if JTAG feature changes.
+        # Because port will change if JTAG feature changes.
+        pub.sendMessage('Port.Check', force_check=True)
 
     def on_flash(self, event):
         reconnect()
