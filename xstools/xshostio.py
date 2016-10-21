@@ -104,7 +104,7 @@ class XsHostIo:
 
         # Create the TDI bit array by concatenating the module ID, number of
         # bits in the payload, and the payload bits.
-        uint = payload.len + num_result_bits
+        uint = int(payload.len + num_result_bits)
         tdi_bits = self.module_id + XsBitArray(uint=uint, length=32) + payload
 
         logging.debug('Module ID = ' + repr(self.module_id))

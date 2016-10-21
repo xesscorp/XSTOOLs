@@ -100,7 +100,8 @@ class XsMemIo(XsHostIo):
         payload = XsBitArray(self._READ_OPCODE)
 
         # Append the memory address to the payload.
-        payload += XsBitArray(uint=begin_address, length=self.address_width)
+        a=XsBitArray(uint=int(begin_address), length=self.address_width)
+        payload =payload+a
 
         # Send the opcode and beginning address and then read back the memory
         # data. The number of values read back is one more than requested

@@ -89,8 +89,8 @@ class RamDevice:
         num_bytes = (top-bottom+1)
         if num_bytes % self._WORD_SIZE != 0:
             raise XsMinorError('Number of bytes is not a multiple of the %s word size (%x / %d != 0)' % (self._DEVICE_NAME, num_bytes, self._WORD_SIZE))
-        ram_bottom = bottom/self._WORD_SIZE
-        num_words = num_bytes/self._WORD_SIZE
+        ram_bottom = bottom//self._WORD_SIZE
+        num_words = num_bytes//self._WORD_SIZE
         
         # Convert the hex data into words for the RAM.
         hex_to_word_format = self._WORD_ENDIAN + str(num_words) + self._WORD_TYPE
@@ -110,8 +110,8 @@ class RamDevice:
         num_bytes = (top-bottom+1)
         if num_bytes % self._WORD_SIZE != 0:
             raise XsMinorError('Number of bytes is not a multiple of the %s word size (%x / %d != 0)' % (self._DEVICE_NAME, num_bytes, self._WORD_SIZE))
-        ram_bottom = bottom/self._WORD_SIZE
-        num_words = num_bytes/self._WORD_SIZE
+        ram_bottom = bottom//self._WORD_SIZE
+        num_words = num_bytes//self._WORD_SIZE
         
         ram_words = self._ram.read(ram_bottom, num_words, return_type=int())
         word_to_hex_format = self._WORD_ENDIAN + str(num_words) + self._WORD_TYPE
