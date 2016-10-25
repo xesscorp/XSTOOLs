@@ -90,12 +90,13 @@ class RamDevice:
         if num_bytes % self._WORD_SIZE != 0:
             raise XsMinorError('Number of bytes is not a multiple of the %s word size (%x / %d != 0)' % (self._DEVICE_NAME, num_bytes, self._WORD_SIZE))
         ram_bottom = bottom//self._WORD_SIZE
-        num_words = num_bytes//self._WORD_SIZE
+        num_words = round(num_bytes/self._WORD_SIZE)
         
         # Convert the hex data into words for the RAM.
         hex_to_word_format = self._WORD_ENDIAN + str(num_words) + self._WORD_TYPE
-        ram_words = struct.unpack(hex_to_word_format, hexfile.gets(bottom,num_bytes))
-        
+        # one byte to many cause unnown
+        ram_words = struct.unpack(hex_to_word_format,
+                                  hexfile.gets(bottom,num_bytes).encode())
         # Write the words to the RAM.
         self._ram.write(ram_bottom, ram_words)
 
