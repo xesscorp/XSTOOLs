@@ -25,7 +25,7 @@ Classes for devices containing RAM memory.
 import struct
 from intelhex import IntelHex
 
-from xstools.xserror import XsMinorError
+from xstools.xserror import XsMajorError, XsMinorError
 from xstools.xshostio import DEFAULT_XSUSB_ID, DEFAULT_MODULE_ID
 from xstools.xsmemio import XsMemIo
 
@@ -89,13 +89,14 @@ class RamDevice:
         num_bytes = (top-bottom+1)
         if num_bytes % self._WORD_SIZE != 0:
             raise XsMinorError('Number of bytes is not a multiple of the %s word size (%x / %d != 0)' % (self._DEVICE_NAME, num_bytes, self._WORD_SIZE))
-        ram_bottom = bottom/self._WORD_SIZE
-        num_words = num_bytes/self._WORD_SIZE
+        ram_bottom = bottom // self._WORD_SIZE
+        num_words = num_bytes // self._WORD_SIZE
         
         # Convert the hex data into words for the RAM.
         hex_to_word_format = self._WORD_ENDIAN + str(num_words) + self._WORD_TYPE
-        ram_words = struct.unpack(hex_to_word_format, hexfile.gets(bottom,num_bytes))
-        
+        # one byte too many cause unknown (Comment by hstarmans)
+        ram_words = struct.unpack(hex_to_word_format,
+                                  hexfile.gets(bottom, num_bytes).encode())
         # Write the words to the RAM.
         self._ram.write(ram_bottom, ram_words)
 
@@ -110,8 +111,8 @@ class RamDevice:
         num_bytes = (top-bottom+1)
         if num_bytes % self._WORD_SIZE != 0:
             raise XsMinorError('Number of bytes is not a multiple of the %s word size (%x / %d != 0)' % (self._DEVICE_NAME, num_bytes, self._WORD_SIZE))
-        ram_bottom = bottom/self._WORD_SIZE
-        num_words = num_bytes/self._WORD_SIZE
+        ram_bottom = bottom // self._WORD_SIZE
+        num_words = num_bytes // self._WORD_SIZE
         
         ram_words = self._ram.read(ram_bottom, num_words, return_type=int())
         word_to_hex_format = self._WORD_ENDIAN + str(num_words) + self._WORD_TYPE
@@ -128,9 +129,9 @@ class Sdram_8MB(RamDevice):
     _END_ADDR = 2**23-1 # Max byte address, which is twice the word address.
     _WRITE_BLK_SZ = 256
     _READ_BLK_SZ = 256
-    _WORD_SIZE = 2 # 16-bit word size.
-    _WORD_TYPE = 'H' # 16-bit unsigned integers.
-    _WORD_ENDIAN = '>' # Big-endian byte order.
+    _WORD_SIZE = 2  # 16-bit word size.
+    _WORD_TYPE = 'H'  # 16-bit unsigned integers.
+    _WORD_ENDIAN = '>'  # Big-endian byte order.
     _DEVICE_NAME = '8MB SDRAM'
 
 
@@ -142,7 +143,7 @@ class Sdram_32MB(RamDevice):
     _END_ADDR = 2**25-1 # Max byte address, which is twice the word address.
     _WRITE_BLK_SZ = 256
     _READ_BLK_SZ = 256
-    _WORD_SIZE = 2 # 16-bit word size.
-    _WORD_TYPE = 'H' # 16-bit unsigned integers.
-    _WORD_ENDIAN = '>' # Big-endian byte order.
+    _WORD_SIZE = 2  # 16-bit word size.
+    _WORD_TYPE = 'H'  # 16-bit unsigned integers.
+    _WORD_ENDIAN = '>'  # Big-endian byte order.
     _DEVICE_NAME = '32MB SDRAM'
