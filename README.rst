@@ -32,22 +32,28 @@ libraries.
 Install for a single user with the following commands:
 
 * Windows:
-``
+```
 pip install --user -r requirements.txt
 python setup.py install --home=$HOME
-``
+```
 
 * Mac OS X: [HomeBrew](http://brew.sh/) is a great choice for installing system
 libraries.
-``
+```
 brew install libusb
 pip install --user -r requirements.txt
 python setup.py install --home=$HOME
-``
+```
 
-* Linux: You must install [[wxPython Phoenix](https://github.com/wxWidgets/Phoenix/blob/master/README.rst)]
+* Linux: You must install [wxPython Phoenix](https://github.com/wxWidgets/Phoenix/blob/master/README.rst)
 from source.
-``
+```
+﻿sudo apt-get install freeglut3-dev libgtk2.0-dev libgstreamer-plugins-base0.10-dev libwebkitgtk-dev libnotify-dev ﻿libsdl1.2-dev
+wget http://wxpython.org/Phoenix/snapshot-builds/wxPython_Phoenix-3.0.3.dev2076+9cbca77.tar.gz
+tar -zxvf wxPython_Phoenix-3.0.3.dev2076+9cbca77.tar.gz
+python build.py dox etg --nodoc sip build
+
+﻿sudo apt-get install libusb-1.0.0-dev
 pip install --user -r requirements.txt
 python setup.py install --home=$HOME
-``
+```
