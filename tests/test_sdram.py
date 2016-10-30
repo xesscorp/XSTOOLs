@@ -1,12 +1,14 @@
 import unittest
 from intelhex import IntelHex
 import xstools.xsboard
+from xstools.xsusb import XsUsb
 
 
 class Sdramtest(unittest.TestCase):
     def setUp(self):
-        self.board=xstools.xsboard.Xula2lx25(0)
-    
+        self.board = xstools.xsboard.Xula2lx25(0)
+
+    @unittest.skipUnless(XsUsb.get_xsusb_ports(), "No Xula board found")
     def test_readwrite(self):
         """
         test read and write sdram
@@ -14,7 +16,7 @@ class Sdramtest(unittest.TestCase):
         writes 13 zeroes to sdram, hereafter reads 13 values
         from sdram and checks equality
         """
-        keys = range(0,14)
+        keys = range(0, 14)
         values = 14*[0]
         data = IntelHex()
         data.fromdict(dict(zip(keys, values)))
