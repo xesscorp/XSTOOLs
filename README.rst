@@ -37,7 +37,7 @@ pip install --user -r requirements.txt
 python setup.py install --home=$HOME
 ```
 
-* Mac OS X: [HomeBrew](http://brew.sh/) is a great choice for installing system
+* MacOS: [HomeBrew](http://brew.sh/) is a great choice for installing system
 libraries.
 ```
 brew install libusb
@@ -56,4 +56,12 @@ python build.py dox etg --nodoc sip build
 ﻿sudo apt-get install libusb-1.0.0-dev
 pip install --user -r requirements.txt
 python setup.py install --home=$HOME
+```
+
+Running Graphical User Interface
+--------------------------------
+
+* MacOS:
+```
+PYTHONPATH=$PYTHONPATH:. pythonw xstools/gxstools.py
 ```

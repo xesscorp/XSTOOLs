@@ -51,14 +51,18 @@ class XsBoard:
 
         # All possible board types. XulaNoJtag must be first because it is
         # impossible to query what type of FPGA it has.
-        board_classes = (XulaOldFmw, Xula50, Xula200, Xula2lx25, Xula2lx9,
-                         XulaNoJtag)
+        boards = all_xsboards()
 
-        for c in board_classes:
-            if xsboard_name.lower() == c.name.lower():
-                return c(xsusb_id)
+        # If board name matches xsboard_name, then return this
+        if xsboard_name != '':
+            board_names = [b.name.lower() for b in boards]
+            try:
+                idx = board_names.index(xsboard_name.lower())
+                return boards[idx](xsusb_id)
+            except ValueError:
+                pass
 
-        for c in board_classes:
+        for c in boards:
             try:
                 xsboard = c(xsusb_id)
                 if xsboard.is_connected():
@@ -68,6 +72,20 @@ class XsBoard:
 
         return None
 
+
+def all_xsboards():
+    board_classes = []
+    _final_derived_classes(XsBoard, board_classes)
+    return board_classes
+
+
+def _final_derived_classes(klass, final_derived_classes):
+    subclasses = klass.__subclasses__()
+    if subclasses:
+        for subclass in subclasses:
+            _final_derived_classes(subclass, final_derived_classes)
+    else:
+        final_derived_classes.append(klass)
 
 _PHASE = 'Progress.Phase'
 
