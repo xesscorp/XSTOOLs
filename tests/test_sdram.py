@@ -18,9 +18,12 @@ class Sdramtest(unittest.TestCase):
         from sdram and checks equality
         """
         keys = range(0, 14)
-        values = 14 * [0]
+        values = 14 * [255]
         data = IntelHex()
         data.fromdict(dict(zip(keys, values)))
         self.board.write_sdram(data, 0, len(keys)-1)
         result = self.board.read_sdram(0, len(keys)-1)
         self.assertEqual(data.todict(), result.todict())
+
+if __name__  == '__main__':
+    unittest.main()
