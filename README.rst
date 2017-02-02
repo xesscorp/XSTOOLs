@@ -40,7 +40,7 @@ python setup.py install --home=$HOME
 * MacOS: [HomeBrew](http://brew.sh/) is a great choice for installing system
 libraries.
 ```
-brew install libusb
+<.travis/brew.txt xargs brew install
 pip install --user -r requirements.txt
 python setup.py install --home=$HOME
 ```
