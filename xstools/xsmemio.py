@@ -24,11 +24,13 @@
 Class for reading and writing memory or registers in the FPGA
 of an XESS board through the USB port.
 """
-
 import logging
-import itertools
 import struct
-from xshostio import *
+
+from bitstring import BitArray
+
+from xstools.xsbitarray import XsBitArray
+from xstools.xshostio import DEFAULT_XSUSB_ID, DEFAULT_MODULE_ID, XsHostIo
 
 
 class XsMemIo(XsHostIo):
@@ -56,7 +58,8 @@ class XsMemIo(XsHostIo):
         """
 
         # Setup the super-class object.
-        XsHostIo.__init__(self, xsjtag=xsjtag, xsusb_id=xsusb_id, module_id=module_id)
+        XsHostIo.__init__(self, xsjtag=xsjtag, xsusb_id=xsusb_id,
+                          module_id=module_id)
 
         # Get the number of inputs and outputs of the DUT.
         (self.address_width, self.data_width) = self._get_mem_widths()
@@ -67,43 +70,49 @@ class XsMemIo(XsHostIo):
 
     def _get_mem_widths(self):
         """Return the (address_width, data_width) of the memory."""
+        # Skip cycles between issuing command and reading back result.
+        SKIP_CYCLES = 1
 
-        SKIP_CYCLES = 1  # Skip cycles between issuing command and reading back result.
-
-        # Send the opcode and then read back the bits with the memory's address and data width.
+        # Send the opcode and then read back the bits with the memory's address
+        # and data width.
         params = self.send_rcv(payload=self._SIZE_OPCODE,
                                num_result_bits=self._SIZE_RESULT_LENGTH + SKIP_CYCLES)
         params.pop_field(SKIP_CYCLES)  # Remove the skipped cycles.
 
         # The address width is in the first half of the bit array.
-        address_width = params.pop_field(self._SIZE_RESULT_LENGTH / 2).unsigned
+        half_len = self._SIZE_RESULT_LENGTH // 2  # Python 2 and 3
+        address_width = params.pop_field(half_len).unsigned
 
         # The data width is in the last half of the bit array.
-        data_width = params.pop_field(self._SIZE_RESULT_LENGTH / 2).unsigned
-        return (address_width, data_width)
+        data_width = params.pop_field(half_len).unsigned
+        return address_width, data_width
 
     def read(self, begin_address, num_of_reads=1, return_type=XsBitArray()):
         """Return a list of bit arrays read from memory.
         
         begin_address = memory address of first read.
         num_of_reads = number of memory reads to perform.
-        return_type = instance of the type of data to return. Negative integer=signed; positive integer=unsigned.
+        return_type = instance of the type of data to return. Negative
+        integer=signed; positive integer=unsigned.
         """
 
         # Start the payload with the READ_OPCODE.
         payload = XsBitArray(self._READ_OPCODE)
 
         # Append the memory address to the payload.
-        payload += XsBitArray(uint=begin_address, length=self.address_width)
+        payload+=XsBitArray(uint=int(begin_address), length=self.address_width)
 
-        # Send the opcode and beginning address and then read back the memory data.
-        # The number of values read back is one more than requested because the first value
-        # returned is crap since the memory isn't ready to respond.
+        # Send the opcode and beginning address and then read back the memory
+        # data. The number of values read back is one more than requested
+        # because the first value returned is crap since the memory isn't ready
+        # to respond.
         result = self.send_rcv(payload=payload,
                                num_result_bits=self.data_width * (num_of_reads + 1))
 
-        if num_of_reads == 1: # Return the result bit array if there's only a single read.
-            result.pop_field(self.data_width)  # Remove the first data value which is crap.
+        # Return the result bit array if there's only a single read.
+        if num_of_reads == 1:
+            # Remove the first data value which is crap.
+            result.pop_field(self.data_width)
             if isinstance(return_type, XsBitArray):
                 return result
             else:
@@ -111,14 +120,19 @@ class XsMemIo(XsHostIo):
                     return result.int
                 else:
                     return result.uint
-        else: # Otherwise, return a list of bit arrays with data_width bits by partitioning the result bit array.
+        # Otherwise, return a list of bit arrays with data_width bits by
+        # partitioning the result bit array.
+        else:
             w = self.data_width
             l = result.length
             if isinstance(return_type, XsBitArray):
                 # Chop the bit array into an array of smaller bit arrays.
-                # Start from the far end, skip the first data value which is crap, and then proceed to the beginning.
-                return [result[i:i+w] for i in range(l-2*w,-w,-w)]
-            else: # Return type is not a bit array, so convert bit arrays into integers.
+                # Start from the far end, skip the first data value which is
+                # crap, and then proceed to the beginning.
+                return [result[i:i+w] for i in range(l-2*w, -w, -w)]
+            # Return type is not a bit array, so convert bit arrays into
+            # integers.
+            else:
                 try:
                     # If word width is not byte-sized, then raise exception and
                     # use the slower method.
@@ -126,23 +140,23 @@ class XsMemIo(XsHostIo):
                         raise KeyError
                     # If word width is not 1, 2, 4 or 8 bytes wide, then an
                     # exception occurs and the slower method is used.
-                    w_type = {1:'B', 2:'H', 4:'I', 8:'Q'}[w // 8]
+                    w_type = {1: 'B', 2: 'H', 4: 'I', 8: 'Q'}[w // 8]
                     if return_type < 0:
                         w_type = str.lower(w_type)
                     alignment = '>'
                     n_words = l // w  # Number of words in the bit array.
                     fmt = '{}{}{}'.format(alignment, n_words, w_type)
-                    # Get bytes from bit array, form them into integers and reverse
-                    # their order so index [0] corresponds to lowest memory address.
-                    # (Skip first integer because it's crap.)
+                    # Get bytes from bit array, form them into integers and
+                    # reverse their order so index [0] corresponds to lowest
+                    # memory address. (Skip first integer because it's crap.)
                     return struct.unpack(fmt, result.bytes)[-2::-1]
                 except KeyError:
                     # Slower method:
-                    #     Chop the bit array into an array of smaller bit arrays.
-                    #     Start from the far end, skip the first data value 
-                    #     which is crap, and then proceed to the beginning.
-                    results = [result[i:i+w] for i in range(l-2*w,-w,-w)]
-                    if return_type < 0 :
+                    #   Chop the bit array into an array of smaller bit arrays.
+                    #   Start from the far end, skip the first data value
+                    #   which is crap, and then proceed to the beginning.
+                    results = [result[i:i+w] for i in range(l-2*w, -w, -w)]
+                    if return_type < 0:
                         results = [d.int for d in results]
                     else:
                         results = [d.uint for d in results]
@@ -153,7 +167,8 @@ class XsMemIo(XsHostIo):
         
         begin_address = memory address of first write.
         data = list of bit arrays or integers.
-        data_type = instance of data that is stored in the data array. Negative integer=signed; positive integer=unsigned.
+        data_type = instance of data that is stored in the data array. Negative
+        integer=signed; positive integer=unsigned.
         """
 
         if data_type is None:
@@ -202,7 +217,6 @@ class XsMemIo(XsHostIo):
 XsMem = XsMemIo  # Associate the old XsMem class with the new XsMemIo class.
 
 if __name__ == '__main__':
-    import sys
     import random
     from bitarray import *
     from scipy import *
@@ -218,15 +232,17 @@ if __name__ == '__main__':
         return ((curr << 1) | b) & mask
 
 
-    print """
+    print("""
     ##################################################################
     # Get some random numbers from the RNG in the XuLA FPGA.
     ##################################################################
-    """
+    """)
 
-    USB_ID = 0  # This is the USB index for the XuLA board connected to the host PC.
+    # This is the USB index for the XuLA board connected to the host PC.
+    USB_ID = 0
     RAND_ID = 1  # This is the identifier for the RNG in the FPGA.
-    rand = XsMem(USB_ID, RAND_ID)  # Create an object for reading/writing the register.
+    # Create an object for reading/writing the register.
+    rand = XsMem(USB_ID, RAND_ID)
 
     PERIOD = 2 ** rand.data_width  # Number of random numbers to read.
     rand.write(0, [0x80])
@@ -241,14 +257,14 @@ if __name__ == '__main__':
         py_rand_nums[i] = prng(py_rand_nums[i - 1], prng_poly, mask)
 
     for i in range(1, PERIOD):
-        print '%8x %8x' % (py_rand_nums[i], rand_nums[i - 1])
+        print('%8x %8x' % (py_rand_nums[i], rand_nums[i - 1]))
 
     compare = [rand_nums[i] != prng(rand_nums[i - 1], prng_poly, mask)
                for i in range(1, PERIOD)]
     if sum(compare) == 0:
-        print '\nSUCCESS!'
+        print('\nSUCCESS!')
     else:
-        print '\n', sum(compare), 'ERRORS'
+        print('\n', sum(compare), 'ERRORS')
 
     hist(rand_nums, 40)
     show()

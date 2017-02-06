@@ -22,34 +22,34 @@
 """
 Classes for devices containing flash memory.
 """
-
-import logging
 from intelhex import IntelHex
-from xserror import *
-from xsspi import *
-from xilbitstr import *      
+
+from xstools.xilbitstr import XilinxBitstream
+from xstools.xserror import XsMinorError, XsMajorError
+from xstools.xshostio import DEFAULT_MODULE_ID
+from xstools.xsspi import XsSpi
 
 
 class FlashDevice:
-
     """Generic flash memory object."""
 
     def __init__(self):
-        """Initialize the serial flash."""
         pass
-        
+
     def _floor_blk_addr(self, addr, blk_sz):
-        return addr & ((1<<32) - blk_sz)
+        return addr & ((1 << 32) - blk_sz)
         
     def _ceil_blk_addr(self, addr, blk_sz):
         return ((addr + blk_sz - 1) // blk_sz) * blk_sz
         
     def _set_blk_bounds(self, bottom, top, blk_sz):
-        bottom = self._START_ADDR if (bottom == None or bottom < self._START_ADDR) else self._floor_blk_addr(bottom, blk_sz)
-        top = self._END_ADDR if (top == None or top >= self._END_ADDR) else self._ceil_blk_addr(top, blk_sz)
+        use_start_addr = bottom is None or bottom < self._START_ADDR
+        bottom = self._START_ADDR if use_start_addr else self._floor_blk_addr(bottom, blk_sz)
+        use_end_addr = top is None or top >= self._END_ADDR
+        top = self._END_ADDR if use_end_addr else self._ceil_blk_addr(top, blk_sz)
         if bottom > top:
             raise XsMinorError('Bottom address is greater than the top address.')
-        return (bottom, top)
+        return bottom, top
 
     def erase(self, bottom=None, top=None):
         """Erase a section of the flash."""
@@ -62,37 +62,40 @@ class FlashDevice:
         """Download a hexfile into a section of the flash.
         THE FLASH MUST ALREADY BE ERASED FOR THIS TO WORK CORRECTLY!
         """
-
-        # If the argument is not already a hex data object, then it must be a file name, so read the hex data from it.
+        # If the argument is not already a hex data object, then it must be a
+        # file name, so read the hex data from it.
         if not isinstance(hexfile, IntelHex):
             try:
                 hexfile_data = IntelHex(hexfile)
                 hexfile = hexfile_data
             except:
-                # OK, didn't read as an Intel hex file, so try reading it as a Xilinx bitstream file.
+                # OK, didn't read as an Intel hex file, so try reading it as a
+                # Xilinx bitstream file.
                 try:
                     bitstream_data = XilinxBitstream(hexfile)
                     hexfile = bitstream_data.to_intel_hex()
                 except:
                     # Error: neither an Intel hex or Xilinx bitstream file.
-                    raise XsMajorError('Unable to convert file %s for writing to %s flash.'
-                                    % (hexfile, self.device_name))
+                    fmt = 'Unable to convert file %s for writing to %s flash.'
+                    raise XsMajorError(fmt % (hexfile, self.device_name))
                                     
-        if bottom == None:
+        if bottom is None:
             bottom = hexfile.minaddr()
-        if top == None:
+        if top is None:
             top = hexfile.maxaddr()
         # hex data must be empty if min and/or max address is undefined.
-        if bottom == None or top == None:
-            bottom, top = (0,0)
+        if bottom is None or top is None:
+            bottom, top = (0, 0)
 
         (bottom, top) = self._set_blk_bounds(bottom, top, self._WRITE_BLK_SZ)
         for addr in range(bottom, top, self._WRITE_BLK_SZ):
-            # The tobinarray() method fills unused array locations with 0xFF so the flash at those
-            # addresses will stay unprogrammed.
-            data_blk = bytearray(hexfile.tobinarray(start=addr, size=self._WRITE_BLK_SZ))
-            # Don't write data blocks that only contain the value 0xFF (erased value of flash).
-            if data_blk.count(chr(0xff)) != self._WRITE_BLK_SZ:
+            # The tobinarray() method fills unused array locations with 0xFF so
+            # the flash at those addresses will stay unprogrammed.
+            data_blk = bytearray(hexfile.tobinarray(start=addr,
+                                                    size=self._WRITE_BLK_SZ))
+            # Don't write data blocks that only contain the value 0xFF (erased
+            # value of flash).
+            if data_blk.count(b'\xff') != self._WRITE_BLK_SZ:
                 self.write_blk(addr, data_blk)
 
     def read(self, bottom=None, top=None):
@@ -108,46 +111,55 @@ class FlashDevice:
 
     def verify(self, hexfile, bottom=None, top=None):
         """Verify the program in the flash matches the hex file."""
-
-        # If the argument is not already a hex data object, then it must be a file name, so read the hex data from it.
+        # If the argument is not already a hex data object, then it must be a
+        # file name, so read the hex data from it.
         if not isinstance(hexfile, IntelHex):
             try:
                 hexfile_data = IntelHex(hexfile)
                 hexfile = hexfile_data
             except:
-                raise XsMajorError('Unable to open hex file %s for verifying %s flash.'
-                                    % (hexfile, self.device_name))
+                msg = 'Unable to open hex file %s for verifying %s flash.'
+                raise XsMajorError(msg % (hexfile, self.device_name))
 
         (bottom, top) = self._set_blk_bounds(bottom, top, self._WRITE_BLK_SZ)
         flash = self.read(bottom, top)
-        errors = [(a, flash[a], hexfile[a]) for a in
-                  sorted(hexfile.todict().keys()) if flash[a]
-                  != hexfile[a] and bottom <= a < top]
-        if len(errors) > 0:
-            raise XsMajorError('%s flash != hex file at %d locations starting at address 0x%04x (0x%02x != 0x%02x)'
-                                % (self.device_name, len(errors), errors[0][0], errors[0][1], errors[0][2]))
+        # Organize errors, if any
+        errors = []
+        for a in sorted(hexfile.todict().keys()):
+            if flash[a] != hexfile[a] and bottom <= a < top:
+                continue
+            errors.append((a, flash[a], hexfile[a]))
+        if errors:
+            msg_fmt = '%s flash != hex file at %d locations starting at ' \
+                      'address 0x%04x (0x%02x != 0x%02x)'
+            msg = msg_fmt % (self.device_name, len(errors), errors[0][0],
+                             errors[0][1], errors[0][2])
+            raise XsMajorError(msg)
 
     def program(self, hexfile, bottom=None, top=None):
-        """Erase, write and verify the flash with the contents of the hex file."""
-
+        """
+        Erase, write and verify the flash with the contents of the hex file.
+        """
         self.erase(bottom, top)
         self.write(hexfile, bottom, top)
         self.verify(hexfile, bottom, top)
 
-        
-_MODULE_ID = 0xf0  # Default module ID for JTAG interface to serial configuration flash.
-        
+# Default module ID for JTAG interface to serial configuration flash.
+_MODULE_ID = 0xf0
+
+
 class W25X(FlashDevice):
     """Winbond serial flash memory."""
     
     device_name_prefix = 'W25X'
     mfg_id = 0xef
     chip_info = {
-        0x3011:{'size':2**20, 'name':'10'},
-        0x3012:{'size':2**21, 'name':'20'}, 
-        0x3013:{'size':2**22, 'name':'40'}, 
-        0x3014:{'size':2**23, 'name':'80'},
-        0x4014:{'size':2**23, 'name':'80'}, # This is actually for a W25Q80 serial flash.
+        0x3011: {'size': 2**20, 'name': '10'},
+        0x3012: {'size': 2**21, 'name': '20'},
+        0x3013: {'size': 2**22, 'name': '40'},
+        0x3014: {'size': 2**23, 'name': '80'},
+        # This is actually for a W25Q80 serial flash.
+        0x4014: {'size': 2**23, 'name': '80'},
         }
 
     _START_ADDR = 0x00000
@@ -162,18 +174,13 @@ class W25X(FlashDevice):
     _CHIP_ERASE_CMD = 0xc7
     _PAGE_PROGRAM_CMD = 0x02
     _FAST_READ_CMD = 0x0b
-    
 
-    def __init__(
-        self,
-        xsusb_id=DEFAULT_XSUSB_ID,
-        module_id=DEFAULT_MODULE_ID,
-        xsjtag=None
-        ):
+    def __init__(self, module_id=DEFAULT_MODULE_ID, xsjtag=None):
         self._spi = XsSpi(xsjtag=xsjtag, module_id=module_id)
         mfg_id, jedec_id = self.get_chip_id()
         if mfg_id != self.mfg_id:
-            raise XsMajorError('Incorrect manufacturer identifier for the W25X serial flash.')
+            msg = 'Incorrect manufacturer identifier for the W25X serial flash.'
+            raise XsMajorError(msg)
         self.chip_size = self.get_chip_size(jedec_id)
         self._END_ADDR = self.chip_size // 8
         self._ERASE_BLK_SZ = self._END_ADDR
@@ -182,11 +189,12 @@ class W25X(FlashDevice):
     def get_chip_id(self):
         self._spi.send(self._JEDEC_ID_CMD, stop=False)
         (mfg_id, jedec_id_hi, jedec_id_lo) = self._spi.receive(num_data=3, stop=True)
-        return (mfg_id.uint, (jedec_id_lo + jedec_id_hi).uint)
-        
+        return mfg_id.uint, (jedec_id_lo + jedec_id_hi).uint
+
     def get_chip_size(self, jedec_id):
-        if jedec_id not in self.chip_info :
-            raise XsMajorError('Incorrect JEDEC identifier for the W25X serial flash.')
+        if jedec_id not in self.chip_info:
+            msg = 'Incorrect JEDEC identifier for the W25X serial flash.'
+            raise XsMajorError(msg)
         return self.chip_info[jedec_id]['size']
         
     def _is_busy(self):
@@ -200,7 +208,7 @@ class W25X(FlashDevice):
         self._spi.send(self._WRITE_ENABLE_CMD, stop=True)
         self._spi.send(self._CHIP_ERASE_CMD, stop=True)
         self._spi.send(self._READ_STATUS_CMD, stop=False)
-        while(self._is_busy()):
+        while self._is_busy():
             pass
         self._spi.reset()
         
@@ -210,7 +218,7 @@ class W25X(FlashDevice):
         self._spi.send(self._addr_bytes(addr), stop=False)
         self._spi.send(data, stop=True)
         self._spi.send(self._READ_STATUS_CMD, stop=False)
-        while(self._is_busy()):
+        while self._is_busy():
             pass
         self._spi.reset()
 
@@ -218,7 +226,8 @@ class W25X(FlashDevice):
         """Return the hex data stored in a section of the flash."""
 
         if bottom > top:
-            raise XsMinorError('Bottom address is greater than the top address.')
+            msg = 'Bottom address is greater than the top address.'
+            raise XsMinorError(msg)
         self._spi.send(self._FAST_READ_CMD, stop=False)
         self._spi.send(self._addr_bytes(bottom), stop=False)
         self._spi.send([0], stop=False)
@@ -228,15 +237,12 @@ class W25X(FlashDevice):
         return hex_data
         
 if __name__ == '__main__':
-    #logging.root.setLevel(logging.DEBUG)
-    
-    USB_ID = 0  # This is the USB index for the XuLA board connected to the host PC.
+    # This is the USB index for the XuLA board connected to the host PC.
+    USB_ID = 0
     SPI_ID = 0xf0
-    flash = W25X(xsusb_id=USB_ID, module_id=SPI_ID)
+    flash = W25X(module_id=SPI_ID)
     mfg_id, jedec_id = flash.get_chip_id()
-    print '%x %x' % (mfg_id, jedec_id)
-    print '%x' % flash.get_chip_size(jedec_id)
-    print flash.device_name
-    print '%x' % flash._END_ADDR
-    #import sys
-    #sys.exit(0)
+    print('%x %x' % (mfg_id, jedec_id))
+    print('%x' % flash.get_chip_size(jedec_id))
+    print(flash.device_name)
+    print('%x' % flash._END_ADDR)

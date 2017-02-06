@@ -22,8 +22,11 @@
 """
 Class for interfacing to SPI devices.
 """
+import logging
 
-from xsmemio import *
+from xstools.xshostio import DEFAULT_XSUSB_ID, DEFAULT_MODULE_ID
+from xstools.xsmemio import XsMemIo
+
 
 class XsSpi:
     """
@@ -33,9 +36,11 @@ class XsSpi:
     """
 
     # Constants for the SPI interface.
-    _RESET_ADDR = 0 # Reset SPI interface.
-    _SINGLE_XFER_ADDR = 1 # Single SPI transfer and then SPI device is de-selected.
-    _MULTI_XFER_ADDR = 2 # Multiple transfers and then SPI device is left selected for further xfers.
+    _RESET_ADDR = 0  # Reset SPI interface.
+    # Single SPI transfer and then SPI device is de-selected.
+    _SINGLE_XFER_ADDR = 1
+    # Multiple transfers and then SPI device is left selected for further xfers.
+    _MULTI_XFER_ADDR = 2
 
     def __init__(
         self,
@@ -51,7 +56,8 @@ class XsSpi:
         """
 
         # Setup the interface to the SPI module registers.
-        self._memio = XsMemIo(xsusb_id=xsusb_id, module_id=module_id, xsjtag=xsjtag)
+        self._memio = XsMemIo(xsusb_id=xsusb_id, module_id=module_id,
+                              xsjtag=xsjtag)
         logging.debug('address width = '
                       + str(self._memio.address_width))
         logging.debug('data width = ' + str(self._memio.data_width))
@@ -70,7 +76,8 @@ class XsSpi:
             packet = [packet]
         if len(packet) == 0:
             if stop:
-                self.reset() # Reset the SPI interface to de-select the SPI device.
+                # Reset the SPI interface to de-select the SPI device.
+                self.reset()
             return
 
         if not stop:
@@ -84,7 +91,8 @@ class XsSpi:
         
         if num_data == 0:
             if stop:
-                self.reset() # Reset the SPI interface to de-select the SPI device.
+                # Reset the SPI interface to de-select the SPI device.
+                self.reset()
             return []
             
         if not stop:
@@ -95,25 +103,26 @@ class XsSpi:
             return packet
 
 if __name__ == '__main__':
-    #logging.root.setLevel(logging.DEBUG)
-    
-    USB_ID = 0  # This is the USB index for the XuLA board connected to the host PC.
+    # logging.root.setLevel(logging.DEBUG)
+
+    # This is the USB index for the XuLA board connected to the host PC.
+    USB_ID = 0
     SPI_ID = 0xf0
     spi = XsSpi(xsusb_id=USB_ID, module_id=SPI_ID)
-    print spi._memio._get_mem_widths()
+    print(spi._memio._get_mem_widths())
     import sys
-    #sys.exit(0)
+    # sys.exit(0)
     
     spi.reset()
-    print spi._memio._get_mem_widths()
+    print(spi._memio._get_mem_widths())
     spi.send([1,2,3,4], stop=True)
-    print spi._memio._get_mem_widths()
+    print(spi._memio._get_mem_widths())
     spi.send([1], stop=True)
-    print spi._memio._get_mem_widths()
+    print(spi._memio._get_mem_widths())
     spi.send([1,2,3,4,5], stop=False)
-    print spi._memio._get_mem_widths()
+    print(spi._memio._get_mem_widths())
     spi.send([1], stop=False)
-    print spi._memio._get_mem_widths()
+    print(spi._memio._get_mem_widths())
     spi.reset()
-    print spi._memio._get_mem_widths()
+    print(spi._memio._get_mem_widths())
     

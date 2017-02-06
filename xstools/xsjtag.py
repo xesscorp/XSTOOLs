@@ -23,18 +23,17 @@
 """
 USB <=> JTAG port interface for an XESS FPGA board.
 """
-
 import logging
-from xserror import *
-from xsbitarray import *
-from xsusb import XsUsb
+
+from xstools.xsbitarray import XsBitArray
+from xstools.xsusb import XsMajorError, XsUsb
 
 
 class XsJtag:
-
     """USB<=>JTAG port interface object for XESS FPGA board."""
 
-    # Table that stores the next JTAG TAP state for a given TAP state and value of TMS.
+    # Table that stores the next JTAG TAP state for a given TAP state and value
+    # of TMS.
     # Current TAP state : [Next TAP state if TMS=0, Next TAP state if TMS=1]
     _next_tap_state = {
         'Invalid': ['Invalid', 'Invalid'],
@@ -54,7 +53,7 @@ class XsJtag:
         'Exit2-IR': ['Shift-IR', 'Update-IR'],
         'Update-DR': ['Run-Test/Idle', 'Select-DR-Scan'],
         'Update-IR': ['Run-Test/Idle', 'Select-DR-Scan'],
-        }
+    }
 
     def __init__(self, xsusb=None):
         """Initialize object."""
@@ -84,14 +83,16 @@ class XsJtag:
     def shift_tdi(self, tdi, do_exit_shift=False):
         """Append given bits to the TDI bit buffer.
         
-        do_exit_shift = True if shift-ir or shift-dr state should be exited on last TDI bit.
+        do_exit_shift = True if shift-ir or shift-dr state should be exited on
+        last TDI bit.
         """
 
         # Flush any pending TMS bits before TDI bits are sent.
         if self._tms_bits.len > 0:
             self.flush()
 
-        # TAP FSM must be in the shift-ir or shift-dr state if fetching TDO bits.
+        # TAP FSM must be in the shift-ir or shift-dr state if fetching TDO
+        # bits.
         assert self._tap_state == 'Shift-DR' or self._tap_state == 'Shift-IR'
 
         # Create a single-item bit array if just a single bit is being sent.
@@ -118,32 +119,42 @@ class XsJtag:
         # Flush any pending TMS/TDI bits before gathering TDO bits.
         self.flush()
 
-        # TAP FSM must be in the shift-ir or shift-dr state if fetching TDO bits.
+        # TAP FSM must be in the shift-ir or shift-dr state if fetching TDO
+        # bits.
         assert self._tap_state == 'Shift-DR' or self._tap_state == 'Shift-IR'
 
-        if do_exit_shift == True:
+        if do_exit_shift:
             # Get the first N-1 TDO bits before exiting the shift-ir/dr state.
-            tdo_bits = self.shift_tdo(num_bits=num_bits - 0x01, do_exit_shift=False)
-            # Now make TMS=1 to exit the shift-ir/dr state while getting the last TDO bit.
-            self.shift_tms(0x01)  # Do this just to update the internal TAP state.
+            tdo_bits = self.shift_tdo(num_bits=num_bits - 0x01,
+                                      do_exit_shift=False)
+            # Now make TMS=1 to exit the shift-ir/dr state while getting the
+            # last TDO bit.
+            # Do this just to update the internal TAP state.
+            self.shift_tms(0x01)
             self._tms_bits = XsBitArray()  # Then clear the TMS bit buffer.
-            # Now get the final TDO bit and set TMS=1 to exit the shift-ir/dr state.
-            cmd = self._make_jtag_cmd_hdr(num_bits=0x01, flags=XsUsb.GET_TDO_MASK | XsUsb.TMS_VAL_MASK)
+            # Now get the final TDO bit and set TMS=1 to exit the shift-ir/dr
+            # state.
+            flags = XsUsb.GET_TDO_MASK | XsUsb.TMS_VAL_MASK
+            cmd = self._make_jtag_cmd_hdr(num_bits=0x01, flags=flags)
             self._xsusb.write(cmd)  # Send the JTAG command with TMS=1.
             # Get the final TDO bit and put it on the end of the buffer.
             buffer = self._xsusb.read(0x01)
             tdo_bits += [buffer[0] & 0x01]
-            assert self._tap_state == 'Exit1-IR' or self._tap_state == 'Exit1-DR'
+            assert self._tap_state == 'Exit1-IR' or \
+                   self._tap_state == 'Exit1-DR'
         else:
             # Get the TDO bits but do not exit the shift-ir/dr state.
-            cmd = self._make_jtag_cmd_hdr(num_bits=num_bits, flags=XsUsb.GET_TDO_MASK)
+            cmd = self._make_jtag_cmd_hdr(num_bits=num_bits,
+                                          flags=XsUsb.GET_TDO_MASK)
             self._xsusb.write(cmd)  # Send the JTAG command with TMS=0.
-            # Now get a USB packet with enough bytes to hold all the requested bits.
+            # Now get a USB packet with enough bytes to hold all the requested
+            # bits.
             num_bytes = int((num_bits + 7) / 8)
             buffer = self._xsusb.read(num_bytes)
             # Turn the byte array into a bit array.
             tdo_bits = XsBitArray.from_usb(usb_bytes=buffer, length=num_bits)
-            assert self._tap_state == 'Shift-IR' or self._tap_state == 'Shift-DR'
+            assert self._tap_state == 'Shift-IR' or \
+                   self._tap_state == 'Shift-DR'
         logging.debug('shift_tdo TDO => %s', tdo_bits)
         return tdo_bits
 
@@ -153,8 +164,8 @@ class XsJtag:
         flags = JTAG_CMD flags OR'ed together.
         """
 
-        # The command packet contains the JTAG_CMD byte and then the
-        # number of bits as a 32-bit number starting with the least-significant byte
+        # The command packet contains the JTAG_CMD byte and then the number of
+        # bits as a 32-bit number starting with the least-significant byte
         # and then the flags byte.
         return bytearray([
             XsUsb.JTAG_CMD,
@@ -163,7 +174,7 @@ class XsJtag:
             num_bits >> 16 & 0xff,
             num_bits >> 24 & 0xff,
             flags,
-            ])
+        ])
 
     def flush(self):
         """Flush the TDI/TMS buffers through the USB port."""
@@ -178,28 +189,39 @@ class XsJtag:
         if self._tdi_bits.len == 0:
             # No TDI bits to send, so just send the TMS bits.
             # Create the JTAG_CMD header for sending only the TMS bits.
-            buffer = self._make_jtag_cmd_hdr(num_bits=self._tms_bits.len, flags=XsUsb.PUT_TMS_MASK)
+            buffer = self._make_jtag_cmd_hdr(num_bits=self._tms_bits.len,
+                                             flags=XsUsb.PUT_TMS_MASK)
             # Append the TMS bits (in byte array format) to the JTAG_CMD header.
             buffer.extend(self._tms_bits.to_usb())
         else:
             if self._tms_bits.len == 0:
                 # No TMS bits to send, so just send the TDI bits.
                 # Create the JTAG_CMD header for sending only the TDI bits.
-                buffer = self._make_jtag_cmd_hdr(num_bits=self._tdi_bits.len, flags=XsUsb.PUT_TDI_MASK)
-                # Append the TDI bits (in byte array format) to the JTAG_CMD header.
+                buffer = self._make_jtag_cmd_hdr(num_bits=self._tdi_bits.len,
+                                                 flags=XsUsb.PUT_TDI_MASK)
+                # Append the TDI bits (in byte array format) to the JTAG_CMD
+                # header.
                 buffer.extend(self._tdi_bits.to_usb())
             else:
                 # Both TMS and TDI bits need to be sent.
                 if self._tms_bits.len == self._tdi_bits.len:
                     # TDI and TMS bit buffers are equal in #bits.
-                    # Create the JTAG_CMD header for sending both the TDI and TMS bits.
-                    buffer = self._make_jtag_cmd_hdr(num_bits=self._tdi_bits.len, flags=XsUsb.PUT_TMS_MASK | XsUsb.PUT_TDI_MASK)
-                    # Create byte arrays to hold the TDI and TMS bits for USB transfer.
+                    # Create the JTAG_CMD header for sending both the TDI and
+                    # TMS bits.
+                    flags = XsUsb.PUT_TMS_MASK | XsUsb.PUT_TDI_MASK
+                    buffer = self._make_jtag_cmd_hdr(
+                        num_bits=self._tdi_bits.len,
+                        flags=flags)
+                    # Create byte arrays to hold the TDI and TMS bits for USB
+                    # transfer.
                     tms_buffer = self._tms_bits.to_usb()
                     tdi_buffer = self._tdi_bits.to_usb()
-                    # Create another byte array to hold the interleaved TDI and TMS buffers.
-                    tms_tdi_buffer = bytearray(len(tms_buffer) + len(tdi_buffer))
-                    # Interleave TMS and TDI bytes with the TMS bytes at even addresses...
+                    # Create another byte array to hold the interleaved TDI and
+                    # TMS buffers.
+                    tms_tdi_buffer = \
+                        bytearray(len(tms_buffer) + len(tdi_buffer))
+                    # Interleave TMS and TDI bytes with the TMS bytes at even
+                    # addresses...
                     tms_tdi_buffer[0::2] = tms_buffer
                     # ... and the TDI bytes at odd addresses.
                     tms_tdi_buffer[0x01::2] = tdi_buffer
@@ -209,21 +231,25 @@ class XsJtag:
                     # There's multiple TDI bits but only one TMS bit.
                     # Remove the last TMS and TDI bits from the buffers.
                     last_tms_bit = self._tms_bits.tail(0x01)
-                    self._tms_bits = self._tms_bits.head(self._tms_bits.len - 0x01)
+                    self._tms_bits = \
+                        self._tms_bits.head(self._tms_bits.len - 0x01)
                     last_tdi_bit = self._tdi_bits.tail(0x01)
-                    self._tdi_bits = self._tdi_bits.head(self._tdi_bits.len - 0x01)
+                    self._tdi_bits = \
+                        self._tdi_bits.head(self._tdi_bits.len - 0x01)
                     assert self._tms_bits.len == 0
                     assert self._tdi_bits.len != 0
                     # Now only TDI bits remain, so flush those.
                     self.flush()
-                    # Now put the last TDI and TMS bits into the buffers and flush those.
+                    # Now put the last TDI and TMS bits into the buffers and
+                    # flush those.
                     self._tms_bits += [last_tms_bit]
                     self._tdi_bits += [last_tdi_bit]
                     self.flush()
                     return
                 else:
-                    # It's an error if we ever get here! That would mean there are
-                    # both multiple TMS and TDI bits, but not the same number of each.
+                    # It's an error if we ever get here! That would mean there
+                    # are both multiple TMS and TDI bits, but not the same
+                    # number of each.
                     assert False
 
         # Send the JTAG_CMD packet with the attached TMS and/or TDI bits.
@@ -237,41 +263,49 @@ class XsJtag:
         """Go through a sequence of TAP states."""
 
         for next_state in states:
-            assert next_state in self._next_tap_state, 'Illegal TAP state label: %s.' % next_state
+            assert next_state in self._next_tap_state, \
+                'Illegal TAP state label: %s.' % next_state
             # Make sure the next TAP state is reachable from current state.
-            assert next_state == self._next_tap_state[self._tap_state][0] or next_state == self._next_tap_state[self._tap_state][0x01]
-            # Append the TMS bit that will move the TAP FSM to the desired state.
-            self.shift_tms(next_state == self._next_tap_state[self._tap_state][0x01])
+            assert next_state == self._next_tap_state[self._tap_state][0] or \
+                   next_state == self._next_tap_state[self._tap_state][0x01]
+            # Append the TMS bit that will move the TAP FSM to the desired
+            # state.
+            self.shift_tms(
+                next_state == self._next_tap_state[self._tap_state][0x01])
 
     def load_ir_then_dr(
-        self,
-        instruction=None,
-        data=None,
-        num_return_bits=0,
-        ):
+            self,
+            instruction=None,
+            data=None,
+            num_return_bits=0,
+    ):
         """Load JTAG IR and then DR and return bits shifted out of DR.
         instruction = opcode for JTAG IR.
         data = bits to load into JTAG DR.
         num_return_bits = # of bits to shift out of DR.
         """
 
-        # The TAP FSM should always start and return to the run-test/idle state until all instructions are done.
+        # The TAP FSM should always start and return to the run-test/idle state
+        # until all instructions are done.
         if self._tap_state != 'Run-Test/Idle':
             self.reset_tap()
             self.go_thru_tap_states('Run-Test/Idle')
 
-        if instruction != None:
+        if instruction is not None:
             # Go  to the shift-ir state.
-            self.go_thru_tap_states('Select-DR-Scan', 'Select-IR-Scan', 'Capture-IR', 'Shift-IR')
+            self.go_thru_tap_states('Select-DR-Scan', 'Select-IR-Scan',
+                                    'Capture-IR', 'Shift-IR')
             # Now shift in the instruction opcode and activate it.
             self.shift_tdi(tdi=instruction, do_exit_shift=True)
             self.go_thru_tap_states('Update-IR')
 
         # TAP FSM can get to select-dr-scan from either of these states.
-        assert self._tap_state == 'Run-Test/Idle' or self._tap_state == 'Update-IR'
+        assert self._tap_state == 'Run-Test/Idle' or \
+               self._tap_state == 'Update-IR'
         bits = XsBitArray()
-        if data != None:
-            # If there's data to send, then there should never be data to return.
+        if data is not None:
+            # If there's data to send, then there should never be data to
+            # return.
             assert num_return_bits == 0
             # Go  to the shift-dr state.
             self.go_thru_tap_states('Select-DR-Scan', 'Capture-DR', 'Shift-DR')
@@ -284,7 +318,9 @@ class XsJtag:
             # Shift the data out of the DR.
             bits = self.shift_tdo(num_bits=num_return_bits, do_exit_shift=True)
             self.go_thru_tap_states('Update-DR')
-        assert self._tap_state == 'Run-Test/Idle' or self._tap_state == 'Update-IR' or self._tap_state == 'Update-DR'
+        assert self._tap_state == 'Run-Test/Idle' or \
+               self._tap_state == 'Update-IR' or \
+               self._tap_state == 'Update-DR'
         self.go_thru_tap_states('Run-Test/Idle')
         self.flush()
         return bits
@@ -295,7 +331,8 @@ class XsJtag:
         # Flush anything that's already in the buffer.
         self.flush()
 
-        # Setting TMS=1 for five clocks guarantees TAP is in test-logic-reset state.
+        # Setting TMS=1 for five clocks guarantees TAP is in test-logic-reset
+        # state.
         for i in range(0, 5):
             self.shift_tms(0x01)
         self.flush()
@@ -310,20 +347,24 @@ class XsJtag:
         # Flush any TMS/TDI bits already in the buffer.
         self.flush()
 
-        # The command packet contains the RUNTEST_CMD byte and then the
-        # number of clocks as a 32-bit number starting with the least-significant byte.
-        cmd = bytearray([XsUsb.RUNTEST_CMD, num_tcks & 0xff, num_tcks >> 8 & 0xff, num_tcks >> 16 & 0xff, num_tcks >> 24 & 0xff])
+        # The command packet contains the RUNTEST_CMD byte and then the number
+        # of clocks as a 32-bit number starting with the least-significant byte.
+        cmd = bytearray(
+            [XsUsb.RUNTEST_CMD, num_tcks & 0xff, num_tcks >> 8 & 0xff,
+             num_tcks >> 16 & 0xff, num_tcks >> 24 & 0xff])
         self._xsusb.write(cmd)  # Send the command.
 
-        # Check that the 1st byte of the command response matches the command opcode.
+        # Check that the 1st byte of the command response matches the command
+        # opcode.
         if self._xsusb.read(5)[0] != XsUsb.RUNTEST_CMD:
-            raise XsMajorError("Communication error with XESS board in 'runtest'.")
+            raise XsMajorError(
+                "Communication error with XESS board in 'runtest'.")
 
 
 if __name__ == '__main__':
     logging.root.setLevel(logging.DEBUG)
 
-    print '#XSUSB = %d' % XsUsb.get_num_xsusb()
+    print('#XSUSB = %d' % XsUsb.get_num_xsusb())
 
     # Create an object for sending JTAG through the USB link.
     xsjtag = XsJtag(XsUsb())
@@ -331,9 +372,10 @@ if __name__ == '__main__':
     idcode_instr = XsBitArray('0b001001')
     xsjtag.reset_tap()
     idcode = xsjtag.load_ir_then_dr(idcode_instr, None, 32)
-    print 'idcode instruction = %s' % idcode_instr
-    print 'idcode = %s' % idcode
+    print('idcode instruction = %s' % idcode_instr)
+    print('idcode = %s' % idcode)
     # Compare the ID code to the XC3S200A ID code.
-    assert idcode.head(28) == XsBitArray('0b00000010001000011000000010010011').head(28)
+    assert idcode.head(28) == XsBitArray(
+        '0b00000010001000011000000010010011').head(28)
     xsjtag.runtest(1000)
-    print '\n***Test passed!***'
+    print('\n***Test passed!***')
