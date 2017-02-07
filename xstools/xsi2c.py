@@ -23,13 +23,10 @@
 Class for interfacing to I2C devices using the I2C FPGA core
 found at http://opencores.org/project,i2c.
 """
-import logging
 
-from xstools.xserror import XsMinorError
-from xstools.xshostio import DEFAULT_MODULE_ID, DEFAULT_XSUSB_ID
+from xsmemio import *
 
 # Constants for the I2C interface.
-from xstools.xsmemio import XsMemIo
 
 _ACK = 0  # I2C acknowledge level.
 _NACK = 1  # I2C no-acknowledge level.
@@ -37,8 +34,7 @@ _NACK = 1  # I2C no-acknowledge level.
 _READ_OP = 1  # I2C read operation.
 _WRITE_OP = 0  # I2C write operation.
 
-# I2C module register addresses from page 4 of
-# http://opencores.org/svnget,i2c?file=%2Ftrunk%2F%2Fdoc%2Fi2c_specs.pdf
+# I2C module register addresses from page 4 of http://opencores.org/svnget,i2c?file=%2Ftrunk%2F%2Fdoc%2Fi2c_specs.pdf
 
 _PRERlo = 0x00  # Lower byte of clock prescale register.
 _PRERhi = 0x01  # Upper byte of clock prescaler register.
@@ -68,9 +64,8 @@ _SR_IF = 0  # True when an interrupt is pending.
 class XsI2c:
     """
     This class instantiates an object that will communicate through the JTAG
-    port of the FPGA to an I2C master core found at
-    http://opencores.org/project,i2c. The I2C master can communicate with I2C
-    slaves external to the FPGA.
+    port of the FPGA to an I2C master core found at http://opencores.org/project,i2c.
+    The I2C master can communicate with I2C slaves external to the FPGA.
     """
 
     def __init__(
@@ -120,15 +115,13 @@ class XsI2c:
     def _send_i2c_address(self, op):
         """Transmit I2C slave address along with R/W operation bit."""
 
-        # The address is created by shifting the I2C address and setting the
-        # LSB with the read/write opcode.
+        # The address is created by shifting the I2C address and setting the LSB with the read/write opcode.
         address = self._i2c_address << 1 & 0xfe | op
 
         # Write the address into the transmit register.
         self._memio.write(_TXR, [address])
 
-        # Set the START condition for an I2C transfer and initiate the
-        # transmission of the I2C address.
+        # Set the START condition for an I2C transfer and initiate the transmission of the I2C address.
         self._memio.write(_CR, [1 << _CR_STA | 1 << _CR_WR])
         self._check_for_ack()
 
@@ -215,13 +208,13 @@ class XsI2c:
 
 
 if __name__ == '__main__':
+    import sys
     import random
     from bitarray import *
     from scipy import *
     from pylab import *
 
-    # This is the USB index for the XuLA board connected to the host PC.
-    USB_ID = 0
+    USB_ID = 0  # This is the USB index for the XuLA board connected to the host PC.
     I2C_ID = 0xff
     i2c = XsI2c(xsusb_id=USB_ID, module_id=I2C_ID, i2c_address=0x58)
     
@@ -230,12 +223,12 @@ if __name__ == '__main__':
     i2c.wr_reg(0x0e, [0xf0])
     sys.exit(0)
     
-    print(i2c.rd_reg(0x0e))
+    print i2c.rd_reg(0x0e)
     i2c.wr_reg(0x0e, [7])
-    print(i2c.rd_reg(0x0e))
+    print i2c.rd_reg(0x0e)
     i2c.wr_reg(0x0e, [0])
-    print(i2c.rd_reg(0x0e))
+    print i2c.rd_reg(0x0e)
     i2c.wr_reg(0x02,[0x12, 0xc0])
-    print(i2c.rd_reg(0x02,2))
-    print(i2c.rd_reg(0x0d,1))
+    print i2c.rd_reg(0x02,2)
+    print i2c.rd_reg(0x0d,1)
     

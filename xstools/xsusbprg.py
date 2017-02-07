@@ -35,96 +35,93 @@ This program was originally conceived and coded in C++ by Dave Vandenbout.
 Al Neissner re-wrote it in python. Dave then took ideas and bits of Al's
 code and integrated them into this program and the XSTOOLs classes and methods.
 """
-import os
-import sys
-from argparse import ArgumentParser
-
-from xstools import __version__
-from xstools.xsboard import XsBoard
-from xstools.xserror import XsError, XsFatalError
-from xstools.xsusb import XsUsb
 
 try:
     import winsound
 except ImportError:
     pass
 
+import sys
+import os
+import string
+from argparse import ArgumentParser
+import xsboard as XSBOARD
+import xserror as XSERROR
+from __init__ import __version__
+
 SUCCESS = 0
 FAILURE = 1
 
 
-def xsusbprg_parser(num_boards):
-    desc = 'Program a firmware hex file into the microcontroller on an XESS ' \
-           'board.'
-    p = ArgumentParser(description=desc)
-
-    p.add_argument(
-        '-f', '--filename',
-        type=str,
-        default=None,
-        metavar='FILE.HEX',
-        help='The name of the firmware hex file.')
-    p.add_argument(
-        '-u', '--usb',
-        type=int,
-        default=0,
-        choices=range(num_boards),
-        help='The USB port number for the XESS board. If you only have one '
-             'board, then use 0.')
-    p.add_argument(
-        '-b', '--board',
-        type=str.lower,
-        default='none',
-        choices=['xula-50', 'xula-200', 'xula2-lx9', 'xula2-lx25'])
-    p.add_argument(
-        '-m', '--multiple',
-        action='store_const',
-        const=True,
-        default=False,
-        help='Program multiple boards each time a board is detected on the USB '
-             'port.')
-    p.add_argument(
-        '--verify',
-        action='store_const',
-        const=True,
-        default=False,
-        help='Verify the microcontroller flash against the firmware hex file.')
-    p.add_argument(
-        '-v', '--version',
-        action='version',
-        version='%(prog)s ' + __version__,
-        help='Print the version number of this program and exit.')
-    return p
-
-
 def xsusbprg():
+
     try:
-        num_boards = XsUsb.get_num_xsusb()
-        p = xsusbprg_parser(num_boards=num_boards)
+        num_boards = XSBOARD.XsUsb.get_num_xsusb()
+
+        p = ArgumentParser(
+            description=
+            'Program a firmware hex file into the microcontroller on an XESS board.')
+
+        p.add_argument(
+            '-f', '--filename',
+            type=str,
+            default=None,
+            metavar='FILE.HEX',
+            help='The name of the firmware hex file.')
+        p.add_argument(
+            '-u', '--usb',
+            type=int,
+            default=0,
+            choices=range(num_boards),
+            help=
+            'The USB port number for the XESS board. If you only have one board, then use 0.')
+        p.add_argument(
+            '-b', '--board',
+            type=str.lower,
+            default='none',
+            choices=['xula-50', 'xula-200', 'xula2-lx9', 'xula2-lx25'])
+        p.add_argument(
+            '-m', '--multiple',
+            action='store_const',
+            const=True,
+            default=False,
+            help=
+            'Program multiple boards each time a board is detected on the USB port.')
+        p.add_argument(
+            '--verify',
+            action='store_const',
+            const=True,
+            default=False,
+            help=
+            'Verify the microcontroller flash against the firmware hex file.')
+        p.add_argument(
+            '-v', '--version',
+            action='version',
+            version='%(prog)s ' + __version__,
+            help='Print the version number of this program and exit.')
+            
         args = p.parse_args()
 
-        while True:
+        while (True):
             if num_boards > 0:
-                xs_board = XsBoard.get_xsboard(args.usb, args.board)
+                xs_board = XSBOARD.XsBoard.get_xsboard(args.usb, args.board)
                 try:
-                    if args.verify:
-                        msg = 'Verifying microcontroller firmware against %s.'
-                        print(msg % args.filename)
+                    if args.verify == True:
+                        print 'Verifying microcontroller firmware against %s.' % args.filename
                         xs_board.verify_firmware(args.filename)
-                        print('Verification passed!')
+                        print 'Verification passed!'
                     else:
-                        msg = 'Programming microcontroller firmware with %s.'
-                        print(msg % args.filename)
+                        print 'Programming microcontroller firmware with %s.' % args.filename
                         xs_board.update_firmware(args.filename)
-                        print('Programming completed!')
-                except XsError:
+                        print 'Programming completed!'
+                except XSERROR.XsError as e:
                     try:
                         winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
                     except:
                         pass
                     if args.multiple:
                         xs_board.xsusb.disconnect()
-                        while XsUsb.get_num_xsusb() != 0:
+                        while XSBOARD.XsUsb.get_num_xsusb() != 0:
                             pass
                         continue
                     else:
@@ -135,14 +132,14 @@ def xsusbprg():
                     pass
                 if args.multiple:
                     xs_board.xsusb.disconnect()
-                    while XsUsb.get_num_xsusb() != 0:
+                    while XSBOARD.XsUsb.get_num_xsusb() != 0:
                         pass
                     continue
                 else:
                     sys.exit(SUCCESS)
-
+                    
             elif not args.multiple:
-                XsFatalError("No XESS Boards found!")
+                XSERROR.XsFatalError("No XESS Boards found!")
 
     except SystemExit as e:
         os._exit(SUCCESS)

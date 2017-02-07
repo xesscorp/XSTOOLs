@@ -22,33 +22,30 @@
 """
 Object for forcing inputs and reading outputs from a device-under-test (DUT).
 """
-import logging
 
-from xstools.xsbitarray import XsBitArray
-from xstools.xserror import XsMinorError
-from xstools.xshostio import XsHostIo, DEFAULT_XSUSB_ID, DEFAULT_MODULE_ID
+import logging
+from xshostio import *
 
 
 class XsDutIo(XsHostIo):
-    """
-    Object for forcing inputs and reading outputs from a device-under-test.
-    """
+
+    """Object for forcing inputs and reading outputs from a device-under-test (DUT)."""
 
     # DUT opcodes.
     _NOP_OPCODE   = XsBitArray('0b00')
     _READ_OPCODE  = XsBitArray('0b11')  # Read DUT outputs.
     _WRITE_OPCODE = XsBitArray('0b10')  # Write to DUT inputs.
-    # Get number of inputs and outputs of DUT.
-    _SIZE_OPCODE  = XsBitArray('0b01')
+    _SIZE_OPCODE  = XsBitArray('0b01')  # Get number of inputs and outputs of DUT.
     _SIZE_RESULT_LENGTH = 16  # Length of _SIZE_OPCODE result.
 
-    def __init__(self,
-                 xsusb_id=DEFAULT_XSUSB_ID,
-                 module_id=DEFAULT_MODULE_ID,
-                 dut_output_widths=None,
-                 dut_input_widths=None,
-                 xsjtag=None,
-                 ):
+    def __init__(
+        self,
+        xsusb_id=DEFAULT_XSUSB_ID,
+        module_id=DEFAULT_MODULE_ID,
+        dut_output_widths=None,
+        dut_input_widths=None,
+        xsjtag=None,
+        ):
         """Setup a DUT I/O object.
         
         xsusb_id = The ID for the USB port.
@@ -59,18 +56,15 @@ class XsDutIo(XsHostIo):
         """
 
         # Setup the super-class object.
-        XsHostIo.__init__(self,
-                          xsusb_id=xsusb_id,
-                          module_id=module_id, xsjtag=xsjtag)
+        XsHostIo.__init__(self, xsusb_id=xsusb_id, module_id=module_id, xsjtag=xsjtag)
         # Get the number of inputs and outputs of the DUT.
-        self.total_dut_input_width, self.total_dut_output_width = \
-            self._get_io_widths()
+        (self.total_dut_input_width, self.total_dut_output_width) = self._get_io_widths()
         logging.debug('# DUT input bits = %d' % self.total_dut_input_width)
         logging.debug('# DUT output bits = %d' % self.total_dut_output_width)
         assert self.total_dut_output_width != 0
         assert self.total_dut_input_width != 0
 
-        if dut_input_widths is None:
+        if dut_input_widths == None:
             # If no DUT input widths are provided, then make a single-element
             # list containing just the total number of DUT input bits.
             self._dut_input_widths = [self.total_dut_input_width]
@@ -90,7 +84,7 @@ class XsDutIo(XsHostIo):
             assert total_width == self.total_dut_input_width
         else:
             raise XsMinorError('Unknown type of input width list.')
-        if dut_output_widths is None:
+        if dut_output_widths == None:
             # If no DUT output widths are provided, then make a single-element
             # list containing just the total number of DUT output bits.
             self._dut_output_widths = [self.total_dut_output_width]
@@ -112,38 +106,30 @@ class XsDutIo(XsHostIo):
             raise XsMinorError('Unknown type of output width list.')
 
     def _get_io_widths(self):
-        """
-        Return the (total_dut_input_width, total_dut_output_width) of the DUT.
-        """
-        # Skip cycles between issuing command and reading back result.
-        skip_cycles = 1
+        """Return the (total_dut_input_width, total_dut_output_width) of the DUT."""
 
-        # Send the opcode and then read back the bits with the DUT's #inputs and
-        # #outputs.
-        num_result_bits = self._SIZE_RESULT_LENGTH + skip_cycles
+        SKIP_CYCLES = 1  # Skip cycles between issuing command and reading back result.
+
+        # Send the opcode and then read back the bits with the DUT's #inputs and #outputs.
         params = self.send_rcv(payload=self._SIZE_OPCODE,
-                               num_result_bits=num_result_bits)
-        params.pop_field(skip_cycles)  # Remove the skipped cycles.
+                               num_result_bits=self._SIZE_RESULT_LENGTH + SKIP_CYCLES)
+        params.pop_field(SKIP_CYCLES)  # Remove the skipped cycles.
 
         # The number of DUT inputs is in the first half of the bit array.
-        half_len = int(self._SIZE_RESULT_LENGTH / 2)
-        total_dut_input_width = params.pop_field(half_len).unsigned
+        total_dut_input_width = params.pop_field(self._SIZE_RESULT_LENGTH / 2).unsigned
 
         # The number of DUT outputs is in the last half of the bit array.
-        total_dut_output_width = params.pop_field(half_len).unsigned
-        return total_dut_input_width, total_dut_output_width
+        total_dut_output_width = params.pop_field(self._SIZE_RESULT_LENGTH / 2).unsigned
+        return (total_dut_input_width, total_dut_output_width)
 
     def read(self):
         """Return a list of bit arrays for the DUT output fields."""
 
-        # Skip cycles between issuing command and reading back result.
-        SKIP_CYCLES = 1
+        SKIP_CYCLES = 1  # Skip cycles between issuing command and reading back result.
 
-        # Send the READ_OPCODE and then read back the bits with the DUT's output
-        # values.
-        num_result_bits = self.total_dut_output_width + SKIP_CYCLES
+        # Send the READ_OPCODE and then read back the bits with the DUT's output values.
         result = self.send_rcv(payload=self._READ_OPCODE,
-                               num_result_bits=num_result_bits)
+                               num_result_bits=self.total_dut_output_width + SKIP_CYCLES)
         result.pop_field(SKIP_CYCLES)  # Remove the skipped cycles.
         assert result.len == self.total_dut_output_width
         logging.debug('Read result = ' + repr(result))
@@ -152,8 +138,7 @@ class XsDutIo(XsHostIo):
             # Return the result bit array if there's only a single output field.
             return result
         else:
-            # Otherwise, partition the result bit array into the given output
-            # field widths.
+            # Otherwise, partition the result bit array into the given output field widths.
             outputs = []
             for w in self._dut_output_widths:
                 outputs.append(result.pop_field(w))
@@ -183,40 +168,43 @@ class XsDutIo(XsHostIo):
         # Send the payload to force the bit arrays onto the DUT inputs.
         self.send_rcv(payload=payload, num_result_bits=0)
 
-    # Associate the old Write() method with the new write() method.
-    Write = write
+    Write = write  # Associate the old Write() method with the new write() method.
 
     def execute(self, *inputs):
-        """
-        Send a list of bit arrays to the DUT input fields and get the DUT outputs.
-        """
+        """Send a list of bit arrays to the DUT input fields and get the DUT outputs."""
 
         self.write(*inputs)
         return self.read()
 
-    # Associate the old Exec() method with the new exec() method.
-    Exec = execute
+    Exec = execute  # Associate the old Exec() method with the new exec() method.
 
 
 class XsDut(XsDutIo):
-    def __init__(self, xsusb_id=DEFAULT_XSUSB_ID, module_id=DEFAULT_MODULE_ID,
-                 dut_input_widths=None, dut_output_widths=None):
-        # The __init__ function of the old XsDut class had the argument
-        # positions of the input and output width lists reversed.
-        XsDutIo.__init__(self, xsusb_id, module_id, dut_output_widths,
-                         dut_input_widths)
+
+    def __init__(
+        self,
+        xsusb_id=DEFAULT_XSUSB_ID,
+        module_id=DEFAULT_MODULE_ID,
+        dut_input_widths=None,
+        dut_output_widths=None,
+        ):
+
+        # The __init__ function of the old XsDut class had the argument positions of the input and output width lists reversed.
+        XsDutIo.__init__(self, xsusb_id, module_id, dut_output_widths, dut_input_widths)
 
 
 if __name__ == '__main__':
-    from random import randint  # Import some random number generator routines.
+
+    #logging.root.setLevel(logging.DEBUG)
+
+    from random import *  # Import some random number generator routines.
 
     USB_ID = 0  # USB port index for the XuLA board connected to the host PC.
 
     BLINKER_ID = 1  # This is the identifier for the blinker in the FPGA.
     SUBTRACTOR_ID = 4  # This is the identifier for the subtractor in the FPGA.
 
-    # Create a blinker interface object that takes one 1-bit input and has one
-    # 1-bit output.
+    # Create a blinker interface object that takes one 1-bit input and has one 1-bit output.
     blinker = XsDutIo(USB_ID, BLINKER_ID, [1], [1])
 
     # Create a subtractor intfc obj with two 8-bit inputs and one 8-bit output.
@@ -226,18 +214,17 @@ if __name__ == '__main__':
     for i in range(0, 100):
         minuend = randint(0, 127)  # Get a random, positive byte...
         subtrahend = randint(0, 127)  # And subtract this random byte from it.
-        # Use the subtractor in FPGA.
-        diff = subtractor.Exec(minuend, subtrahend)
-        print('%3d - %3d = %4d' % (minuend, subtrahend, diff.int))
+        diff = subtractor.Exec(minuend, subtrahend)  # Use the subtractor in FPGA.
+        print '%3d - %3d = %4d' % (minuend, subtrahend, diff.int),
         if diff.int == minuend - subtrahend:  # Compare Python result to FPGA's.
-            print('==> CORRECT!')  # Print this if the differences match.
+            print '==> CORRECT!'  # Print this if the differences match.
         else:
-            # Oops! Something's wrong with the subtractor.
-            print('==> ERROR!!!')
-
+            print '==> ERROR!!!'  # Oops! Something's wrong with the subtractor.
+            
     blinker = 0
     blinker = XsDutIo(USB_ID, BLINKER_ID, [1], [1])
 
-    while True:  # Do this forever...
-        led = blinker.Read()  # Read the current state of the LED.
-        print('LED: %1d\r' % led.unsigned, )  # Print the LED state and return.
+    while True: # Do this forever...
+        led = blinker.Read() # Read the current state of the LED.
+        print 'LED: %1d\r' % led.unsigned, # Print the LED state and return.
+            
