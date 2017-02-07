@@ -40,7 +40,3 @@ output/*/index.html
 
 # Sphinx
 docs/_build
-
-# Intellij PyCharm
-.idea/
-ipsh.py

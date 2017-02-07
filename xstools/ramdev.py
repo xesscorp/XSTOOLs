@@ -22,12 +22,12 @@
 """
 Classes for devices containing RAM memory.
 """
+
+import logging
 import struct
 from intelhex import IntelHex
-
-from xstools.xserror import XsMajorError, XsMinorError
-from xstools.xshostio import DEFAULT_XSUSB_ID, DEFAULT_MODULE_ID
-from xstools.xsmemio import XsMemIo
+from xserror import *
+from xsmemio import *
 
 
 class RamDevice:
@@ -37,7 +37,7 @@ class RamDevice:
     def __init__(self, xsusb_id=DEFAULT_XSUSB_ID, module_id=DEFAULT_MODULE_ID, xsjtag=None):
         """Initialize the RAM."""
         self._ram = XsMemIo(xsusb_id=xsusb_id, module_id=module_id, xsjtag=xsjtag)
-
+        
     def _set_blk_bounds(self, bottom, top, blk_sz):
         bottom = self._START_ADDR if (bottom == None or bottom < self._START_ADDR) else bottom
         top = self._END_ADDR if (top == None or top >= self._END_ADDR) else top
@@ -50,13 +50,13 @@ class RamDevice:
 
         if bottom is None or top is None:
             raise XsMinorError('Must specify both top and bottom addresses to erase %s.', self._DEVICE_NAME)
-
+            
         if bottom % self._WORD_SIZE != 0:
             raise XsMinorError('Bottom address must be a multiple of the %s word size (%x / %d != 0)' % (self._DEVICE_NAME, bottom, self._WORD_SIZE))
         num_bytes = (top-bottom+1)
         if num_bytes % self._WORD_SIZE != 0:
             raise XsMinorError('Number of bytes is not a multiple of the %s word size (%x / %d != 0)' % (self._DEVICE_NAME, num_bytes, self._WORD_SIZE))
-
+            
         hex_data = IntelHex()
         for addr in range(bottom,top+1):
             hex_data[addr] = 0xff
@@ -82,21 +82,20 @@ class RamDevice:
         # If min and/or max address is undefined, then hex data must be empty.
         if bottom is None or top is None:
             raise XsMinorError('No data to write.')
-
+            
         # Convert the hex data byte-wise addresses into addresses for the word-size of the memory device.
         if bottom % self._WORD_SIZE != 0:
             raise XsMinorError('Bottom address must be a multiple of the %s word size (%x / %d != 0)' % (self._DEVICE_NAME, bottom, self._WORD_SIZE))
         num_bytes = (top-bottom+1)
         if num_bytes % self._WORD_SIZE != 0:
             raise XsMinorError('Number of bytes is not a multiple of the %s word size (%x / %d != 0)' % (self._DEVICE_NAME, num_bytes, self._WORD_SIZE))
-        ram_bottom = bottom // self._WORD_SIZE
-        num_words = num_bytes // self._WORD_SIZE
-
+        ram_bottom = bottom/self._WORD_SIZE
+        num_words = num_bytes/self._WORD_SIZE
+        
         # Convert the hex data into words for the RAM.
         hex_to_word_format = self._WORD_ENDIAN + str(num_words) + self._WORD_TYPE
-        # one byte too many cause unknown (Comment by hstarmans)
-        ram_words = struct.unpack(hex_to_word_format,
-                                  hexfile.gets(bottom, num_bytes).encode('iso-8859-1'))
+        ram_words = struct.unpack(hex_to_word_format, hexfile.gets(bottom,num_bytes))
+        
         # Write the words to the RAM.
         self._ram.write(ram_bottom, ram_words)
 
@@ -105,15 +104,15 @@ class RamDevice:
 
         if bottom is None or top is None:
             raise XsMinorError('Must specify both top and bottom addresses to read %s.', self._DEVICE_NAME)
-
+            
         if bottom % self._WORD_SIZE != 0:
             raise XsMinorError('Bottom address must be a multiple of the %s word size (%x / %d != 0)' % (self._DEVICE_NAME, bottom, self._WORD_SIZE))
         num_bytes = (top-bottom+1)
         if num_bytes % self._WORD_SIZE != 0:
             raise XsMinorError('Number of bytes is not a multiple of the %s word size (%x / %d != 0)' % (self._DEVICE_NAME, num_bytes, self._WORD_SIZE))
-        ram_bottom = bottom // self._WORD_SIZE
-        num_words = num_bytes // self._WORD_SIZE
-
+        ram_bottom = bottom/self._WORD_SIZE
+        num_words = num_bytes/self._WORD_SIZE
+        
         ram_words = self._ram.read(ram_bottom, num_words, return_type=int())
         word_to_hex_format = self._WORD_ENDIAN + str(num_words) + self._WORD_TYPE
         hex_bytes = IntelHex()
@@ -129,9 +128,9 @@ class Sdram_8MB(RamDevice):
     _END_ADDR = 2**23-1 # Max byte address, which is twice the word address.
     _WRITE_BLK_SZ = 256
     _READ_BLK_SZ = 256
-    _WORD_SIZE = 2  # 16-bit word size.
-    _WORD_TYPE = 'H'  # 16-bit unsigned integers.
-    _WORD_ENDIAN = '>'  # Big-endian byte order.
+    _WORD_SIZE = 2 # 16-bit word size.
+    _WORD_TYPE = 'H' # 16-bit unsigned integers.
+    _WORD_ENDIAN = '>' # Big-endian byte order.
     _DEVICE_NAME = '8MB SDRAM'
 
 
@@ -143,7 +142,7 @@ class Sdram_32MB(RamDevice):
     _END_ADDR = 2**25-1 # Max byte address, which is twice the word address.
     _WRITE_BLK_SZ = 256
     _READ_BLK_SZ = 256
-    _WORD_SIZE = 2  # 16-bit word size.
-    _WORD_TYPE = 'H'  # 16-bit unsigned integers.
-    _WORD_ENDIAN = '>'  # Big-endian byte order.
+    _WORD_SIZE = 2 # 16-bit word size.
+    _WORD_TYPE = 'H' # 16-bit unsigned integers.
+    _WORD_ENDIAN = '>' # Big-endian byte order.
     _DEVICE_NAME = '32MB SDRAM'

@@ -22,10 +22,10 @@
 """
 PIC microcontroller classes.
 """
-import sys
 
-from xstools.flashdev import FlashDevice
-from xstools.xserror import XsMajorError
+import sys
+from xsusb import *
+from flashdev import *
 
 
 class Pic18f14k50(FlashDevice):
@@ -42,10 +42,8 @@ class Pic18f14k50(FlashDevice):
 
     def __init__(self, xsusb=None):
         self._xsusb = xsusb
-        self._msg = 'Incorrect command echo in %s.'
 
-    @staticmethod
-    def _addr_bytes(addr):
+    def _addr_bytes(self, addr):
         return bytearray([addr & 0xff, addr >> 8 & 0xff, addr >> 16 & 0xff])
 
     def erase_blk(self, addr):
@@ -57,7 +55,7 @@ class Pic18f14k50(FlashDevice):
         self._xsusb.write(cmd)
         response = self._xsusb.read(num_bytes=1)
         if response[0] != cmd[0]:
-            raise XsMajorError(self._msg % sys._getframe().f_code.co_name)
+            raise XsMajorError("Incorrect command echo in %s." % sys.sys._getframe().f_code.co_name)
 
     def write_blk(self, addr, data):
         """Write data to a block of flash in the microcontroller."""
@@ -68,7 +66,7 @@ class Pic18f14k50(FlashDevice):
         self._xsusb.write(cmd)
         response = self._xsusb.read(num_bytes=1)
         if response[0] != cmd[0]:
-            raise XsMajorError(self._msg % sys._getframe().f_code.co_name)
+            raise XsMajorError("Incorrect command echo in %s." % sys.sys._getframe().f_code.co_name)
 
     def read_blk(self, addr, num_bytes=0):
         """Read data from the flash in the microcontroller."""
@@ -78,7 +76,7 @@ class Pic18f14k50(FlashDevice):
         self._xsusb.write(cmd)
         response = self._xsusb.read(num_bytes=num_bytes + len(cmd))
         if response[0] != cmd[0]:
-            raise XsMajorError(self._msg % sys._getframe().f_code.co_name)
+            raise XsMajorError("Incorrect command echo in %s." % sys.sys._getframe().f_code.co_name)
         return response[5:]
 
     def read_eedata(self, addr):
@@ -89,7 +87,7 @@ class Pic18f14k50(FlashDevice):
         self._xsusb.write(cmd)
         response = self._xsusb.read(num_bytes=6)
         if response[0] != cmd[0]:
-            raise XsMajorError(self._msg % sys._getframe().f_code.co_name)
+            raise XsMajorError("Incorrect command echo in %s." % sys.sys._getframe().f_code.co_name)
         return response[5]
 
     def write_eedata(self, addr, byte):
@@ -101,16 +99,12 @@ class Pic18f14k50(FlashDevice):
         self._xsusb.write(cmd)
         response = self._xsusb.read(num_bytes=1)
         if response[0] != cmd[0]:
-            raise XsMajorError(self._msg % sys._getframe().f_code.co_name)
+            raise XsMajorError("Incorrect command echo in %s." % sys.sys._getframe().f_code.co_name)
 
     def enter_reflash_mode(self):
-        """
-        Set EEDATA mode flag and reset microcontroller into flash programming
-        mode.
-        """
+        """Set EEDATA mode flag and reset microcontroller into flash programming mode."""
 
-        self.write_eedata(self._xsusb.BOOT_SELECT_FLAG_ADDR,
-                          self._xsusb.BOOT_INTO_REFLASH_MODE)
+        self.write_eedata(self._xsusb.BOOT_SELECT_FLAG_ADDR, self._xsusb.BOOT_INTO_REFLASH_MODE)
         self._xsusb.reset()
 
     def enter_user_mode(self):
@@ -133,29 +127,22 @@ class Pic18f14k50(FlashDevice):
     def enable_jtag_cable(self):
         """Set EEDATA flag to enable the JTAG cable interface."""
 
-        # This disables the USB-to-JTAG interface, thus enabling the auxiliary
-        # JTAG cable interface!
+        # This disables the USB-to-JTAG interface, thus enabling the auxiliary JTAG cable interface!
         self.set_jtag_cable_flag(self._xsusb.DISABLE_JTAG)
 
     def disable_jtag_cable(self):
         """Set EEDATA flag to disable the JTAG cable interface."""
 
-        # This enables the USB-to-JTAG interface, thus disabling the auxiliary
-        # JTAG cable interface!
+        # This enables the USB-to-JTAG interface, thus disabling the auxiliary JTAG cable interface!
         self.set_jtag_cable_flag(0) 
 
     def get_cfg_flash_flag(self):
-        """
-        Get EEDATA flag that enables/disables the serial configuration flash.
-        """
+        """Get EEDATA flag that enables/disables the serial configuration flash."""
 
         return self.read_eedata(self._xsusb.FLASH_ENABLE_FLAG_ADDR)
 
     def set_cfg_flash_flag(self, flag):
-        """
-        Set the EEDATA flag that enables/disables the serial configuration
-        flash.
-        """
+        """Set the EEDATA flag that enables/disables the serial configuration flash."""
 
         self.write_eedata(self._xsusb.FLASH_ENABLE_FLAG_ADDR, flag)
 
