@@ -194,12 +194,23 @@ class GxsProgressDialog(wx.ProgressDialog):
 # File browser that maintains its history.
 # ===============================================================
 
-class DnDFilePickerCtrl(fbb.FileBrowseButtonWithHistory, wx.FileDropTarget):
+class DnDTarget(wx.FileDropTarget):
+    def __init__(self, window):
+        wx.FileDropTarget.__init__(self)
+        self.SetDefaultAction(wx.DragCopy)
+        self.window = window
+
+    def OnDropFiles(self, x, y, filenames):
+        self.window.AddToHistory(filenames)
+        event = wx.PyCommandEvent(wx.EVT_FILEPICKER_CHANGED.typeId, self.window.GetId())
+        wx.PostEvent(self.window, event)
+        return True
+
+class DnDFilePickerCtrl(fbb.FileBrowseButtonWithHistory):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # self.SetDropTarget(self)
-        # Show '+' icon when hovering over this field.
-        # self.SetDefaultAction(wx.DragCopy)
+        super(DnDFilePickerCtrl,self).__init__(*args, **kwargs)
+        target = DnDTarget(self)
+        self.SetDropTarget(target)
 
     def GetPath(self, add_to_history=False):
         current_value = self.GetValue()
@@ -225,11 +236,6 @@ class DnDFilePickerCtrl(fbb.FileBrowseButtonWithHistory, wx.FileDropTarget):
         self.SetValue(path)
 
     def OnChanged(self, evt):
-        event = wx.PyCommandEvent(wx.EVT_FILEPICKER_CHANGED.typeId, self.GetId())
-        wx.PostEvent(self, event)
-
-    def OnDropFiles(self, x, y, filenames):
-        self.AddToHistory(filenames)
         event = wx.PyCommandEvent(wx.EVT_FILEPICKER_CHANGED.typeId, self.GetId())
         wx.PostEvent(self, event)
 
@@ -880,10 +886,10 @@ class GxsFpgaConfigPanel(wx.Panel):
         self.SetSizer(hsizer)
 
     def handle_download_button(self, dummy):
-        # if self._dnld_file_picker.GetPath() and hasattr(active_board, 'fpga'):
-        #     self._dnld_button.Enable()
-        # else:
-        self._dnld_button.Disable()
+        if self._dnld_file_picker.GetPath() and hasattr(ACTIVE_BOARD, 'fpga'):
+            self._dnld_button.Enable()
+        else:
+            self._dnld_button.Disable()
 
     def on_download(self, event):
         pub.subscribe(self.cleanup, 'Fpga.Cleanup')
