@@ -74,7 +74,7 @@ if 'install' in sys.argv or 'install_data' in sys.argv:
     if os.name != 'nt':
         try:
             shutil.copy('xstools/81-xstools-usb.rules', '/etc/udev/rules.d')
-            subprocess.call(['udevadm', 'control', '--reload_rules'])
+            subprocess.call(['udevadm', 'control', '--reload-rules'])
             subprocess.call(['udevadm', 'trigger'])
         except IOError:
             pass
